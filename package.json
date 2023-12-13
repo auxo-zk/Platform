@@ -66,6 +66,6 @@
   "dependencies": {
     "@auxo-dev/dkg": "0.2.5",
     "@auxo-dev/auxo-libs": "^0.3.4",
-    "o1js": "0.15.*"
+    "o1js": "^0.14.2"
   }
 }
