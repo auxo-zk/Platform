@@ -14,24 +14,24 @@ import {
   Void,
   Bool,
 } from 'o1js';
-import { IPFSHash, PublicKeyDynamicArray } from '@auxo-dev/auxo-libs';
+import { IPFSHash } from '@auxo-dev/auxo-libs';
 import { updateOutOfSnark } from '../libs/utils.js';
 import { PROJECT_MEMBER_MAX_SIZE } from '../constants.js';
 import {
   EMPTY_LEVEL_1_TREE,
   EMPTY_LEVEL_2_TREE,
   Level1Witness,
+  Level2Witness,
   FullMTWitness,
+  MemberArray,
 } from './ProjectStorage.js';
 
-const DefaultRoot = EMPTY_LEVEL_1_TREE().getRoot();
-
-export class MemberArray extends PublicKeyDynamicArray(
-  PROJECT_MEMBER_MAX_SIZE
-) {}
+const DefaultLevel1Root = EMPTY_LEVEL_1_TREE().getRoot();
+const DefaultLevel2Root = EMPTY_LEVEL_1_TREE().getRoot();
 
 export class ProjectAction extends Struct({
-  addresses: MemberArray,
+  projectId: Field,
+  members: MemberArray,
   ipfsHash: IPFSHash,
 }) {
   static fromFields(fields: Field[]): ProjectAction {
@@ -44,6 +44,27 @@ export class CheckOwerInput extends Struct({
   projectId: Field,
   memberWitness: FullMTWitness,
 }) {}
+
+export class CreateProjectInput extends Struct({
+  members: MemberArray,
+  ipfsHash: IPFSHash,
+}) {
+  static fromFields(fields: Field[]): CreateProjectInput {
+    return super.fromFields(fields) as CreateProjectInput;
+  }
+}
+
+export class UpdateProjectInput extends Struct({
+  projectId: Field,
+  members: MemberArray,
+  ipfsHash: IPFSHash,
+  memberLevel1Witness: Level1Witness,
+  memberLevel2Witness: Level2Witness,
+}) {
+  static fromFields(fields: Field[]): UpdateProjectInput {
+    return super.fromFields(fields) as UpdateProjectInput;
+  }
+}
 
 export class CreateProjectOutput extends Struct({}) {
   hash(): Field {
@@ -76,32 +97,39 @@ export const CreateProject = ZkProgram({
 class ProjectProof extends ZkProgram.Proof(CreateProject) {}
 
 export enum EventEnum {
-  COMMITTEE_CREATED = 'committee-created',
+  PROJECT_CREATED = 'project-created',
 }
 
 export class ProjectContract extends SmartContract {
-  @state(Field) nextCommitteeId = State<Field>();
+  @state(Field) nextProjectId = State<Field>();
   @state(Field) memberTreeRoot = State<Field>();
-  @state(Field) settingTreeRoot = State<Field>();
-
-  @state(Field) actionState = State<Field>();
+  @state(Field) projectInfoTreeRoot = State<Field>();
+  @state(Field) lastRolledUpActionState = State<Field>();
 
   reducer = Reducer({ actionType: ProjectAction });
 
   events = {
-    [EventEnum.COMMITTEE_CREATED]: Field,
+    [EventEnum.PROJECT_CREATED]: Field,
   };
 
   init() {
     super.init();
-    this.memberTreeRoot.set(DefaultRoot);
-    this.settingTreeRoot.set(DefaultRoot);
-    this.actionState.set(Reducer.initialActionState);
+    this.memberTreeRoot.set(DefaultLevel2Root);
+    this.projectInfoTreeRoot.set(DefaultLevel1Root);
+    this.lastRolledUpActionState.set(Reducer.initialActionState);
   }
 
-  @method createCommittee(action: ProjectAction) {}
+  @method createProject(input: CreateProjectInput) {
+    this.reducer.dispatch(
+      new ProjectAction({
+        projectId: Field(-1),
+        members: input.members,
+        ipfsHash: input.ipfsHash,
+      })
+    );
+  }
 
-  @method rollupIncrements() {}
+  @method updateProjectInfo(input: UpdateProjectInput) {}
 
   // Add memberIndex to input for checking
   @method checkOwner(input: CheckOwerInput): Bool {

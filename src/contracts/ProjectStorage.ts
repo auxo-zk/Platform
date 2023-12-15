@@ -7,23 +7,28 @@ import {
   Struct,
 } from 'o1js';
 import { PROJECT_MEMBER_MAX_SIZE, INSTANCE_LIMITS } from '../constants.js';
+import { IPFSHash, PublicKeyDynamicArray } from '@auxo-dev/auxo-libs';
 
 export const LEVEL1_TREE_HEIGHT =
   Math.ceil(Math.log2(INSTANCE_LIMITS.PROJECT)) + 1;
 export const LEVEL2_TREE_HEIGHT =
   Math.ceil(Math.log2(PROJECT_MEMBER_MAX_SIZE)) + 1;
+
 export class Level1MT extends MerkleTree {}
 export class Level1Witness extends MerkleWitness(LEVEL1_TREE_HEIGHT) {}
 export class Level2MT extends MerkleTree {}
 export class Level2Witness extends MerkleWitness(LEVEL2_TREE_HEIGHT) {}
+
 export const EMPTY_LEVEL_1_TREE = () => new Level1MT(LEVEL1_TREE_HEIGHT);
 export const EMPTY_LEVEL_2_TREE = () => new Level2MT(LEVEL2_TREE_HEIGHT);
+
 export class FullMTWitness extends Struct({
   level1: Level1Witness,
   level2: Level2Witness,
 }) {}
 
-export abstract class ProjectStrorage {
+// Storage
+export abstract class ProjectStorage {
   level1: Level1MT;
   level2s: { [key: string]: Level2MT };
 
@@ -90,7 +95,7 @@ export abstract class ProjectStrorage {
   }
 }
 
-export class MemberStorage extends ProjectStrorage {
+export class MemberStorage extends ProjectStorage {
   level1: Level1MT;
   level2s: { [key: string]: Level2MT };
 
@@ -105,8 +110,8 @@ export class MemberStorage extends ProjectStrorage {
     return Poseidon.hash(publicKey.toFields());
   }
 
-  calculateLevel1Index(committeeId: Field): Field {
-    return committeeId;
+  calculateLevel1Index(projectId: Field): Field {
+    return projectId;
   }
 
   calculateLevel2Index(memberId: Field): Field {
@@ -117,7 +122,36 @@ export class MemberStorage extends ProjectStrorage {
     return super.getWitness(level1Index, level2Index) as FullMTWitness;
   }
 
-  updateLeaf(leaf: Field, level1Index: Field, level2Index: Field): void {
-    super.updateLeaf(leaf, level1Index, level2Index);
+  updateLeaf(leaf: Field, level1Index: Field, level2Index?: Field): void {
+    super.updateLeaf(leaf, level1Index, level2Index ?? undefined);
   }
 }
+
+export class ProjectInfoStorage extends ProjectStorage {
+  level1: Level1MT;
+
+  constructor(level1?: Level1MT) {
+    super(level1);
+  }
+
+  calculateLeaf(ipfsHash: IPFSHash): Field {
+    return Poseidon.hash(ipfsHash.toFields());
+  }
+
+  calculateLevel1Index(projectId: Field): Field {
+    return projectId;
+  }
+
+  getWitness(level1Index: Field): Level1Witness {
+    return super.getWitness(level1Index) as Level1Witness;
+  }
+
+  updateLeaf(leaf: Field, level1Index: Field): void {
+    super.updateLeaf(leaf, level1Index);
+  }
+}
+
+// Type
+export class MemberArray extends PublicKeyDynamicArray(
+  PROJECT_MEMBER_MAX_SIZE
+) {}

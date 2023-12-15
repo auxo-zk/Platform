@@ -1,6 +1,6 @@
-export const PROJECT_MEMBER_MAX_SIZE = 6;
+export const PROJECT_MEMBER_MAX_SIZE = 2 ** 2;
 export const INSTANCE_LIMITS = {
-  PROJECT: 2 ** 3,
+  PROJECT: 2 ** 2,
 };
 
 export enum ZkAppEnum {
