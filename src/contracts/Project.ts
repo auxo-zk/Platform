@@ -39,10 +39,11 @@ export class ProjectAction extends Struct({
   }
 }
 
-export class CheckOwerInput extends Struct({
-  address: PublicKey,
+export class CheckProjectOwerInput extends Struct({
+  owner: PublicKey,
   projectId: Field,
-  memberWitness: FullMTWitness,
+  memberLevel1Witness: Level1Witness,
+  memberLevel2Witness: Level2Witness,
 }) {}
 
 export class CreateProjectInput extends Struct({
@@ -66,29 +67,52 @@ export class UpdateProjectInput extends Struct({
   }
 }
 
-export class CreateProjectOutput extends Struct({}) {
+export class CreateProjectProofOutput extends Struct({
+  initialNextProjectId: Field,
+  initialMemberTreeRoot: Field,
+  initialProjectInfoTreeRoot: Field,
+  initialLastRolledUpACtionState: Field,
+  finalNextProjectId: Field,
+  finalMemberTreeRoot: Field,
+  finalProjectInfoTreeRoot: Field,
+  finalLastRolledUpACtionState: Field,
+}) {
   hash(): Field {
-    return Poseidon.hash(CreateProjectOutput.toFields(this));
+    return Poseidon.hash(CreateProjectProofOutput.toFields(this));
   }
 }
 
 export const CreateProject = ZkProgram({
   name: 'create-project',
-  publicOutput: CreateProjectOutput,
+  publicOutput: CreateProjectProofOutput,
   methods: {
     firstStep: {
-      privateInputs: [],
-      method(): CreateProjectOutput {
-        return new CreateProjectOutput({});
+      privateInputs: [Field, Field, Field, Field],
+      method(
+        initialNextProjectId: Field,
+        initialMemberTreeRoot: Field,
+        initialProjectInfoTreeRoot: Field,
+        initialLastRolledUpACtionState: Field
+      ): CreateProjectProofOutput {
+        return new CreateProjectProofOutput({
+          initialNextProjectId,
+          initialMemberTreeRoot,
+          initialProjectInfoTreeRoot,
+          initialLastRolledUpACtionState,
+          finalNextProjectId: initialNextProjectId,
+          finalMemberTreeRoot: initialMemberTreeRoot,
+          finalProjectInfoTreeRoot: initialProjectInfoTreeRoot,
+          finalLastRolledUpACtionState: initialLastRolledUpACtionState,
+        });
       },
     },
     nextStep: {
-      privateInputs: [SelfProof<Void, CreateProjectOutput>],
+      privateInputs: [SelfProof<Void, CreateProjectProofOutput>],
       method(
-        preProof: SelfProof<Void, CreateProjectOutput>
-      ): CreateProjectOutput {
+        preProof: SelfProof<Void, CreateProjectProofOutput>
+      ): CreateProjectProofOutput {
         preProof.verify();
-        return new CreateProjectOutput({});
+        return new CreateProjectProofOutput({});
       },
     },
   },
@@ -129,10 +153,75 @@ export class ProjectContract extends SmartContract {
     );
   }
 
-  @method updateProjectInfo(input: UpdateProjectInput) {}
+  @method updateProjectInfo(input: UpdateProjectInput) {
+    // check the right projectId
+    let projectId = input.memberLevel1Witness.calculateIndex();
+    projectId.assertEquals(input.projectId);
+
+    // check only project created can be updated
+    projectId.assertLessThan(this.nextProjectId.getAndAssertEquals());
+
+    // check the right owner index
+    let memberIndex = input.memberLevel2Witness.calculateIndex();
+    memberIndex.assertEquals(Field(0));
+    // check the same on root
+    let memberLevel2Root = input.memberLevel2Witness.calculateRoot(
+      Poseidon.hash(PublicKey.toFields(this.sender))
+    );
+    let memberLevel1Root =
+      input.memberLevel1Witness.calculateRoot(memberLevel2Root);
+    memberLevel1Root.assertEquals(this.memberTreeRoot.getAndAssertEquals());
+
+    let lastRolledUpActionState =
+      this.lastRolledUpActionState.getAndAssertEquals();
+
+    // TODO: not really able to do this, check again. If both of them send at the same block
+    // checking if the request have the same id already exists within the accumulator
+    let { state: exists } = this.reducer.reduce(
+      this.reducer.getActions({
+        fromActionState: lastRolledUpActionState,
+      }),
+      Bool,
+      (state: Bool, action: ProjectAction) => {
+        return action.projectId.equals(projectId).or(state);
+      },
+      // initial state
+      { state: Bool(false), actionState: lastRolledUpActionState }
+    );
+
+    // if exists then don't dispatch any more
+    exists.assertEquals(Bool(false));
+
+    this.reducer.dispatch(
+      new ProjectAction({
+        projectId: input.projectId,
+        members: input.members,
+        ipfsHash: input.ipfsHash,
+      })
+    );
+  }
 
   // Add memberIndex to input for checking
-  @method checkOwner(input: CheckOwerInput): Bool {
-    return Bool(true);
+  @method checkProjectOwner(input: CheckProjectOwerInput): Bool {
+    let isOwner = Bool(true);
+
+    // check the right projectId
+    let projectId = input.memberLevel1Witness.calculateIndex();
+    isOwner = projectId.equals(input.projectId).and(isOwner);
+
+    // check the right owner index
+    let memberIndex = input.memberLevel2Witness.calculateIndex();
+    isOwner = memberIndex.equals(Field(0)).and(isOwner);
+    // check the same on root
+    let memberLevel2Root = input.memberLevel2Witness.calculateRoot(
+      Poseidon.hash(PublicKey.toFields(input.owner))
+    );
+    let memberLevel1Root =
+      input.memberLevel1Witness.calculateRoot(memberLevel2Root);
+    isOwner = memberLevel1Root
+      .equals(this.memberTreeRoot.getAndAssertEquals())
+      .and(isOwner);
+
+    return isOwner;
   }
 }
