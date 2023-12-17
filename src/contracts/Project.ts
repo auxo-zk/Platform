@@ -24,7 +24,9 @@ import {
   Level2Witness,
   FullMTWitness,
   MemberArray,
+  ProjectInfoStorage,
 } from './ProjectStorage.js';
+import { FqBindings } from 'o1js/dist/node/bindings/crypto/bindings/field.js';
 
 const DefaultLevel1Root = EMPTY_LEVEL_1_TREE().getRoot();
 const DefaultLevel2Root = EMPTY_LEVEL_1_TREE().getRoot();
@@ -75,7 +77,7 @@ export class CreateProjectProofOutput extends Struct({
   finalNextProjectId: Field,
   finalMemberTreeRoot: Field,
   finalProjectInfoTreeRoot: Field,
-  finalLastRolledUpACtionState: Field,
+  finalLastRolledUpActionState: Field,
 }) {
   hash(): Field {
     return Poseidon.hash(CreateProjectProofOutput.toFields(this));
@@ -102,17 +104,91 @@ export const CreateProject = ZkProgram({
           finalNextProjectId: initialNextProjectId,
           finalMemberTreeRoot: initialMemberTreeRoot,
           finalProjectInfoTreeRoot: initialProjectInfoTreeRoot,
-          finalLastRolledUpACtionState: initialLastRolledUpACtionState,
+          finalLastRolledUpActionState: initialLastRolledUpACtionState,
         });
       },
     },
     nextStep: {
-      privateInputs: [SelfProof<Void, CreateProjectProofOutput>],
+      privateInputs: [
+        SelfProof<Void, CreateProjectProofOutput>,
+        ProjectAction,
+        Level1Witness,
+        Level1Witness,
+      ],
       method(
-        preProof: SelfProof<Void, CreateProjectProofOutput>
+        preProof: SelfProof<Void, CreateProjectProofOutput>,
+        newAction: ProjectAction,
+        memberWitness: Level1Witness,
+        projectInfoWitess: Level1Witness
       ): CreateProjectProofOutput {
         preProof.verify();
-        return new CreateProjectProofOutput({});
+
+        // check if create project
+        let isCreateProject = newAction.projectId.equals(Field(-1));
+        // if create project: newProjectId = next project id
+        // if update project: newProjectId = newAction projectId
+        let newProjectId = Provable.if(
+          isCreateProject,
+          preProof.publicOutput.finalNextProjectId,
+          newAction.projectId
+        );
+
+        let nextProjectId = Provable.if(
+          isCreateProject,
+          preProof.publicOutput.finalNextProjectId.add(Field(1)),
+          preProof.publicOutput.finalNextProjectId
+        );
+
+        // must be create new project
+        newAction.projectId.assertEquals(Field(-1));
+
+        ////// caculate new memberTreeRoot
+        let newProjectIndex = memberWitness.calculateIndex();
+        let preMemberRoot = memberWitness.calculateRoot(Field(0));
+        newProjectId.assertEquals(newProjectIndex);
+        preMemberRoot.assertEquals(preProof.publicOutput.finalMemberTreeRoot);
+
+        let tree = EMPTY_LEVEL_2_TREE();
+        for (let i = 0; i < PROJECT_MEMBER_MAX_SIZE; i++) {
+          let value = Provable.if(
+            Field(i).greaterThanOrEqual(newAction.members.length),
+            Field(0),
+            MemberArray.hash(newAction.members.get(Field(i)))
+          );
+          tree.setLeaf(BigInt(i), value);
+        }
+
+        // update new member tree
+        let newMemberTreeRoot = memberWitness.calculateRoot(tree.getRoot());
+
+        ////// caculate new settingTreeRoot
+        let preProjectInfoRoot = projectInfoWitess.calculateRoot(Field(0));
+        let projectInfoIndex = projectInfoWitess.calculateIndex();
+        projectInfoIndex.assertEquals(newProjectId);
+        preProjectInfoRoot.assertEquals(
+          preProof.publicOutput.finalProjectInfoTreeRoot
+        );
+
+        // update project info tree with hash ipfs hash
+        let newProjectInfoTreeRoot = projectInfoWitess.calculateRoot(
+          ProjectInfoStorage.calculateLeaf(newAction.ipfsHash)
+        );
+
+        return new CreateProjectProofOutput({
+          initialNextProjectId: preProof.publicOutput.initialNextProjectId,
+          initialMemberTreeRoot: preProof.publicOutput.initialMemberTreeRoot,
+          initialProjectInfoTreeRoot:
+            preProof.publicOutput.initialProjectInfoTreeRoot,
+          initialLastRolledUpACtionState:
+            preProof.publicOutput.initialLastRolledUpACtionState,
+          finalNextProjectId: nextProjectId,
+          finalMemberTreeRoot: newMemberTreeRoot,
+          finalProjectInfoTreeRoot: newProjectInfoTreeRoot,
+          finalLastRolledUpActionState: updateOutOfSnark(
+            preProof.publicOutput.finalLastRolledUpActionState,
+            [ProjectAction.toFields(newAction)]
+          ),
+        });
       },
     },
   },
@@ -201,7 +277,42 @@ export class ProjectContract extends SmartContract {
     );
   }
 
-  // Add memberIndex to input for checking
+  @method rollupIncrements(proof: ProjectProof) {
+    proof.verify();
+    let nextProjectId = this.nextProjectId.getAndAssertEquals();
+    let memberTreeRoot = this.memberTreeRoot.getAndAssertEquals();
+    let projectInfoTreeRoot = this.projectInfoTreeRoot.getAndAssertEquals();
+    let lastRolledUpActionState =
+      this.lastRolledUpActionState.getAndAssertEquals();
+
+    nextProjectId.assertEquals(proof.publicOutput.initialNextProjectId);
+    memberTreeRoot.assertEquals(proof.publicOutput.initialMemberTreeRoot);
+    projectInfoTreeRoot.assertEquals(
+      proof.publicOutput.initialProjectInfoTreeRoot
+    );
+    lastRolledUpActionState.assertEquals(
+      proof.publicOutput.initialLastRolledUpACtionState
+    );
+
+    let lastActionState = this.account.actionState.getAndAssertEquals();
+    lastActionState.assertEquals(
+      proof.publicOutput.finalLastRolledUpActionState
+    );
+
+    // update on-chain state
+    this.nextProjectId.set(proof.publicOutput.finalNextProjectId);
+    this.memberTreeRoot.set(proof.publicOutput.finalMemberTreeRoot);
+    this.projectInfoTreeRoot.set(proof.publicOutput.finalProjectInfoTreeRoot);
+    this.lastRolledUpActionState.set(
+      proof.publicOutput.finalLastRolledUpActionState
+    );
+
+    this.emitEvent(
+      EventEnum.PROJECT_CREATED,
+      proof.publicOutput.finalNextProjectId.sub(Field(1))
+    );
+  }
+
   @method checkProjectOwner(input: CheckProjectOwerInput): Bool {
     let isOwner = Bool(true);
 
@@ -209,7 +320,7 @@ export class ProjectContract extends SmartContract {
     let projectId = input.memberLevel1Witness.calculateIndex();
     isOwner = projectId.equals(input.projectId).and(isOwner);
 
-    // check the right owner index
+    // check the right owner index, is = 0
     let memberIndex = input.memberLevel2Witness.calculateIndex();
     isOwner = memberIndex.equals(Field(0)).and(isOwner);
     // check the same on root

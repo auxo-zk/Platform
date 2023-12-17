@@ -138,6 +138,10 @@ export class ProjectInfoStorage extends ProjectStorage {
     return Poseidon.hash(ipfsHash.toFields());
   }
 
+  static calculateLeaf(ipfsHash: IPFSHash): Field {
+    return Poseidon.hash(ipfsHash.toFields());
+  }
+
   calculateLevel1Index(projectId: Field): Field {
     return projectId;
   }
