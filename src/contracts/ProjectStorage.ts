@@ -9,18 +9,18 @@ import {
 import { PROJECT_MEMBER_MAX_SIZE, INSTANCE_LIMITS } from '../constants.js';
 import { IPFSHash, PublicKeyDynamicArray } from '@auxo-dev/auxo-libs';
 
-export const LEVEL1_TREE_HEIGHT =
+export const LEVEL_1_TREE_HEIGHT =
   Math.ceil(Math.log2(INSTANCE_LIMITS.PROJECT)) + 1;
-export const LEVEL2_TREE_HEIGHT =
+export const LEVEL_2_TREE_HEIGHT =
   Math.ceil(Math.log2(PROJECT_MEMBER_MAX_SIZE)) + 1;
 
 export class Level1MT extends MerkleTree {}
-export class Level1Witness extends MerkleWitness(LEVEL1_TREE_HEIGHT) {}
+export class Level1Witness extends MerkleWitness(LEVEL_1_TREE_HEIGHT) {}
 export class Level2MT extends MerkleTree {}
-export class Level2Witness extends MerkleWitness(LEVEL2_TREE_HEIGHT) {}
+export class Level2Witness extends MerkleWitness(LEVEL_2_TREE_HEIGHT) {}
 
-export const EMPTY_LEVEL_1_TREE = () => new Level1MT(LEVEL1_TREE_HEIGHT);
-export const EMPTY_LEVEL_2_TREE = () => new Level2MT(LEVEL2_TREE_HEIGHT);
+export const EMPTY_LEVEL_1_TREE = () => new Level1MT(LEVEL_1_TREE_HEIGHT);
+export const EMPTY_LEVEL_2_TREE = () => new Level2MT(LEVEL_2_TREE_HEIGHT);
 
 export class FullMTWitness extends Struct({
   level1: Level1Witness,

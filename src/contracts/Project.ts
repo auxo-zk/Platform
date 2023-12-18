@@ -29,7 +29,6 @@ import {
 import { FqBindings } from 'o1js/dist/node/bindings/crypto/bindings/field.js';
 
 const DefaultLevel1Root = EMPTY_LEVEL_1_TREE().getRoot();
-const DefaultLevel2Root = EMPTY_LEVEL_1_TREE().getRoot();
 
 export class ProjectAction extends Struct({
   projectId: Field,
@@ -214,7 +213,7 @@ export class ProjectContract extends SmartContract {
 
   init() {
     super.init();
-    this.memberTreeRoot.set(DefaultLevel2Root);
+    this.memberTreeRoot.set(DefaultLevel1Root);
     this.projectInfoTreeRoot.set(DefaultLevel1Root);
     this.lastRolledUpActionState.set(Reducer.initialActionState);
   }
