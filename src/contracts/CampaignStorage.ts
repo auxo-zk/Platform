@@ -42,7 +42,7 @@ export abstract class CampaignStorage {
   }
 }
 
-export class IPFSHashStorage extends CampaignStorage {
+export class InfoStorage extends CampaignStorage {
   level1: Level1MT;
 
   constructor(level1?: Level1MT) {
@@ -74,6 +74,10 @@ export class OwnerStorage extends CampaignStorage {
   }
 
   calculateLeaf(publicKey: PublicKey): Field {
+    return this.calculateLeaf(publicKey);
+  }
+
+  static calculateLeaf(publicKey: PublicKey): Field {
     return Poseidon.hash(publicKey.toFields());
   }
 
@@ -98,6 +102,10 @@ export class StatusStorage extends CampaignStorage {
   }
 
   calculateLeaf(status: StatusEnum): Field {
+    return this.calculateLeaf(status);
+  }
+
+  static calculateLeaf(status: StatusEnum): Field {
     return Field(status);
   }
 
@@ -128,11 +136,20 @@ export class ConfigStorage extends CampaignStorage {
     committeeId: Field;
     keyId: Field;
   }): Field {
-    return Poseidon.hash([committeeId, keyId]);
+    return this.calculateLeaf({
+      committeeId,
+      keyId,
+    });
   }
 
-  static calculateLeaf(ipfsHash: IPFSHash): Field {
-    return Poseidon.hash(ipfsHash.toFields());
+  static calculateLeaf({
+    committeeId,
+    keyId,
+  }: {
+    committeeId: Field;
+    keyId: Field;
+  }): Field {
+    return Poseidon.hash([committeeId, keyId]);
   }
 
   calculateLevel1Index(projectId: Field): Field {

@@ -127,7 +127,7 @@ export class MemberStorage extends ProjectStorage {
   }
 }
 
-export class ProjectInfoStorage extends ProjectStorage {
+export class InfoStorage extends ProjectStorage {
   level1: Level1MT;
 
   constructor(level1?: Level1MT) {

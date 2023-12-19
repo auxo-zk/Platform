@@ -21,7 +21,11 @@ import {
   Level1Witness,
   StatusEnum,
   ConfigStorage,
+  OwnerStorage,
+  StatusStorage,
+  InfoStorage,
 } from './CampaignStorage.js';
+import { access } from 'fs';
 
 const DefaultLevel1Root = EMPTY_LEVEL_1_TREE().getRoot();
 
@@ -61,14 +65,18 @@ export class UpdateCampaignInput extends Struct({}) {
 }
 
 export class CreateCampaignProofOutput extends Struct({
-  // initialNextCampaignId: Field,
-  // initialMemberTreeRoot: Field,
-  // initialCampaignInfoTreeRoot: Field,
-  // initialLastRolledUpACtionState: Field,
-  // finalNextCampaignId: Field,
-  // finalMemberTreeRoot: Field,
-  // finalCampaignInfoTreeRoot: Field,
-  // finalLastRolledUpActionState: Field,
+  initialOwnerTreeRoot: Field,
+  initialInfoTreeRoot: Field,
+  initialStatusTreeRoot: Field,
+  initialConfigTreeRoot: Field,
+  initialNextCampaignId: Field,
+  initialLastRolledUpACtionState: Field,
+  finalOwnerTreeRoot: Field,
+  finalInfoTreeRoot: Field,
+  finalStatusTreeRoot: Field,
+  finalConfigTreeRoot: Field,
+  finalNextCampaignId: Field,
+  finalLastRolledUpActionState: Field,
 }) {
   hash(): Field {
     return Poseidon.hash(CreateCampaignProofOutput.toFields(this));
@@ -80,40 +88,122 @@ export const CreateCampaign = ZkProgram({
   publicOutput: CreateCampaignProofOutput,
   methods: {
     firstStep: {
-      privateInputs: [],
-      method(): // initialNextCampaignId: Field,
-      // initialMemberTreeRoot: Field,
-      // initialCampaignInfoTreeRoot: Field,
-      // initialLastRolledUpACtionState: Field
-      CreateCampaignProofOutput {
+      privateInputs: [Field, Field, Field, Field, Field, Field],
+      method(
+        initialOwnerTreeRoot,
+        initialInfoTreeRoot,
+        initialStatusTreeRoot,
+        initialConfigTreeRoot,
+        initialNextCampaignId,
+        initialLastRolledUpACtionState
+      ): CreateCampaignProofOutput {
         return new CreateCampaignProofOutput({
-          // initialNextCampaignId,
-          // initialMemberTreeRoot,
-          // initialCampaignInfoTreeRoot,
-          // initialLastRolledUpACtionState,
-          // finalNextCampaignId: initialNextCampaignId,
-          // finalMemberTreeRoot: initialMemberTreeRoot,
-          // finalCampaignInfoTreeRoot: initialCampaignInfoTreeRoot,
-          // finalLastRolledUpActionState: initialLastRolledUpACtionState,
+          initialOwnerTreeRoot,
+          initialInfoTreeRoot,
+          initialStatusTreeRoot,
+          initialConfigTreeRoot,
+          initialNextCampaignId,
+          initialLastRolledUpACtionState,
+          finalOwnerTreeRoot: initialOwnerTreeRoot,
+          finalInfoTreeRoot: initialInfoTreeRoot,
+          finalStatusTreeRoot: initialStatusTreeRoot,
+          finalConfigTreeRoot: initialConfigTreeRoot,
+          finalNextCampaignId: initialNextCampaignId,
+          finalLastRolledUpActionState: initialLastRolledUpACtionState,
         });
       },
     },
-    nextStep: {
+    createCampaign: {
       privateInputs: [
         SelfProof<Void, CreateCampaignProofOutput>,
         CampaignAction,
+        Level1Witness,
+        Level1Witness,
         Level1Witness,
         Level1Witness,
       ],
       method(
         preProof: SelfProof<Void, CreateCampaignProofOutput>,
         newAction: CampaignAction,
-        memberWitness: Level1Witness,
-        campaignInfoWitess: Level1Witness
+        ownerWitness: Level1Witness,
+        infoWitess: Level1Witness,
+        statusWitess: Level1Witness,
+        configWitess: Level1Witness
       ): CreateCampaignProofOutput {
         preProof.verify();
 
-        return new CreateCampaignProofOutput({});
+        // check if this action is create campaign
+        newAction.campaignId.assertEquals(Field(-1));
+
+        let newCampaignId = preProof.publicOutput.finalNextCampaignId;
+
+        ////// caculate new ownerTreeRoot
+        let preOwnerRoot = ownerWitness.calculateRoot(Field(0));
+        let ownerIndex = ownerWitness.calculateIndex();
+        ownerIndex.assertEquals(newCampaignId);
+        preOwnerRoot.assertEquals(preProof.publicOutput.finalOwnerTreeRoot);
+
+        // update ownerTreeRoot
+        let newOwnerTreeRoot = ownerWitness.calculateRoot(
+          OwnerStorage.calculateLeaf(newAction.owner)
+        );
+
+        ////// caculate in infoTreeRoot
+        let preInfoRoot = infoWitess.calculateRoot(Field(0));
+        let infoIndex = infoWitess.calculateIndex();
+        infoIndex.assertEquals(newCampaignId);
+        preInfoRoot.assertEquals(preProof.publicOutput.finalInfoTreeRoot);
+
+        // update infoTreeRoot
+        let newInfoTreeRoot = infoWitess.calculateRoot(
+          OwnerStorage.calculateLeaf(newAction.owner)
+        );
+
+        ////// caculate in infoTreeRoot
+        let preStatusRoot = statusWitess.calculateRoot(Field(0));
+        let statusIndex = statusWitess.calculateIndex();
+        statusIndex.assertEquals(newCampaignId);
+        preStatusRoot.assertEquals(preProof.publicOutput.finalStatusTreeRoot);
+
+        // update infoTreeRoot
+        let newStatusTreeRoot = statusWitess.calculateRoot(
+          newAction.campaignStatus
+        );
+
+        ////// caculate in configTreeRoot
+        let preConfigRoot = configWitess.calculateRoot(Field(0));
+        let configIndex = configWitess.calculateIndex();
+        configIndex.assertEquals(newCampaignId);
+        preConfigRoot.assertEquals(preProof.publicOutput.finalConfigTreeRoot);
+
+        // update infoTreeRoot
+        let newConfigTreeRoot = statusWitess.calculateRoot(
+          ConfigStorage.calculateLeaf({
+            committeeId: newAction.committeeId,
+            keyId: newAction.keyId,
+          })
+        );
+
+        return new CreateCampaignProofOutput({
+          initialOwnerTreeRoot: preProof.publicOutput.initialOwnerTreeRoot,
+          initialInfoTreeRoot: preProof.publicOutput.initialInfoTreeRoot,
+          initialStatusTreeRoot: preProof.publicOutput.initialStatusTreeRoot,
+          initialConfigTreeRoot: preProof.publicOutput.initialConfigTreeRoot,
+          initialNextCampaignId: preProof.publicOutput.initialNextCampaignId,
+          initialLastRolledUpACtionState:
+            preProof.publicOutput.initialLastRolledUpACtionState,
+          finalOwnerTreeRoot: newOwnerTreeRoot,
+          finalInfoTreeRoot: newInfoTreeRoot,
+          finalStatusTreeRoot: newStatusTreeRoot,
+          finalConfigTreeRoot: newConfigTreeRoot,
+          finalNextCampaignId: preProof.publicOutput.finalNextCampaignId.add(
+            Field(1)
+          ),
+          finalLastRolledUpActionState: updateOutOfSnark(
+            preProof.publicOutput.finalLastRolledUpActionState,
+            [CampaignAction.toFields(newAction)]
+          ),
+        });
       },
     },
   },
@@ -126,9 +216,18 @@ export enum EventEnum {
 }
 
 export class CampaignContract extends SmartContract {
+  // store owner of campaign
+  @state(Field) ownerTreeRoot = State<Field>();
+  // store IPFS hash of campaign
+  @state(Field) infoTreeRoot = State<Field>();
+  // status of the campaign, check enum Status
+  @state(Field) statusTreeRoot = State<Field>();
+  // hash(committeeId, keyId)
+  @state(Field) configTreeRoot = State<Field>();
+  // MT of other zkApp address
+  @state(Field) zkApps = State<Field>();
+  // next campaign Id
   @state(Field) nextCampaignId = State<Field>();
-  @state(Field) memberTreeRoot = State<Field>();
-  @state(Field) campaignInfoTreeRoot = State<Field>();
   @state(Field) lastRolledUpActionState = State<Field>();
 
   reducer = Reducer({ actionType: CampaignAction });
@@ -139,8 +238,10 @@ export class CampaignContract extends SmartContract {
 
   init() {
     super.init();
-    this.memberTreeRoot.set(DefaultLevel1Root);
-    this.campaignInfoTreeRoot.set(DefaultLevel1Root);
+    this.ownerTreeRoot.set(DefaultLevel1Root);
+    this.infoTreeRoot.set(DefaultLevel1Root);
+    this.statusTreeRoot.set(DefaultLevel1Root);
+    this.configTreeRoot.set(DefaultLevel1Root);
     this.lastRolledUpActionState.set(Reducer.initialActionState);
   }
 
@@ -157,10 +258,44 @@ export class CampaignContract extends SmartContract {
     );
   }
 
+  // todo
   @method updateCampaignInfo(input: UpdateCampaignInput) {}
 
-  @method rollupIncrements(proof: CampaignProof) {
+  @method rollup(proof: CampaignProof) {
     proof.verify();
+    let ownerTreeRoot = this.ownerTreeRoot.getAndAssertEquals();
+    let infoTreeRoot = this.infoTreeRoot.getAndAssertEquals();
+    let statusTreeRoot = this.statusTreeRoot.getAndAssertEquals();
+    let configTreeRoot = this.configTreeRoot.getAndAssertEquals();
+    let lastRolledUpActionState =
+      this.lastRolledUpActionState.getAndAssertEquals();
+
+    ownerTreeRoot.assertEquals(proof.publicOutput.initialOwnerTreeRoot);
+    infoTreeRoot.assertEquals(proof.publicOutput.initialInfoTreeRoot);
+    statusTreeRoot.assertEquals(proof.publicOutput.initialStatusTreeRoot);
+    configTreeRoot.assertEquals(proof.publicOutput.initialConfigTreeRoot);
+    lastRolledUpActionState.assertEquals(
+      proof.publicOutput.initialLastRolledUpACtionState
+    );
+
+    let lastActionState = this.account.actionState.getAndAssertEquals();
+    lastActionState.assertEquals(
+      proof.publicOutput.finalLastRolledUpActionState
+    );
+
+    // update on-chain state
+    this.ownerTreeRoot.set(proof.publicOutput.finalOwnerTreeRoot);
+    this.infoTreeRoot.set(proof.publicOutput.finalInfoTreeRoot);
+    this.statusTreeRoot.set(proof.publicOutput.finalStatusTreeRoot);
+    this.configTreeRoot.set(proof.publicOutput.finalConfigTreeRoot);
+    this.lastRolledUpActionState.set(
+      proof.publicOutput.finalLastRolledUpActionState
+    );
+
+    this.emitEvent(
+      EventEnum.CAMPAIGN_CREATED,
+      proof.publicOutput.finalNextCampaignId.sub(Field(1))
+    );
   }
 
   @method checkCampaignOwner(input: CheckCampaignOwerInput): Bool {

@@ -24,7 +24,7 @@ import {
   Level2Witness,
   FullMTWitness,
   MemberArray,
-  ProjectInfoStorage,
+  InfoStorage,
 } from './ProjectStorage.js';
 import { FqBindings } from 'o1js/dist/node/bindings/crypto/bindings/field.js';
 
@@ -138,9 +138,6 @@ export const CreateProject = ZkProgram({
           preProof.publicOutput.finalNextProjectId
         );
 
-        // must be create new project
-        newAction.projectId.assertEquals(Field(-1));
-
         ////// caculate new memberTreeRoot
         let newProjectIndex = memberWitness.calculateIndex();
         let preMemberRoot = memberWitness.calculateRoot(Field(0));
@@ -170,7 +167,7 @@ export const CreateProject = ZkProgram({
 
         // update project info tree with hash ipfs hash
         let newProjectInfoTreeRoot = projectInfoWitess.calculateRoot(
-          ProjectInfoStorage.calculateLeaf(newAction.ipfsHash)
+          InfoStorage.calculateLeaf(newAction.ipfsHash)
         );
 
         return new CreateProjectProofOutput({
@@ -276,7 +273,7 @@ export class ProjectContract extends SmartContract {
     );
   }
 
-  @method rollupIncrements(proof: ProjectProof) {
+  @method rollup(proof: ProjectProof) {
     proof.verify();
     let nextProjectId = this.nextProjectId.getAndAssertEquals();
     let memberTreeRoot = this.memberTreeRoot.getAndAssertEquals();
