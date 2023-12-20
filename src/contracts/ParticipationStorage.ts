@@ -6,13 +6,16 @@ import {
   PublicKey,
   Struct,
 } from 'o1js';
-import { PROJECT_MEMBER_MAX_SIZE, INSTANCE_LIMITS } from '../constants.js';
+import {
+  CAMPAIGN_PARTICIPANT_MAX_SIZE,
+  INSTANCE_LIMITS,
+} from '../constants.js';
 import { IPFSHash, PublicKeyDynamicArray } from '@auxo-dev/auxo-libs';
 
 export const LEVEL_1_TREE_HEIGHT =
-  Math.ceil(Math.log2(INSTANCE_LIMITS.PROJECT)) + 1;
+  Math.ceil(Math.log2(INSTANCE_LIMITS.PARTICIPATION)) + 1;
 export const LEVEL_2_TREE_HEIGHT =
-  Math.ceil(Math.log2(PROJECT_MEMBER_MAX_SIZE)) + 1;
+  Math.ceil(Math.log2(CAMPAIGN_PARTICIPANT_MAX_SIZE)) + 1;
 
 export class Level1MT extends MerkleTree {}
 export class Level1Witness extends MerkleWitness(LEVEL_1_TREE_HEIGHT) {}
@@ -28,7 +31,7 @@ export class FullMTWitness extends Struct({
 }) {}
 
 // Storage
-export abstract class ProjectStorage {
+export abstract class ParticipationStorage {
   level1: Level1MT;
   level2s: { [key: string]: Level2MT };
 
@@ -95,7 +98,7 @@ export abstract class ProjectStorage {
   }
 }
 
-export class MemberStorage extends ProjectStorage {
+export class ParticipantStorage extends ParticipationStorage {
   level1: Level1MT;
   level2s: { [key: string]: Level2MT };
 
@@ -106,20 +109,20 @@ export class MemberStorage extends ProjectStorage {
     super(level1, level2s);
   }
 
-  calculateLeaf(publicKey: PublicKey): Field {
-    return this.calculateLeaf(publicKey);
+  calculateLeaf(projectId: Field): Field {
+    return this.calculateLeaf(projectId);
   }
 
-  static calculateLeaf(publicKey: PublicKey): Field {
-    return Poseidon.hash(publicKey.toFields());
-  }
-
-  calculateLevel1Index(projectId: Field): Field {
+  static calculateLeaf(projectId: Field): Field {
     return projectId;
   }
 
-  calculateLevel2Index(memberId: Field): Field {
-    return memberId;
+  calculateLevel1Index(campaignId: Field): Field {
+    return campaignId;
+  }
+
+  calculateLevel2Index(participantId: Field): Field {
+    return participantId;
   }
 
   getWitness(level1Index: Field, level2Index: Field): FullMTWitness {
@@ -131,11 +134,15 @@ export class MemberStorage extends ProjectStorage {
   }
 }
 
-export class InfoStorage extends ProjectStorage {
+export class ApplicationStorage extends ParticipationStorage {
   level1: Level1MT;
+  level2s: { [key: string]: Level2MT };
 
-  constructor(level1?: Level1MT) {
-    super(level1);
+  constructor(
+    level1?: Level1MT,
+    level2s?: { index: Field; level2: Level2MT }[]
+  ) {
+    super(level1, level2s);
   }
 
   calculateLeaf(ipfsHash: IPFSHash): Field {
@@ -146,20 +153,24 @@ export class InfoStorage extends ProjectStorage {
     return Poseidon.hash(ipfsHash.toFields());
   }
 
-  calculateLevel1Index(projectId: Field): Field {
-    return projectId;
+  calculateLevel1Index(campaignId: Field): Field {
+    return campaignId;
   }
 
-  getWitness(level1Index: Field): Level1Witness {
-    return super.getWitness(level1Index) as Level1Witness;
+  calculateLevel2Index(participantId: Field): Field {
+    return participantId;
   }
 
-  updateLeaf(leaf: Field, level1Index: Field): void {
-    super.updateLeaf(leaf, level1Index);
+  getWitness(level1Index: Field, level2Index: Field): FullMTWitness {
+    return super.getWitness(level1Index, level2Index) as FullMTWitness;
+  }
+
+  updateLeaf(leaf: Field, level1Index: Field, level2Index?: Field): void {
+    super.updateLeaf(leaf, level1Index, level2Index ?? undefined);
   }
 }
 
 // Type
-export class MemberArray extends PublicKeyDynamicArray(
-  PROJECT_MEMBER_MAX_SIZE
+export class ParticipantArray extends PublicKeyDynamicArray(
+  CAMPAIGN_PARTICIPANT_MAX_SIZE
 ) {}

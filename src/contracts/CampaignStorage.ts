@@ -21,7 +21,7 @@ export const EMPTY_LEVEL_1_TREE = () => new Level1MT(LEVEL_1_TREE_HEIGHT);
 export abstract class CampaignStorage {
   level1: Level1MT;
 
-  constructor(level1?: Level1MT, level2s?: { index: Field }[]) {
+  constructor(level1?: Level1MT) {
     this.level1 = level1 || EMPTY_LEVEL_1_TREE();
   }
 
