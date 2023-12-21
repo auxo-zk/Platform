@@ -6,16 +6,13 @@ import {
   PublicKey,
   Struct,
 } from 'o1js';
-import {
-  CAMPAIGN_PARTICIPANT_MAX_SIZE,
-  INSTANCE_LIMITS,
-} from '../constants.js';
+import { INSTANCE_LIMITS } from '../constants.js';
 import { IPFSHash, PublicKeyDynamicArray } from '@auxo-dev/auxo-libs';
 
 export const LEVEL_1_TREE_HEIGHT =
   Math.ceil(Math.log2(INSTANCE_LIMITS.PARTICIPATION)) + 1;
 export const LEVEL_2_TREE_HEIGHT =
-  Math.ceil(Math.log2(CAMPAIGN_PARTICIPANT_MAX_SIZE)) + 1;
+  Math.ceil(Math.log2(INSTANCE_LIMITS.PROJECT)) + 1;
 
 export class Level1MT extends MerkleTree {}
 export class Level1Witness extends MerkleWitness(LEVEL_1_TREE_HEIGHT) {}
@@ -98,42 +95,6 @@ export abstract class ParticipationStorage {
   }
 }
 
-export class ParticipantStorage extends ParticipationStorage {
-  level1: Level1MT;
-  level2s: { [key: string]: Level2MT };
-
-  constructor(
-    level1?: Level1MT,
-    level2s?: { index: Field; level2: Level2MT }[]
-  ) {
-    super(level1, level2s);
-  }
-
-  calculateLeaf(projectId: Field): Field {
-    return this.calculateLeaf(projectId);
-  }
-
-  static calculateLeaf(projectId: Field): Field {
-    return projectId;
-  }
-
-  calculateLevel1Index(campaignId: Field): Field {
-    return campaignId;
-  }
-
-  calculateLevel2Index(participantId: Field): Field {
-    return participantId;
-  }
-
-  getWitness(level1Index: Field, level2Index: Field): FullMTWitness {
-    return super.getWitness(level1Index, level2Index) as FullMTWitness;
-  }
-
-  updateLeaf(leaf: Field, level1Index: Field, level2Index?: Field): void {
-    super.updateLeaf(leaf, level1Index, level2Index ?? undefined);
-  }
-}
-
 export class ApplicationStorage extends ParticipationStorage {
   level1: Level1MT;
   level2s: { [key: string]: Level2MT };
@@ -157,8 +118,8 @@ export class ApplicationStorage extends ParticipationStorage {
     return campaignId;
   }
 
-  calculateLevel2Index(participantId: Field): Field {
-    return participantId;
+  calculateLevel2Index(projectId: Field): Field {
+    return projectId;
   }
 
   getWitness(level1Index: Field, level2Index: Field): FullMTWitness {
@@ -169,8 +130,3 @@ export class ApplicationStorage extends ParticipationStorage {
     super.updateLeaf(leaf, level1Index, level2Index ?? undefined);
   }
 }
-
-// Type
-export class ParticipantArray extends PublicKeyDynamicArray(
-  CAMPAIGN_PARTICIPANT_MAX_SIZE
-) {}
