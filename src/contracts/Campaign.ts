@@ -22,10 +22,7 @@ import {
   StatusEnum,
   ConfigStorage,
   OwnerStorage,
-  StatusStorage,
-  InfoStorage,
 } from './CampaignStorage.js';
-import { access } from 'fs';
 
 const DefaultLevel1Root = EMPTY_LEVEL_1_TREE().getRoot();
 
@@ -258,7 +255,7 @@ export class CampaignContract extends SmartContract {
     );
   }
 
-  // todo
+  // TODO
   @method updateCampaignInfo(input: UpdateCampaignInput) {}
 
   @method rollup(proof: CampaignProof) {
@@ -298,6 +295,7 @@ export class CampaignContract extends SmartContract {
     );
   }
 
+  // TODO
   @method checkCampaignOwner(input: CheckCampaignOwerInput): Bool {
     let isOwner = Bool(true);
 
