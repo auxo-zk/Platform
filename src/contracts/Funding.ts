@@ -16,6 +16,7 @@ import {
   Void,
   Scalar,
   ZkProgram,
+  Bool,
 } from 'o1js';
 
 import {
@@ -33,24 +34,22 @@ import {
 
 import { REQUEST_MAX_SIZE } from '@auxo-dev/dkg/build/esm/src/constants';
 
-const DefaultEmptyMerkleMapRoot = new MerkleMap().getRoot();
+import { ActionStatus } from './SharedStorage.js';
 
-export const enum ActionStatus {
-  NOT_EXISTED,
-  REDUCED,
-  ROLL_UPED,
-}
+import { Level1Witness } from './FundingStorage.js';
+
+const DefaultEmptyMerkleMapRoot = new MerkleMap().getRoot();
 
 export class CustomScalarArray extends ScalarDynamicArray(REQUEST_MAX_SIZE) {}
 
-export class RequestHelperInput extends Struct({
+export class FundingInput extends Struct({
   committeeId: Field,
   keyId: Field,
   requetsTime: Field,
   committeePublicKey: PublicKey,
-  // to-do wintess to check if it the right publickey
+  // TODO wintess to check if it the right publickey
   secretVector: CustomScalarArray,
-  r: CustomScalarArray,
+  random: CustomScalarArray,
   // settingMerkleMapWitness: MerkleMapWitness,
 }) {
   requestId(): Field {
@@ -58,7 +57,7 @@ export class RequestHelperInput extends Struct({
   }
 }
 
-export class RequestHelperAction extends Struct({
+export class FundingAction extends Struct({
   requestId: Field,
   R: RequestVector,
   M: RequestVector,
@@ -71,10 +70,15 @@ export class RequestHelperAction extends Struct({
     return Poseidon.hash(this.toFields());
   }
 
-  static fromFields(action: Field[]): RequestHelperAction {
-    return super.fromFields(action) as RequestHelperAction;
+  static fromFields(action: Field[]): FundingAction {
+    return super.fromFields(action) as FundingAction;
   }
 }
+
+export class CheckValueInput extends Struct({
+  requestId: Field,
+  M: RequestVector,
+}) {}
 
 export class ReduceOutput extends Struct({
   // Actually don't need initialActionState, since we check initialActionStatus and finalActionState on-chain
@@ -108,12 +112,12 @@ export const CreateReduceProof = ZkProgram({
     nextStep: {
       privateInputs: [
         SelfProof<Void, ReduceOutput>,
-        RequestHelperAction,
+        FundingAction,
         MerkleMapWitness,
       ],
       method(
         earlierProof: SelfProof<Void, ReduceOutput>,
-        action: RequestHelperAction,
+        action: FundingAction,
         rollupStatusWitness: MerkleMapWitness
       ): ReduceOutput {
         // Verify earlier proof
@@ -178,14 +182,14 @@ export const CreateRollupProof = ZkProgram({
     nextStep: {
       privateInputs: [
         SelfProof<Void, RollupActionsOutput>,
-        RequestHelperAction,
+        FundingAction,
         Field,
         MerkleMapWitness,
       ],
 
       method(
         preProof: SelfProof<Void, RollupActionsOutput>,
-        action: RequestHelperAction,
+        action: FundingAction,
         preActionState: Field,
         rollupStatusWitness: MerkleMapWitness
       ): RollupActionsOutput {
@@ -249,13 +253,13 @@ export const CreateRollupProof = ZkProgram({
 
 class ProofRollupAction extends ZkProgram.Proof(CreateRollupProof) {}
 
-export class RequestHelperContract extends SmartContract {
+export class FundingContract extends SmartContract {
   @state(Field) actionState = State<Field>();
   @state(Field) actionStatus = State<Field>();
   @state(Field) R_Root = State<Field>(); // hash(committeeId, keyId, requestTime) -> sum R
   @state(Field) M_Root = State<Field>(); // hash(committeeId, keyId, requestTime) -> sum M
 
-  reducer = Reducer({ actionType: RequestHelperAction });
+  reducer = Reducer({ actionType: FundingAction });
 
   init() {
     super.init();
@@ -265,7 +269,7 @@ export class RequestHelperContract extends SmartContract {
     this.M_Root.set(DefaultEmptyMerkleMapRoot);
   }
 
-  @method request(requestInput: RequestHelperInput): {
+  @method request(requestInput: FundingInput): {
     R: RequestVector;
     M: RequestVector;
   } {
@@ -274,16 +278,27 @@ export class RequestHelperContract extends SmartContract {
     let R = new RequestVector();
     let M = new RequestVector();
     for (let i = 0; i < REQUEST_MAX_SIZE; i++) {
-      let random = requestInput.r.get(Field(i)).toScalar();
-      R.push(Group.generator.scale(random));
+      let random = requestInput.random.get(Field(i)).toScalar();
+      R.push(
+        Provable.if(
+          Field(i).greaterThanOrEqual(dimension),
+          Group.fromFields([Field(0), Field(0)]),
+          Group.generator.scale(random)
+        )
+      );
       let M_i = Provable.if(
         Poseidon.hash(
           requestInput.secretVector.get(Field(i)).toFields()
         ).equals(Poseidon.hash([Field(0), Field(0)])),
+        Group.zero.add(requestInput.committeePublicKey.toGroup().scale(random)),
         Group.generator
           .scale(requestInput.secretVector.get(Field(i)).toScalar())
-          .add(requestInput.committeePublicKey.toGroup().scale(random)),
-        Group.zero.add(requestInput.committeePublicKey.toGroup().scale(random))
+          .add(requestInput.committeePublicKey.toGroup().scale(random))
+      );
+      M_i = Provable.if(
+        Field(i).greaterThanOrEqual(dimension),
+        Group.fromFields([Field(0), Field(0)]),
+        M_i
       );
       M.push(M_i);
     }
@@ -292,7 +307,7 @@ export class RequestHelperContract extends SmartContract {
     M.decrementLength(dercementAmount);
 
     this.reducer.dispatch(
-      new RequestHelperAction({
+      new FundingAction({
         requestId,
         R,
         M,
@@ -322,8 +337,8 @@ export class RequestHelperContract extends SmartContract {
     this.actionStatus.set(proof.publicOutput.finalActionStatus);
   }
 
-  // to-do: adding N, T to check REQUEST_MAX_SIZE by interact with Committee contract
-  // to-do: request to Request contract
+  // TODO: adding N, T to check REQUEST_MAX_SIZE by interact with Committee contract
+  // TODO: request to Request contract
   @method rollupRequest(
     proof: ProofRollupAction,
     R_wintess: MerkleMapWitness,
@@ -345,7 +360,7 @@ export class RequestHelperContract extends SmartContract {
     R_Root.assertEquals(old_R_root);
     M_Root.assertEquals(old_M_root);
 
-    // to-do: adding check cur_T == T
+    // TODO: adding check cur_T == T
     let [new_R_root] = R_wintess.computeRootAndKey(
       proof.publicOutput.sum_R.hash()
     );
@@ -358,7 +373,16 @@ export class RequestHelperContract extends SmartContract {
     this.M_Root.set(new_M_root);
     this.actionStatus.set(proof.publicOutput.finalStatusRoot);
 
-    // to-do: request to Request contract
+    // TODO: request to Request contract
     //...
+  }
+
+  @method checkMvalue(
+    projectId: Field,
+    campaignId: Field,
+    M: RequestVector,
+    wintess: Level1Witness
+  ): Bool {
+    return Bool(true);
   }
 }
