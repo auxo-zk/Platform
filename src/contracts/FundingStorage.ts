@@ -6,7 +6,7 @@ import {
   PublicKey,
   Struct,
 } from 'o1js';
-import { PROJECT_MEMBER_MAX_SIZE, INSTANCE_LIMITS } from '../constants.js';
+import { INSTANCE_LIMITS } from '../constants.js';
 import { RequestVector } from '@auxo-dev/dkg/build/esm/src/contracts/Request';
 
 export const LEVEL_1_TREE_HEIGHT =
@@ -72,25 +72,23 @@ export class MStorage extends FundingStorage {
   }
 }
 
-export class RStorage extends FundingStorage {
+export class ValueStorage extends FundingStorage {
   level1: Level1MT;
 
   constructor(level1?: Level1MT) {
     super(level1);
   }
 
-  calculateLeaf(m: RequestVector): Field {
-    return Poseidon.hash(m.toFields());
+  calculateLeaf(value: RequestVector): Field {
+    return this.calculateLeaf(value);
   }
 
-  calculateLevel1Index({
-    campaignId,
-    projectId,
-  }: {
-    campaignId: Field;
-    projectId: Field;
-  }): Field {
-    return campaignId.mul(Field.from(INSTANCE_LIMITS.PROJECT)).add(projectId);
+  static calculateLeaf(value: RequestVector): Field {
+    return Poseidon.hash(value.toFields());
+  }
+
+  calculateLevel1Index(campaignId: Field): Field {
+    return campaignId;
   }
 
   getWitness(level1Index: Field): Level1Witness {

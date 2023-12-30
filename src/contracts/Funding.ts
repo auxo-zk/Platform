@@ -17,6 +17,8 @@ import {
   Scalar,
   ZkProgram,
   Bool,
+  UInt64,
+  AccountUpdate,
 } from 'o1js';
 
 import {
@@ -25,49 +27,49 @@ import {
   ScalarDynamicArray,
 } from '@auxo-dev/auxo-libs';
 import { updateOutOfSnark } from '../libs/utils.js';
+
 import {
-  RequestInput,
-  RequestFee,
-  ZeroFee,
-  RequestVector,
-} from '@auxo-dev/dkg/build/esm/src/contracts/Request';
+  ZkApp as DKG_Contracts,
+  Constants as DKG_Constants,
+} from '@auxo-dev/dkg/';
 
 import { REQUEST_MAX_SIZE } from '@auxo-dev/dkg/build/esm/src/constants';
 
-import { ActionStatus } from './SharedStorage.js';
+import { ZkAppEnum } from '../constants.js';
 
-import { Level1Witness } from './FundingStorage.js';
+import { ActionStatus, ZkAppRef, EMPTY_REDUCE_MT } from './SharedStorage.js';
 
-const DefaultEmptyMerkleMapRoot = new MerkleMap().getRoot();
+import {
+  Level1Witness,
+  EMPTY_LEVEL_1_TREE,
+  ValueStorage,
+} from './FundingStorage.js';
 
-export class CustomScalarArray extends ScalarDynamicArray(REQUEST_MAX_SIZE) {}
+const DefaultLevel1Root = EMPTY_LEVEL_1_TREE().getRoot();
+
+export class CustomScalarArray extends ScalarDynamicArray(
+  DKG_Constants.REQUEST_MAX_SIZE
+) {}
 
 export class FundingInput extends Struct({
+  campaignId: Field,
   committeeId: Field,
   keyId: Field,
-  requetsTime: Field,
   committeePublicKey: PublicKey,
   // TODO wintess to check if it the right publickey
   secretVector: CustomScalarArray,
   random: CustomScalarArray,
   // settingMerkleMapWitness: MerkleMapWitness,
-}) {
-  requestId(): Field {
-    return Poseidon.hash([this.committeeId, this.keyId, this.requetsTime]);
-  }
-}
+  treasuryContract: ZkAppRef,
+}) {}
 
 export class FundingAction extends Struct({
-  requestId: Field,
-  R: RequestVector,
-  M: RequestVector,
+  campaignId: Field,
+  R: DKG_Contracts.Request.RequestVector,
+  M: DKG_Contracts.Request.RequestVector,
 }) {
-  toFields(): Field[] {
-    return [this.requestId, this.R.toFields(), this.M.toFields()].flat();
-  }
-
   hash(): Field {
-    return Poseidon.hash(this.toFields());
+    return Poseidon.hash(FundingAction.toFields(this));
   }
 
   static fromFields(action: Field[]): FundingAction {
@@ -76,8 +78,8 @@ export class FundingAction extends Struct({
 }
 
 export class CheckValueInput extends Struct({
-  requestId: Field,
-  M: RequestVector,
+  campaignId: Field,
+  Value: DKG_Contracts.Request.RequestVector,
 }) {}
 
 export class ReduceOutput extends Struct({
@@ -126,7 +128,7 @@ export const CreateReduceProof = ZkProgram({
         // Calculate new action state == action id in the tree
         let newActionState = updateOutOfSnark(
           earlierProof.publicOutput.finalActionState,
-          [action.toFields()]
+          [FundingAction.toFields(action)]
         );
 
         // Current value of the action hash should be NOT_EXISTED
@@ -154,24 +156,15 @@ export const CreateReduceProof = ZkProgram({
 export class ReduceProof extends ZkProgram.Proof(CreateReduceProof) {}
 
 export class RollupActionsOutput extends Struct({
-  requestId: Field,
-  sum_R: RequestVector,
-  sum_M: RequestVector,
+  campaignId: Field,
+  sum_R: DKG_Contracts.Request.RequestVector,
+  sum_M: DKG_Contracts.Request.RequestVector,
   cur_T: Field,
   initialStatusRoot: Field,
   finalStatusRoot: Field,
 }) {
   hash(): Field {
-    return Poseidon.hash(
-      [
-        this.requestId,
-        this.sum_R.toFields(),
-        this.sum_M.toFields(),
-        this.cur_T,
-        this.initialStatusRoot,
-        this.finalStatusRoot,
-      ].flat()
-    );
+    return Poseidon.hash(RollupActionsOutput.toFields(this));
   }
 }
 
@@ -194,10 +187,12 @@ export const CreateRollupProof = ZkProgram({
         rollupStatusWitness: MerkleMapWitness
       ): RollupActionsOutput {
         preProof.verify();
-        let requestId = action.requestId;
-        requestId.assertEquals(preProof.publicOutput.requestId);
+        let campaignId = action.campaignId;
+        campaignId.assertEquals(preProof.publicOutput.campaignId);
 
-        let actionState = updateOutOfSnark(preActionState, [action.toFields()]);
+        let actionState = updateOutOfSnark(preActionState, [
+          FundingAction.toFields(action),
+        ]);
 
         // It's status has to be REDUCED
         let [root, key] = rollupStatusWitness.computeRootAndKey(
@@ -220,7 +215,7 @@ export const CreateRollupProof = ZkProgram({
         }
 
         return new RollupActionsOutput({
-          requestId: requestId,
+          campaignId: campaignId,
           sum_R,
           sum_M,
           cur_T: preProof.publicOutput.cur_T.add(Field(1)),
@@ -234,14 +229,14 @@ export const CreateRollupProof = ZkProgram({
       privateInputs: [Field, Field, Field],
 
       method(
-        requestId: Field,
+        campaignId: Field,
         REQUEST_MAX_SIZE: Field,
         initialStatusRoot: Field
       ): RollupActionsOutput {
         return new RollupActionsOutput({
-          requestId,
-          sum_R: RequestVector.empty(REQUEST_MAX_SIZE),
-          sum_M: RequestVector.empty(REQUEST_MAX_SIZE),
+          campaignId,
+          sum_R: DKG_Contracts.Request.RequestVector.empty(REQUEST_MAX_SIZE),
+          sum_M: DKG_Contracts.Request.RequestVector.empty(REQUEST_MAX_SIZE),
           cur_T: Field(0),
           initialStatusRoot,
           finalStatusRoot: initialStatusRoot,
@@ -256,29 +251,37 @@ class ProofRollupAction extends ZkProgram.Proof(CreateRollupProof) {}
 export class FundingContract extends SmartContract {
   @state(Field) actionState = State<Field>();
   @state(Field) actionStatus = State<Field>();
-  @state(Field) R_Root = State<Field>(); // hash(committeeId, keyId, requestTime) -> sum R
-  @state(Field) M_Root = State<Field>(); // hash(committeeId, keyId, requestTime) -> sum M
+  @state(Field) R_Root = State<Field>(); // campaignId -> sum R
+  @state(Field) M_Root = State<Field>(); // campaignId -> sum M
+  @state(Field) zkApps = State<Field>();
 
   reducer = Reducer({ actionType: FundingAction });
 
   init() {
     super.init();
     this.actionState.set(Reducer.initialActionState);
-    this.actionStatus.set(DefaultEmptyMerkleMapRoot);
-    this.R_Root.set(DefaultEmptyMerkleMapRoot);
-    this.M_Root.set(DefaultEmptyMerkleMapRoot);
+    this.actionStatus.set(EMPTY_REDUCE_MT().getRoot());
+    this.R_Root.set(DefaultLevel1Root);
+    this.M_Root.set(DefaultLevel1Root);
   }
 
-  @method request(requestInput: FundingInput): {
-    R: RequestVector;
-    M: RequestVector;
+  @method fund(fundingInput: FundingInput): {
+    R: DKG_Contracts.Request.RequestVector;
+    M: DKG_Contracts.Request.RequestVector;
   } {
-    let requestId = requestInput.requestId();
-    let dimension = requestInput.secretVector.length;
-    let R = new RequestVector();
-    let M = new RequestVector();
+    let dimension = fundingInput.secretVector.length;
+    let R = new DKG_Contracts.Request.RequestVector();
+    let M = new DKG_Contracts.Request.RequestVector();
+    // TODO: remove provable witness
+    let totalMinaInvest = Provable.witness(Field, () => {
+      let curSum = Scalar.from(0n);
+      for (let i = 0; i < REQUEST_MAX_SIZE; i++) {
+        curSum.add(fundingInput.secretVector.get(Field(i)).toScalar());
+      }
+      return Field(curSum.toBigInt());
+    });
     for (let i = 0; i < REQUEST_MAX_SIZE; i++) {
-      let random = requestInput.random.get(Field(i)).toScalar();
+      let random = fundingInput.random.get(Field(i)).toScalar();
       R.push(
         Provable.if(
           Field(i).greaterThanOrEqual(dimension),
@@ -288,12 +291,12 @@ export class FundingContract extends SmartContract {
       );
       let M_i = Provable.if(
         Poseidon.hash(
-          requestInput.secretVector.get(Field(i)).toFields()
+          fundingInput.secretVector.get(Field(i)).toFields()
         ).equals(Poseidon.hash([Field(0), Field(0)])),
-        Group.zero.add(requestInput.committeePublicKey.toGroup().scale(random)),
+        Group.zero.add(fundingInput.committeePublicKey.toGroup().scale(random)),
         Group.generator
-          .scale(requestInput.secretVector.get(Field(i)).toScalar())
-          .add(requestInput.committeePublicKey.toGroup().scale(random))
+          .scale(fundingInput.secretVector.get(Field(i)).toScalar())
+          .add(fundingInput.committeePublicKey.toGroup().scale(random))
       );
       M_i = Provable.if(
         Field(i).greaterThanOrEqual(dimension),
@@ -306,9 +309,29 @@ export class FundingContract extends SmartContract {
     R.decrementLength(dercementAmount);
     M.decrementLength(dercementAmount);
 
+    // Verify zkApp references
+    let zkApps = this.zkApps.getAndRequireEquals();
+
+    // TreasuryContract
+    zkApps.assertEquals(
+      fundingInput.treasuryContract.witness.calculateRoot(
+        Poseidon.hash(fundingInput.treasuryContract.address.toFields())
+      )
+    );
+    Field(ZkAppEnum.TREASURY).assertEquals(
+      fundingInput.treasuryContract.witness.calculateIndex()
+    );
+
+    let requester = AccountUpdate.createSigned(this.sender);
+    // Send invest Mina to treasury contract
+    requester.send({
+      to: fundingInput.treasuryContract.address,
+      amount: UInt64.from(totalMinaInvest),
+    });
+
     this.reducer.dispatch(
       new FundingAction({
-        requestId,
+        campaignId: fundingInput.campaignId,
         R,
         M,
       })
@@ -338,11 +361,14 @@ export class FundingContract extends SmartContract {
   }
 
   // TODO: adding N, T to check REQUEST_MAX_SIZE by interact with Committee contract
-  // TODO: request to Request contract
+  // TODO: checking Campaign contract -> committeeId and keyId
   @method rollupRequest(
     proof: ProofRollupAction,
+    committeeId: Field,
+    keyId: Field,
     R_wintess: MerkleMapWitness,
-    M_wintess: MerkleMapWitness
+    M_wintess: MerkleMapWitness,
+    requestZkAppRef: ZkAppRef
   ) {
     proof.verify();
 
@@ -354,18 +380,18 @@ export class FundingContract extends SmartContract {
     let [old_R_root, R_key] = R_wintess.computeRootAndKey(Field(0));
     let [old_M_root, M_key] = M_wintess.computeRootAndKey(Field(0));
 
-    R_key.assertEquals(proof.publicOutput.requestId);
-    M_key.assertEquals(proof.publicOutput.requestId);
+    R_key.assertEquals(proof.publicOutput.campaignId);
+    M_key.assertEquals(proof.publicOutput.campaignId);
 
     R_Root.assertEquals(old_R_root);
     M_Root.assertEquals(old_M_root);
 
     // TODO: adding check cur_T == T
     let [new_R_root] = R_wintess.computeRootAndKey(
-      proof.publicOutput.sum_R.hash()
+      ValueStorage.calculateLeaf(proof.publicOutput.sum_R)
     );
     let [new_M_root] = M_wintess.computeRootAndKey(
-      proof.publicOutput.sum_M.hash()
+      ValueStorage.calculateLeaf(proof.publicOutput.sum_M)
     );
 
     // update on-chain state
@@ -374,15 +400,63 @@ export class FundingContract extends SmartContract {
     this.actionStatus.set(proof.publicOutput.finalStatusRoot);
 
     // TODO: request to Request contract
-    //...
+    // Verify zkApp references
+    let zkApps = this.zkApps.getAndRequireEquals();
+
+    // TreasuryContract
+    zkApps.assertEquals(
+      requestZkAppRef.witness.calculateRoot(
+        Poseidon.hash(requestZkAppRef.address.toFields())
+      )
+    );
+    Field(ZkAppEnum.REQUEST).assertEquals(
+      requestZkAppRef.witness.calculateIndex()
+    );
+
+    // Create & dispatch action to RequestContract
+    const requestZkApp = new DKG_Contracts.Request.RequestContract(
+      requestZkAppRef.address
+    );
+    requestZkApp.request(
+      new DKG_Contracts.Request.RequestInput({
+        committeeId,
+        keyId,
+        R: proof.publicOutput.sum_R,
+      })
+    );
   }
 
   @method checkMvalue(
-    projectId: Field,
     campaignId: Field,
-    M: RequestVector,
+    M: DKG_Contracts.Request.RequestVector,
     wintess: Level1Witness
   ): Bool {
-    return Bool(true);
+    let isCorrect = Bool(true);
+
+    let caculateCampaignId = wintess.calculateIndex();
+    isCorrect = isCorrect.and(campaignId.equals(caculateCampaignId));
+
+    let M_root_on_chain = this.M_Root.getAndRequireEquals();
+    let calculateM = wintess.calculateRoot(ValueStorage.calculateLeaf(M));
+    isCorrect = isCorrect.and(M_root_on_chain.equals(calculateM));
+
+    return isCorrect;
+  }
+
+  @method checkRvalue(
+    campaignId: Field,
+    R: DKG_Contracts.Request.RequestVector,
+    wintess: Level1Witness
+  ): Bool {
+    let isCorrect = Bool(true);
+
+    let caculateCampaignId = wintess.calculateIndex();
+    isCorrect = isCorrect.and(campaignId.equals(caculateCampaignId));
+
+    let R_root_on_chain = this.R_Root.getAndRequireEquals();
+    let calculateR = wintess.calculateRoot(ValueStorage.calculateLeaf(R));
+    isCorrect = isCorrect.and(R_root_on_chain.equals(calculateR));
+
+    return isCorrect;
   }
 }
