@@ -18,9 +18,11 @@ import { IPFSHash } from '@auxo-dev/auxo-libs';
 import { updateOutOfSnark } from '../libs/utils.js';
 import {
   EMPTY_LEVEL_1_TREE,
-  Level1Witness as applicationLv1Wintess,
-  Level2Witness as applicationLv2Wintess,
+  Level1Witness as applicationLv1Witness,
+  Level1CWitness as nextIndexLv1Witness,
   ApplicationStorage,
+  CounterStorage,
+  InfoStorage,
 } from './ParticipationStorage.js';
 
 import {
@@ -54,8 +56,7 @@ export class joinCampaignInput extends Struct({
   campaignId: Field,
   projectId: Field,
   applicationInfo: IPFSHash,
-  applicationLv1Wintess: applicationLv1Wintess,
-  applicationLv2Wintess: applicationLv2Wintess,
+  applicationLv1Witness: applicationLv1Witness,
   memberLv1Witness: projectLv1Witness,
   memberLv2Witness: projectLv2Witness,
 }) {
@@ -67,8 +68,7 @@ export class joinCampaignInput extends Struct({
 export class checkIfNotInCampaignInput extends Struct({
   campaignId: Field,
   projectId: Field,
-  applicationLv1Wintess: applicationLv1Wintess,
-  applicationLv2Wintess: applicationLv2Wintess,
+  applicationLv1Witness: applicationLv1Witness,
 }) {
   static fromFields(fields: Field[]): checkIfNotInCampaignInput {
     return super.fromFields(fields) as checkIfNotInCampaignInput;
@@ -114,36 +114,26 @@ export const JoinCampaign = ZkProgram({
       privateInputs: [
         SelfProof<Void, CreateParticipationProofOutput>,
         ParticipationAction,
-        applicationLv1Wintess,
-        applicationLv2Wintess,
+        applicationLv1Witness,
       ],
       method(
         preProof: SelfProof<Void, CreateParticipationProofOutput>,
         newAction: ParticipationAction,
         // TODO: adding currentValue when update IPFS hash
-        applicationLv1Wintess: applicationLv1Wintess,
-        applicationLv2Wintess: applicationLv2Wintess
+        applicationLv1Witness: applicationLv1Witness
       ): CreateParticipationProofOutput {
         preProof.verify();
 
-        // check right projectId and campaignId
-        let lv1Index = applicationLv1Wintess.calculateIndex();
-        lv1Index.assertEquals(newAction.campaignId);
-        let lv2Index = applicationLv2Wintess.calculateIndex();
-        lv2Index.assertEquals(newAction.projectId);
+        // // check right projectId and campaignId
+        // let lv1Index = applicationLv1Witness.calculateIndex();
+        // lv1Index.assertEquals(newAction.campaignId);
 
-        // check have the same state with pre-proof states
-        let lv2Root = applicationLv2Wintess.calculateRoot(
-          newAction.curApplicationInfoHash
-        );
-        let lv1Root = applicationLv1Wintess.calculateRoot(lv2Root);
-        lv1Root.assertEquals(preProof.publicOutput.finalApplicationTreeRoot);
+        // // check have the same state with pre-proof states
+        // let lv1Root = applicationLv1Witness.calculateRoot(lv2Root);
+        // lv1Root.assertEquals(preProof.publicOutput.finalApplicationTreeRoot);
 
-        // caculate new state
-        let newLv2Root = applicationLv2Wintess.calculateRoot(
-          ApplicationStorage.calculateLeaf(newAction.applicationInfo)
-        );
-        let newLv1Root = applicationLv1Wintess.calculateRoot(newLv2Root);
+        // // caculate new state
+        let newLv1Root = applicationLv1Witness.calculateRoot(Field(0));
 
         return new CreateParticipationProofOutput({
           initialApplicationTreeRoot:
@@ -164,8 +154,12 @@ export const JoinCampaign = ZkProgram({
 class ParticipationProof extends ZkProgram.Proof(JoinCampaign) {}
 
 export class ParticipationContract extends SmartContract {
-  // store IPFS hash of campaign
+  // campaignId -> projectId -> index
   @state(Field) applicationTreeRoot = State<Field>();
+  // campaignId -> projectId -> index
+  @state(Field) infoTreeRoot = State<Field>();
+  // campaignId -> counter
+  @state(Field) counterTreeRoot = State<Field>();
   // MT of other zkApp address
   @state(Field) zkApps = State<Field>();
   @state(Field) lastRolledUpActionState = State<Field>();
@@ -182,7 +176,7 @@ export class ParticipationContract extends SmartContract {
     // TODO: check campaign status
 
     // check owner
-    let zkApps = this.zkApps.getAndAssertEquals();
+    let zkApps = this.zkApps.getAndRequireEquals();
 
     // check project contract
     zkApps.assertEquals(
@@ -211,8 +205,7 @@ export class ParticipationContract extends SmartContract {
       new checkIfNotInCampaignInput({
         campaignId: input.campaignId,
         projectId: input.projectId,
-        applicationLv1Wintess: input.applicationLv1Wintess,
-        applicationLv2Wintess: input.applicationLv2Wintess,
+        applicationLv1Witness: input.applicationLv1Witness,
       })
     );
 
@@ -220,7 +213,7 @@ export class ParticipationContract extends SmartContract {
 
     // each project can only participate campaign once
     let lastRolledUpActionState =
-      this.lastRolledUpActionState.getAndAssertEquals();
+      this.lastRolledUpActionState.getAndRequireEquals();
 
     let newAction = new ParticipationAction({
       campaignId: input.campaignId,
@@ -257,19 +250,19 @@ export class ParticipationContract extends SmartContract {
   @method checkIfNotInCampaign(input: checkIfNotInCampaignInput): Bool {
     let notIn = Bool(true);
 
-    // check the right projectId
-    let campaignIndex = input.applicationLv1Wintess.calculateIndex();
-    notIn = campaignIndex.equals(input.campaignId).and(notIn);
+    let index = ApplicationStorage.calculateLevel1Index({
+      campaignId: input.campaignId,
+      projectId: input.projectId,
+    });
 
-    // check the right owner index, is = 0
-    let projectIndex = input.applicationLv2Wintess.calculateIndex();
-    notIn = projectIndex.equals(input.projectId).and(notIn);
+    // check the right projectId
+    let calculateIndex = input.applicationLv1Witness.calculateIndex();
+    notIn = index.equals(calculateIndex).and(notIn);
 
     // check the value is == Field(0)
-    let level2Root = input.applicationLv2Wintess.calculateRoot(Field(0));
-    let level1Root = input.applicationLv1Wintess.calculateRoot(level2Root);
+    let level1Root = input.applicationLv1Witness.calculateRoot(Field(0));
     notIn = level1Root
-      .equals(this.applicationTreeRoot.getAndAssertEquals())
+      .equals(this.applicationTreeRoot.getAndRequireEquals())
       .and(notIn);
 
     return notIn;
@@ -277,9 +270,9 @@ export class ParticipationContract extends SmartContract {
 
   @method rollup(proof: ParticipationProof) {
     proof.verify();
-    let applicationTreeRoot = this.applicationTreeRoot.getAndAssertEquals();
+    let applicationTreeRoot = this.applicationTreeRoot.getAndRequireEquals();
     let lastRolledUpActionState =
-      this.lastRolledUpActionState.getAndAssertEquals();
+      this.lastRolledUpActionState.getAndRequireEquals();
 
     applicationTreeRoot.assertEquals(
       proof.publicOutput.initialApplicationTreeRoot
@@ -288,7 +281,7 @@ export class ParticipationContract extends SmartContract {
       proof.publicOutput.initialLastRolledUpACtionState
     );
 
-    let lastActionState = this.account.actionState.getAndAssertEquals();
+    let lastActionState = this.account.actionState.getAndRequireEquals();
     lastActionState.assertEquals(
       proof.publicOutput.finalLastRolledUpActionState
     );

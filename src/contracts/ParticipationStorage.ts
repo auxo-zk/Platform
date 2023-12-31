@@ -9,124 +9,144 @@ import {
 import { INSTANCE_LIMITS } from '../constants.js';
 import { IPFSHash, PublicKeyDynamicArray } from '@auxo-dev/auxo-libs';
 
+export const LEVEL_1_COMBINED_TREE_HEIGHT =
+  Math.ceil(
+    Math.log2(INSTANCE_LIMITS.PARTICIPATION * INSTANCE_LIMITS.PROJECT)
+  ) + 1;
+
 export const LEVEL_1_TREE_HEIGHT =
-  Math.ceil(Math.log2(INSTANCE_LIMITS.PARTICIPATION)) + 1;
-export const LEVEL_2_TREE_HEIGHT =
-  Math.ceil(Math.log2(INSTANCE_LIMITS.PROJECT)) + 1;
+  Math.ceil(Math.log2(INSTANCE_LIMITS.CAMPAIGN)) + 1;
+
+export class Level1CMT extends MerkleTree {}
+export class Level1CWitness extends MerkleWitness(
+  LEVEL_1_COMBINED_TREE_HEIGHT
+) {}
 
 export class Level1MT extends MerkleTree {}
-export class Level1Witness extends MerkleWitness(LEVEL_1_TREE_HEIGHT) {}
-export class Level2MT extends MerkleTree {}
-export class Level2Witness extends MerkleWitness(LEVEL_2_TREE_HEIGHT) {}
+export class Level1Witness extends MerkleWitness(
+  LEVEL_1_COMBINED_TREE_HEIGHT
+) {}
 
-export const EMPTY_LEVEL_1_TREE = () => new Level1MT(LEVEL_1_TREE_HEIGHT);
-export const EMPTY_LEVEL_2_TREE = () => new Level2MT(LEVEL_2_TREE_HEIGHT);
+export const EMPTY_LEVEL_1_COMBINED_TREE = () =>
+  new Level1CMT(LEVEL_1_COMBINED_TREE_HEIGHT);
 
-export class FullMTWitness extends Struct({
-  level1: Level1Witness,
-  level2: Level2Witness,
-}) {}
+export const EMPTY_LEVEL_1_TREE = () => new Level1CMT(LEVEL_1_TREE_HEIGHT);
 
 // Storage
-export abstract class ParticipationStorage {
+export class ApplicationStorage {
   level1: Level1MT;
-  level2s: { [key: string]: Level2MT };
 
-  constructor(
-    level1?: Level1MT,
-    level2s?: { index: Field; level2: Level2MT }[]
-  ) {
+  constructor(level1?: Level1MT) {
     this.level1 = level1 || EMPTY_LEVEL_1_TREE();
-    this.level2s = {};
-    if (level2s) {
-      for (let i = 0; i < level2s.length; i++) {
-        this.level2s[level2s[i].index.toString()] = level2s[i].level2;
-      }
-    }
   }
 
-  abstract calculateLeaf(args: any): Field;
-  abstract calculateLevel1Index(args: any): Field;
-  calculateLevel2Index?(args: any): Field;
-
-  getLevel1Witness(level1Index: Field): Level1Witness {
-    return new Level1Witness(this.level1.getWitness(level1Index.toBigInt()));
+  calculateLeaf(index: Field): Field {
+    return this.calculateLeaf(index);
   }
 
-  getLevel2Witness(level1Index: Field, level2Index: Field): Level2Witness {
-    let level2 = this.level2s[level1Index.toString()];
-    if (level2 === undefined)
-      throw new Error('Level 2 MT does not exist at this index');
-    return new Level2Witness(level2.getWitness(level2Index.toBigInt()));
+  static calculateLeaf(index: Field): Field {
+    return Poseidon.hash([index]);
   }
 
-  getWitness(
-    level1Index: Field,
-    level2Index?: Field
-  ): Level1Witness | FullMTWitness {
-    if (level2Index) {
-      return new FullMTWitness({
-        level1: this.getLevel1Witness(level1Index),
-        level2: this.getLevel2Witness(level1Index, level2Index),
-      });
-    } else {
-      return this.getLevel1Witness(level1Index);
-    }
+  calculateLevel1Index({
+    campaignId,
+    projectId,
+  }: {
+    campaignId: Field;
+    projectId: Field;
+  }): Field {
+    return this.calculateLevel1Index({ campaignId, projectId });
   }
 
-  updateInternal(level1Index: Field, level2: Level2MT) {
-    Object.assign(this.level2s, {
-      [level1Index.toString()]: level2,
-    });
-    this.level1.setLeaf(level1Index.toBigInt(), level2.getRoot());
+  static calculateLevel1Index({
+    campaignId,
+    projectId,
+  }: {
+    campaignId: Field;
+    projectId: Field;
+  }): Field {
+    return campaignId.mul(INSTANCE_LIMITS.PARTICIPATION).add(projectId);
   }
 
-  updateLeaf(leaf: Field, level1Index: Field, level2Index?: Field): void {
-    if (level2Index) {
-      if (Object.keys(this.level2s).length == 0)
-        throw new Error('This storage does support level 2 MT');
+  getLevel1Witness(level1Index: Field): Level1CWitness {
+    return new Level1CWitness(this.level1.getWitness(level1Index.toBigInt()));
+  }
 
-      let level2 = this.level2s[level1Index.toString()];
-      if (level2 === undefined) level2 = EMPTY_LEVEL_2_TREE();
+  getWitness(level1Index: Field): Level1CWitness {
+    return this.getLevel1Witness(level1Index);
+  }
 
-      level2.setLeaf(level2Index.toBigInt(), leaf);
-      this.updateInternal(level1Index, level2);
-    } else this.level1.setLeaf(level1Index.toBigInt(), leaf);
+  updateLeaf(leaf: Field, level1Index: Field): void {
+    this.level1.setLeaf(level1Index.toBigInt(), leaf);
   }
 }
 
-export class ApplicationStorage extends ParticipationStorage {
+export class InfoStorage {
   level1: Level1MT;
-  level2s: { [key: string]: Level2MT };
 
-  constructor(
-    level1?: Level1MT,
-    level2s?: { index: Field; level2: Level2MT }[]
-  ) {
-    super(level1, level2s);
+  constructor(level1?: Level1MT) {
+    this.level1 = level1 || EMPTY_LEVEL_1_TREE();
   }
 
-  calculateLeaf(ipfsHash: IPFSHash): Field {
-    return this.calculateLeaf(ipfsHash);
+  calculateLeaf(ipfshash: IPFSHash): Field {
+    return this.calculateLeaf(ipfshash);
   }
 
-  static calculateLeaf(ipfsHash: IPFSHash): Field {
-    return Poseidon.hash(ipfsHash.toFields());
+  static calculateLeaf(ipfshash: IPFSHash): Field {
+    return Poseidon.hash(ipfshash.toFields());
+  }
+
+  calculateLevel1Index({
+    campaignId,
+    projectId,
+  }: {
+    campaignId: Field;
+    projectId: Field;
+  }): Field {
+    return campaignId.mul(INSTANCE_LIMITS.PARTICIPATION).add(projectId);
+  }
+
+  getLevel1Witness(level1Index: Field): Level1CWitness {
+    return new Level1CWitness(this.level1.getWitness(level1Index.toBigInt()));
+  }
+
+  getWitness(level1Index: Field): Level1CWitness {
+    return this.getLevel1Witness(level1Index);
+  }
+
+  updateLeaf(leaf: Field, level1Index: Field): void {
+    this.level1.setLeaf(level1Index.toBigInt(), leaf);
+  }
+}
+
+export class CounterStorage {
+  level1: Level1MT;
+
+  constructor(level1?: Level1MT) {
+    this.level1 = level1 || EMPTY_LEVEL_1_TREE();
+  }
+
+  calculateLeaf(counter: Field): Field {
+    return this.calculateLeaf(counter);
+  }
+
+  static calculateLeaf(counter: Field): Field {
+    return Poseidon.hash([counter]);
   }
 
   calculateLevel1Index(campaignId: Field): Field {
     return campaignId;
   }
 
-  calculateLevel2Index(projectId: Field): Field {
-    return projectId;
+  getLevel1Witness(level1Index: Field): Level1Witness {
+    return new Level1Witness(this.level1.getWitness(level1Index.toBigInt()));
   }
 
-  getWitness(level1Index: Field, level2Index: Field): FullMTWitness {
-    return super.getWitness(level1Index, level2Index) as FullMTWitness;
+  getWitness(level1Index: Field): Level1Witness {
+    return this.getLevel1Witness(level1Index);
   }
 
-  updateLeaf(leaf: Field, level1Index: Field, level2Index?: Field): void {
-    super.updateLeaf(leaf, level1Index, level2Index ?? undefined);
+  updateLeaf(leaf: Field, level1Index: Field): void {
+    this.level1.setLeaf(level1Index.toBigInt(), leaf);
   }
 }
