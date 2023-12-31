@@ -25,8 +25,8 @@ import {
   FullMTWitness,
   MemberArray,
   InfoStorage,
+  AddressStorage,
 } from './ProjectStorage.js';
-import { FqBindings } from 'o1js/dist/node/bindings/crypto/bindings/field.js';
 
 const DefaultLevel1Root = EMPTY_LEVEL_1_TREE().getRoot();
 
@@ -34,6 +34,7 @@ export class ProjectAction extends Struct({
   projectId: Field,
   members: MemberArray,
   ipfsHash: IPFSHash,
+  payeeAccount: PublicKey,
 }) {
   static fromFields(fields: Field[]): ProjectAction {
     return super.fromFields(fields) as ProjectAction;
@@ -50,6 +51,7 @@ export class CheckProjectOwerInput extends Struct({
 export class CreateProjectInput extends Struct({
   members: MemberArray,
   ipfsHash: IPFSHash,
+  payeeAccount: PublicKey,
 }) {
   static fromFields(fields: Field[]): CreateProjectInput {
     return super.fromFields(fields) as CreateProjectInput;
@@ -60,6 +62,7 @@ export class UpdateProjectInput extends Struct({
   projectId: Field,
   members: MemberArray,
   ipfsHash: IPFSHash,
+  payeeAccount: PublicKey,
   memberLevel1Witness: Level1Witness,
   memberLevel2Witness: Level2Witness,
 }) {
@@ -72,10 +75,12 @@ export class CreateProjectProofOutput extends Struct({
   initialNextProjectId: Field,
   initialMemberTreeRoot: Field,
   initialProjectInfoTreeRoot: Field,
+  initialPayeeTreeRoot: Field,
   initialLastRolledUpACtionState: Field,
   finalNextProjectId: Field,
   finalMemberTreeRoot: Field,
   finalProjectInfoTreeRoot: Field,
+  finalPayeeTreeRoot: Field,
   finalLastRolledUpActionState: Field,
 }) {
   hash(): Field {
@@ -88,21 +93,24 @@ export const CreateProject = ZkProgram({
   publicOutput: CreateProjectProofOutput,
   methods: {
     firstStep: {
-      privateInputs: [Field, Field, Field, Field],
+      privateInputs: [Field, Field, Field, Field, Field],
       method(
         initialNextProjectId: Field,
         initialMemberTreeRoot: Field,
         initialProjectInfoTreeRoot: Field,
+        initialPayeeTreeRoot: Field,
         initialLastRolledUpACtionState: Field
       ): CreateProjectProofOutput {
         return new CreateProjectProofOutput({
           initialNextProjectId,
           initialMemberTreeRoot,
           initialProjectInfoTreeRoot,
+          initialPayeeTreeRoot,
           initialLastRolledUpACtionState,
           finalNextProjectId: initialNextProjectId,
           finalMemberTreeRoot: initialMemberTreeRoot,
           finalProjectInfoTreeRoot: initialProjectInfoTreeRoot,
+          finalPayeeTreeRoot: initialPayeeTreeRoot,
           finalLastRolledUpActionState: initialLastRolledUpACtionState,
         });
       },
@@ -113,12 +121,14 @@ export const CreateProject = ZkProgram({
         ProjectAction,
         Level1Witness,
         Level1Witness,
+        Level1Witness,
       ],
       method(
         preProof: SelfProof<Void, CreateProjectProofOutput>,
         newAction: ProjectAction,
         memberWitness: Level1Witness,
-        projectInfoWitess: Level1Witness
+        projectInfoWitess: Level1Witness,
+        payeeWitness: Level1Witness
       ): CreateProjectProofOutput {
         preProof.verify();
 
@@ -157,7 +167,7 @@ export const CreateProject = ZkProgram({
         // update new member tree
         let newMemberTreeRoot = memberWitness.calculateRoot(tree.getRoot());
 
-        ////// caculate new settingTreeRoot
+        ////// caculate new projectInfoTreeRoot
         let preProjectInfoRoot = projectInfoWitess.calculateRoot(Field(0));
         let projectInfoIndex = projectInfoWitess.calculateIndex();
         projectInfoIndex.assertEquals(newProjectId);
@@ -170,16 +180,29 @@ export const CreateProject = ZkProgram({
           InfoStorage.calculateLeaf(newAction.ipfsHash)
         );
 
+        ////// caculate new addressTreeRoot
+        let prePayeeTreeRoot = payeeWitness.calculateRoot(Field(0));
+        let addressIndex = payeeWitness.calculateIndex();
+        addressIndex.assertEquals(newProjectId);
+        prePayeeTreeRoot.assertEquals(preProof.publicOutput.finalPayeeTreeRoot);
+
+        // update project info tree with hash ipfs hash
+        let newPayeeTreeRoot = payeeWitness.calculateRoot(
+          AddressStorage.calculateLeaf(newAction.payeeAccount)
+        );
+
         return new CreateProjectProofOutput({
           initialNextProjectId: preProof.publicOutput.initialNextProjectId,
           initialMemberTreeRoot: preProof.publicOutput.initialMemberTreeRoot,
           initialProjectInfoTreeRoot:
             preProof.publicOutput.initialProjectInfoTreeRoot,
+          initialPayeeTreeRoot: preProof.publicOutput.initialPayeeTreeRoot,
           initialLastRolledUpACtionState:
             preProof.publicOutput.initialLastRolledUpACtionState,
           finalNextProjectId: nextProjectId,
           finalMemberTreeRoot: newMemberTreeRoot,
           finalProjectInfoTreeRoot: newProjectInfoTreeRoot,
+          finalPayeeTreeRoot: newPayeeTreeRoot,
           finalLastRolledUpActionState: updateOutOfSnark(
             preProof.publicOutput.finalLastRolledUpActionState,
             [ProjectAction.toFields(newAction)]
@@ -200,6 +223,7 @@ export class ProjectContract extends SmartContract {
   @state(Field) nextProjectId = State<Field>();
   @state(Field) memberTreeRoot = State<Field>();
   @state(Field) projectInfoTreeRoot = State<Field>();
+  @state(Field) payeeTreeRoot = State<Field>();
   @state(Field) lastRolledUpActionState = State<Field>();
 
   reducer = Reducer({ actionType: ProjectAction });
@@ -212,6 +236,7 @@ export class ProjectContract extends SmartContract {
     super.init();
     this.memberTreeRoot.set(DefaultLevel1Root);
     this.projectInfoTreeRoot.set(DefaultLevel1Root);
+    this.payeeTreeRoot.set(DefaultLevel1Root);
     this.lastRolledUpActionState.set(Reducer.initialActionState);
   }
 
@@ -221,6 +246,7 @@ export class ProjectContract extends SmartContract {
         projectId: Field(-1),
         members: input.members,
         ipfsHash: input.ipfsHash,
+        payeeAccount: input.payeeAccount,
       })
     );
   }
@@ -231,7 +257,7 @@ export class ProjectContract extends SmartContract {
     projectId.assertEquals(input.projectId);
 
     // check only project created can be updated
-    projectId.assertLessThan(this.nextProjectId.getAndAssertEquals());
+    projectId.assertLessThan(this.nextProjectId.getAndRequireEquals());
 
     // check the right owner index
     let memberIndex = input.memberLevel2Witness.calculateIndex();
@@ -242,10 +268,10 @@ export class ProjectContract extends SmartContract {
     );
     let memberLevel1Root =
       input.memberLevel1Witness.calculateRoot(memberLevel2Root);
-    memberLevel1Root.assertEquals(this.memberTreeRoot.getAndAssertEquals());
+    memberLevel1Root.assertEquals(this.memberTreeRoot.getAndRequireEquals());
 
     let lastRolledUpActionState =
-      this.lastRolledUpActionState.getAndAssertEquals();
+      this.lastRolledUpActionState.getAndRequireEquals();
 
     // TODO: not really able to do this, check again. If both of them send at the same block
     // checking if the request have the same id already exists within the accumulator
@@ -269,28 +295,31 @@ export class ProjectContract extends SmartContract {
         projectId: input.projectId,
         members: input.members,
         ipfsHash: input.ipfsHash,
+        payeeAccount: input.payeeAccount,
       })
     );
   }
 
   @method rollup(proof: ProjectProof) {
     proof.verify();
-    let nextProjectId = this.nextProjectId.getAndAssertEquals();
-    let memberTreeRoot = this.memberTreeRoot.getAndAssertEquals();
-    let projectInfoTreeRoot = this.projectInfoTreeRoot.getAndAssertEquals();
+    let nextProjectId = this.nextProjectId.getAndRequireEquals();
+    let memberTreeRoot = this.memberTreeRoot.getAndRequireEquals();
+    let projectInfoTreeRoot = this.projectInfoTreeRoot.getAndRequireEquals();
+    let payeeTreeRoot = this.payeeTreeRoot.getAndRequireEquals();
     let lastRolledUpActionState =
-      this.lastRolledUpActionState.getAndAssertEquals();
+      this.lastRolledUpActionState.getAndRequireEquals();
 
     nextProjectId.assertEquals(proof.publicOutput.initialNextProjectId);
     memberTreeRoot.assertEquals(proof.publicOutput.initialMemberTreeRoot);
     projectInfoTreeRoot.assertEquals(
       proof.publicOutput.initialProjectInfoTreeRoot
     );
+    payeeTreeRoot.assertEquals(proof.publicOutput.initialPayeeTreeRoot);
     lastRolledUpActionState.assertEquals(
       proof.publicOutput.initialLastRolledUpACtionState
     );
 
-    let lastActionState = this.account.actionState.getAndAssertEquals();
+    let lastActionState = this.account.actionState.getAndRequireEquals();
     lastActionState.assertEquals(
       proof.publicOutput.finalLastRolledUpActionState
     );
@@ -299,6 +328,7 @@ export class ProjectContract extends SmartContract {
     this.nextProjectId.set(proof.publicOutput.finalNextProjectId);
     this.memberTreeRoot.set(proof.publicOutput.finalMemberTreeRoot);
     this.projectInfoTreeRoot.set(proof.publicOutput.finalProjectInfoTreeRoot);
+    this.payeeTreeRoot.set(proof.publicOutput.finalPayeeTreeRoot);
     this.lastRolledUpActionState.set(
       proof.publicOutput.finalLastRolledUpActionState
     );
@@ -326,7 +356,7 @@ export class ProjectContract extends SmartContract {
     let memberLevel1Root =
       input.memberLevel1Witness.calculateRoot(memberLevel2Root);
     isOwner = memberLevel1Root
-      .equals(this.memberTreeRoot.getAndAssertEquals())
+      .equals(this.memberTreeRoot.getAndRequireEquals())
       .and(isOwner);
 
     return isOwner;

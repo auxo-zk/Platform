@@ -159,6 +159,34 @@ export class InfoStorage extends ProjectStorage {
   }
 }
 
+export class AddressStorage extends ProjectStorage {
+  level1: Level1MT;
+
+  constructor(level1?: Level1MT) {
+    super(level1);
+  }
+
+  calculateLeaf(address: PublicKey): Field {
+    return this.calculateLeaf(address);
+  }
+
+  static calculateLeaf(address: PublicKey): Field {
+    return Poseidon.hash(address.toFields());
+  }
+
+  calculateLevel1Index(projectId: Field): Field {
+    return projectId;
+  }
+
+  getWitness(level1Index: Field): Level1Witness {
+    return super.getWitness(level1Index) as Level1Witness;
+  }
+
+  updateLeaf(leaf: Field, level1Index: Field): void {
+    super.updateLeaf(leaf, level1Index);
+  }
+}
+
 // Type
 export class MemberArray extends PublicKeyDynamicArray(
   PROJECT_MEMBER_MAX_SIZE
