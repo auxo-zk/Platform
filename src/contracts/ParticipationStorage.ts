@@ -10,9 +10,7 @@ import { INSTANCE_LIMITS } from '../constants.js';
 import { IPFSHash, PublicKeyDynamicArray } from '@auxo-dev/auxo-libs';
 
 export const LEVEL_1_COMBINED_TREE_HEIGHT =
-  Math.ceil(
-    Math.log2(INSTANCE_LIMITS.PARTICIPATION * INSTANCE_LIMITS.PROJECT)
-  ) + 1;
+  Math.ceil(Math.log2(INSTANCE_LIMITS.CAMPAIGN * INSTANCE_LIMITS.PROJECT)) + 1;
 
 export const LEVEL_1_TREE_HEIGHT =
   Math.ceil(Math.log2(INSTANCE_LIMITS.CAMPAIGN)) + 1;
@@ -33,7 +31,7 @@ export const EMPTY_LEVEL_1_COMBINED_TREE = () =>
 export const EMPTY_LEVEL_1_TREE = () => new Level1CMT(LEVEL_1_TREE_HEIGHT);
 
 // Storage
-export class ApplicationStorage {
+export class IndexStorage {
   level1: Level1MT;
 
   constructor(level1?: Level1MT) {
@@ -65,7 +63,7 @@ export class ApplicationStorage {
     campaignId: Field;
     projectId: Field;
   }): Field {
-    return campaignId.mul(INSTANCE_LIMITS.PARTICIPATION).add(projectId);
+    return campaignId.mul(INSTANCE_LIMITS.PROJECT).add(projectId);
   }
 
   getLevel1Witness(level1Index: Field): Level1CWitness {
@@ -103,7 +101,7 @@ export class InfoStorage {
     campaignId: Field;
     projectId: Field;
   }): Field {
-    return campaignId.mul(INSTANCE_LIMITS.PARTICIPATION).add(projectId);
+    return campaignId.mul(INSTANCE_LIMITS.PROJECT).add(projectId);
   }
 
   getLevel1Witness(level1Index: Field): Level1CWitness {

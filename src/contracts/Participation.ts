@@ -18,9 +18,9 @@ import { IPFSHash } from '@auxo-dev/auxo-libs';
 import { updateOutOfSnark } from '../libs/utils.js';
 import {
   EMPTY_LEVEL_1_TREE,
-  Level1Witness as applicationLv1Witness,
-  Level1CWitness as nextIndexLv1Witness,
-  ApplicationStorage,
+  Level1CWitness as indexAndInfoWitness,
+  Level1Witness as counterWitness,
+  IndexStorage,
   CounterStorage,
   InfoStorage,
 } from './ParticipationStorage.js';
@@ -37,10 +37,14 @@ import { ZkAppEnum } from '../constants.js';
 
 const DefaultLevel1Root = EMPTY_LEVEL_1_TREE().getRoot();
 
+export enum EventEnum {
+  ACTION_REDUCED = 'action-reduced',
+}
+
 export class ParticipationAction extends Struct({
   campaignId: Field,
   projectId: Field,
-  applicationInfo: IPFSHash,
+  participationInfo: IPFSHash,
   curApplicationInfoHash: Field,
 }) {
   static fromFields(fields: Field[]): ParticipationAction {
@@ -55,8 +59,8 @@ export class ParticipationAction extends Struct({
 export class joinCampaignInput extends Struct({
   campaignId: Field,
   projectId: Field,
-  applicationInfo: IPFSHash,
-  applicationLv1Witness: applicationLv1Witness,
+  participationInfo: IPFSHash,
+  indexWitness: indexAndInfoWitness,
   memberLv1Witness: projectLv1Witness,
   memberLv2Witness: projectLv2Witness,
 }) {
@@ -68,7 +72,7 @@ export class joinCampaignInput extends Struct({
 export class checkIfNotInCampaignInput extends Struct({
   campaignId: Field,
   projectId: Field,
-  applicationLv1Witness: applicationLv1Witness,
+  indexWitness: indexAndInfoWitness,
 }) {
   static fromFields(fields: Field[]): checkIfNotInCampaignInput {
     return super.fromFields(fields) as checkIfNotInCampaignInput;
@@ -82,9 +86,13 @@ export class UpdateCampaignInput extends Struct({}) {
 }
 
 export class CreateParticipationProofOutput extends Struct({
-  initialApplicationTreeRoot: Field,
+  initialIndexTreeRoot: Field,
+  initialInfoTreeRoot: Field,
+  initialCounterTreeRoot: Field,
   initialLastRolledUpACtionState: Field,
-  finalApplicationTreeRoot: Field,
+  finalIndexTreeRoot: Field,
+  finalInfoTreeRoot: Field,
+  finalCounterTreeRoot: Field,
   finalLastRolledUpActionState: Field,
 }) {
   hash(): Field {
@@ -97,15 +105,21 @@ export const JoinCampaign = ZkProgram({
   publicOutput: CreateParticipationProofOutput,
   methods: {
     firstStep: {
-      privateInputs: [Field, Field],
+      privateInputs: [Field, Field, Field, Field],
       method(
-        initialApplicationTreeRoot: Field,
+        initialIndexTreeRoot: Field,
+        initialInfoTreeRoot: Field,
+        initialCounterTreeRoot: Field,
         initialLastRolledUpACtionState: Field
       ): CreateParticipationProofOutput {
         return new CreateParticipationProofOutput({
-          initialApplicationTreeRoot,
+          initialIndexTreeRoot,
+          initialInfoTreeRoot,
+          initialCounterTreeRoot,
           initialLastRolledUpACtionState,
-          finalApplicationTreeRoot: initialApplicationTreeRoot,
+          finalIndexTreeRoot: initialIndexTreeRoot,
+          finalInfoTreeRoot: initialInfoTreeRoot,
+          finalCounterTreeRoot: initialCounterTreeRoot,
           finalLastRolledUpActionState: initialLastRolledUpACtionState,
         });
       },
@@ -114,33 +128,62 @@ export const JoinCampaign = ZkProgram({
       privateInputs: [
         SelfProof<Void, CreateParticipationProofOutput>,
         ParticipationAction,
-        applicationLv1Witness,
+        indexAndInfoWitness,
+        indexAndInfoWitness,
+        Field,
+        counterWitness,
       ],
       method(
         preProof: SelfProof<Void, CreateParticipationProofOutput>,
         newAction: ParticipationAction,
-        // TODO: adding currentValue when update IPFS hash
-        applicationLv1Witness: applicationLv1Witness
+        indexWitness: indexAndInfoWitness,
+        infoWitness: indexAndInfoWitness,
+        currentCounter: Field,
+        counterWitness: counterWitness
       ): CreateParticipationProofOutput {
         preProof.verify();
 
-        // // check right projectId and campaignId
-        // let lv1Index = applicationLv1Witness.calculateIndex();
-        // lv1Index.assertEquals(newAction.campaignId);
+        // caculated index in storage tree, called id
+        let id = IndexStorage.calculateLevel1Index({
+          campaignId: newAction.campaignId,
+          projectId: newAction.projectId,
+        });
 
-        // // check have the same state with pre-proof states
-        // let lv1Root = applicationLv1Witness.calculateRoot(lv2Root);
-        // lv1Root.assertEquals(preProof.publicOutput.finalApplicationTreeRoot);
+        // update counter
+        let counterId = counterWitness.calculateIndex();
+        counterId.assertEquals(id);
+        let curCounterTreeRoot = counterWitness.calculateRoot(currentCounter);
+        curCounterTreeRoot.assertEquals(
+          preProof.publicOutput.finalCounterTreeRoot
+        );
+        let newCounter = currentCounter.add(Field(1));
+        let newCounterTreeRoot = counterWitness.calculateRoot(newCounter);
 
-        // // caculate new state
-        let newLv1Root = applicationLv1Witness.calculateRoot(Field(0));
+        // update index
+        let indexId = indexWitness.calculateIndex();
+        indexId.assertEquals(id);
+        let curIndexTreeRoot = indexWitness.calculateRoot(Field(0));
+        curIndexTreeRoot.assertEquals(preProof.publicOutput.finalIndexTreeRoot);
+        let newIndexTreeRoot = indexWitness.calculateRoot(newCounter);
+
+        // update info-ipfs hash
+        let infoId = infoWitness.calculateIndex();
+        infoId.assertEquals(id);
+        let curInfoTreeRoot = infoWitness.calculateRoot(Field(0));
+        curInfoTreeRoot.assertEquals(preProof.publicOutput.finalInfoTreeRoot);
+        let newInfoTreeRoot = infoWitness.calculateRoot(
+          InfoStorage.calculateLeaf(newAction.participationInfo)
+        );
 
         return new CreateParticipationProofOutput({
-          initialApplicationTreeRoot:
-            preProof.publicOutput.initialApplicationTreeRoot,
+          initialIndexTreeRoot: preProof.publicOutput.initialIndexTreeRoot,
+          initialInfoTreeRoot: preProof.publicOutput.initialInfoTreeRoot,
+          initialCounterTreeRoot: preProof.publicOutput.initialCounterTreeRoot,
           initialLastRolledUpACtionState:
             preProof.publicOutput.initialLastRolledUpACtionState,
-          finalApplicationTreeRoot: newLv1Root,
+          finalIndexTreeRoot: newIndexTreeRoot,
+          finalCounterTreeRoot: newCounterTreeRoot,
+          finalInfoTreeRoot: newInfoTreeRoot,
           finalLastRolledUpActionState: updateOutOfSnark(
             preProof.publicOutput.finalLastRolledUpActionState,
             [ParticipationAction.toFields(newAction)]
@@ -154,8 +197,8 @@ export const JoinCampaign = ZkProgram({
 class ParticipationProof extends ZkProgram.Proof(JoinCampaign) {}
 
 export class ParticipationContract extends SmartContract {
-  // campaignId -> projectId -> index
-  @state(Field) applicationTreeRoot = State<Field>();
+  // campaignId -> projectId -> index. start from 1, if index = 0 means that project have not participate
+  @state(Field) indexTreeRoot = State<Field>();
   // campaignId -> projectId -> index
   @state(Field) infoTreeRoot = State<Field>();
   // campaignId -> counter
@@ -165,10 +208,13 @@ export class ParticipationContract extends SmartContract {
   @state(Field) lastRolledUpActionState = State<Field>();
 
   reducer = Reducer({ actionType: ParticipationAction });
+  events = {
+    [EventEnum.ACTION_REDUCED]: Field,
+  };
 
   init() {
     super.init();
-    this.applicationTreeRoot.set(DefaultLevel1Root);
+    this.indexTreeRoot.set(DefaultLevel1Root);
     this.lastRolledUpActionState.set(Reducer.initialActionState);
   }
 
@@ -205,7 +251,7 @@ export class ParticipationContract extends SmartContract {
       new checkIfNotInCampaignInput({
         campaignId: input.campaignId,
         projectId: input.projectId,
-        applicationLv1Witness: input.applicationLv1Witness,
+        indexWitness: input.indexWitness,
       })
     );
 
@@ -218,7 +264,7 @@ export class ParticipationContract extends SmartContract {
     let newAction = new ParticipationAction({
       campaignId: input.campaignId,
       projectId: input.projectId,
-      applicationInfo: input.applicationInfo,
+      participationInfo: input.participationInfo,
       curApplicationInfoHash: Field(0),
     });
 
@@ -250,19 +296,19 @@ export class ParticipationContract extends SmartContract {
   @method checkIfNotInCampaign(input: checkIfNotInCampaignInput): Bool {
     let notIn = Bool(true);
 
-    let index = ApplicationStorage.calculateLevel1Index({
+    let index = IndexStorage.calculateLevel1Index({
       campaignId: input.campaignId,
       projectId: input.projectId,
     });
 
     // check the right projectId
-    let calculateIndex = input.applicationLv1Witness.calculateIndex();
+    let calculateIndex = input.indexWitness.calculateIndex();
     notIn = index.equals(calculateIndex).and(notIn);
 
     // check the value is == Field(0)
-    let level1Root = input.applicationLv1Witness.calculateRoot(Field(0));
+    let level1Root = input.indexWitness.calculateRoot(Field(0));
     notIn = level1Root
-      .equals(this.applicationTreeRoot.getAndRequireEquals())
+      .equals(this.indexTreeRoot.getAndRequireEquals())
       .and(notIn);
 
     return notIn;
@@ -270,13 +316,15 @@ export class ParticipationContract extends SmartContract {
 
   @method rollup(proof: ParticipationProof) {
     proof.verify();
-    let applicationTreeRoot = this.applicationTreeRoot.getAndRequireEquals();
+    let indexTreeRoot = this.indexTreeRoot.getAndRequireEquals();
+    let infoTreeRoot = this.infoTreeRoot.getAndRequireEquals();
+    let counterTreeRoot = this.counterTreeRoot.getAndRequireEquals();
     let lastRolledUpActionState =
       this.lastRolledUpActionState.getAndRequireEquals();
 
-    applicationTreeRoot.assertEquals(
-      proof.publicOutput.initialApplicationTreeRoot
-    );
+    indexTreeRoot.assertEquals(proof.publicOutput.initialIndexTreeRoot);
+    infoTreeRoot.assertEquals(proof.publicOutput.initialInfoTreeRoot);
+    counterTreeRoot.assertEquals(proof.publicOutput.initialCounterTreeRoot);
     lastRolledUpActionState.assertEquals(
       proof.publicOutput.initialLastRolledUpACtionState
     );
@@ -287,9 +335,13 @@ export class ParticipationContract extends SmartContract {
     );
 
     // update on-chain state
-    this.applicationTreeRoot.set(proof.publicOutput.finalApplicationTreeRoot);
+    this.indexTreeRoot.set(proof.publicOutput.finalIndexTreeRoot);
+    this.infoTreeRoot.set(proof.publicOutput.finalInfoTreeRoot);
+    this.counterTreeRoot.set(proof.publicOutput.finalCounterTreeRoot);
     this.lastRolledUpActionState.set(
       proof.publicOutput.finalLastRolledUpActionState
     );
+
+    this.emitEvent(EventEnum.ACTION_REDUCED, lastActionState);
   }
 }
