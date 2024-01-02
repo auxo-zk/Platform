@@ -64,7 +64,7 @@
     "zkapp-cli": "^0.15.0"
   },
   "dependencies": {
-    "@auxo-dev/dkg": "0.2.8",
+    "@auxo-dev/dkg": "0.2.9",
     "@auxo-dev/auxo-libs": "0.3.5",
     "o1js": "0.15.1"
   }

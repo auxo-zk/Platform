@@ -69,13 +69,14 @@ export class joinCampaignInput extends Struct({
   }
 }
 
-export class checkIfNotInCampaignInput extends Struct({
+export class checkParticipationIndexInput extends Struct({
   campaignId: Field,
   projectId: Field,
+  participationIndex: Field,
   indexWitness: indexAndInfoWitness,
 }) {
-  static fromFields(fields: Field[]): checkIfNotInCampaignInput {
-    return super.fromFields(fields) as checkIfNotInCampaignInput;
+  static fromFields(fields: Field[]): checkParticipationIndexInput {
+    return super.fromFields(fields) as checkParticipationIndexInput;
   }
 }
 
@@ -247,10 +248,11 @@ export class ParticipationContract extends SmartContract {
 
     // check if this is first time join campaign
 
-    let notIn = this.checkIfNotInCampaign(
-      new checkIfNotInCampaignInput({
+    let notIn = this.checkParticipationIndex(
+      new checkParticipationIndexInput({
         campaignId: input.campaignId,
         projectId: input.projectId,
+        participationIndex: Field(0),
         indexWitness: input.indexWitness,
       })
     );
@@ -290,30 +292,6 @@ export class ParticipationContract extends SmartContract {
     this.reducer.dispatch(newAction);
   }
 
-  // TODO: checkIfNotInCampaign change to check current project application
-  @method updateCampaignInfo(input: UpdateCampaignInput) {}
-
-  @method checkIfNotInCampaign(input: checkIfNotInCampaignInput): Bool {
-    let notIn = Bool(true);
-
-    let index = IndexStorage.calculateLevel1Index({
-      campaignId: input.campaignId,
-      projectId: input.projectId,
-    });
-
-    // check the right projectId
-    let calculateIndex = input.indexWitness.calculateIndex();
-    notIn = index.equals(calculateIndex).and(notIn);
-
-    // check the value is == Field(0)
-    let level1Root = input.indexWitness.calculateRoot(Field(0));
-    notIn = level1Root
-      .equals(this.indexTreeRoot.getAndRequireEquals())
-      .and(notIn);
-
-    return notIn;
-  }
-
   @method rollup(proof: ParticipationProof) {
     proof.verify();
     let indexTreeRoot = this.indexTreeRoot.getAndRequireEquals();
@@ -343,5 +321,26 @@ export class ParticipationContract extends SmartContract {
     );
 
     this.emitEvent(EventEnum.ACTION_REDUCED, lastActionState);
+  }
+
+  @method checkParticipationIndex(input: checkParticipationIndexInput): Bool {
+    let isValid = Bool(true);
+
+    let index = IndexStorage.calculateLevel1Index({
+      campaignId: input.campaignId,
+      projectId: input.projectId,
+    });
+
+    // check the right projectId
+    let calculateIndex = input.indexWitness.calculateIndex();
+    isValid = index.equals(calculateIndex).and(isValid);
+
+    // check the valid of the index
+    let level1Root = input.indexWitness.calculateRoot(input.participationIndex);
+    isValid = level1Root
+      .equals(this.indexTreeRoot.getAndRequireEquals())
+      .and(isValid);
+
+    return isValid;
   }
 }
