@@ -30,12 +30,20 @@ export class AddressStorage {
     this.addresses = addresses || EMPTY_ADDRESS_MT();
   }
 
-  calculateLeaf(address: PublicKey): Field {
+  static calculateLeaf(address: PublicKey): Field {
     return Poseidon.hash(address.toFields());
   }
 
-  calculateIndex(index: ZkAppEnum | number): Field {
+  calculateLeaf(address: PublicKey): Field {
+    return this.calculateLeaf(address);
+  }
+
+  static calculateIndex(index: Field | number): Field {
     return Field(index);
+  }
+
+  calculateIndex(index: Field | number): Field {
+    return this.calculateIndex(index);
   }
 
   getWitness(index: Field): AddressWitness {
@@ -45,7 +53,7 @@ export class AddressStorage {
 
 export function getZkAppRef(
   map: AddressMT,
-  index: ZkAppEnum | number,
+  index: Field | number,
   address: PublicKey
 ) {
   return new ZkAppRef({

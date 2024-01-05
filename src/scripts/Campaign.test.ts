@@ -11,6 +11,7 @@ import {
   MerkleWitness,
   Proof,
   Void,
+  Cache,
 } from 'o1js';
 
 import { getProfiler } from './helper/profiler.js';
@@ -19,6 +20,7 @@ import { CampaignContract, CreateCampaign } from '../contracts/Campaign.js';
 
 describe('Campaign', () => {
   const doProofs = true;
+  const cache = Cache.FileSystem('./caches');
 
   let { keys, addresses } = randomAccounts('project', 'p1', 'p2');
   let feePayerKey: PrivateKey;
@@ -37,7 +39,7 @@ describe('Campaign', () => {
 
   it('compile proof', async () => {
     console.log('CreateCampaign.compile...');
-    await CreateCampaign.compile();
+    await CreateCampaign.compile({ cache });
     if (doProofs) {
       console.log('CampaignContract.compile...');
       await CampaignContract.compile();

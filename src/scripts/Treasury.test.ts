@@ -11,6 +11,7 @@ import {
   MerkleWitness,
   Proof,
   Void,
+  Cache,
 } from 'o1js';
 
 import { getProfiler } from './helper/profiler.js';
@@ -19,6 +20,7 @@ import { TreasuryContract, ClaimFund } from '../contracts/Treasury.js';
 
 describe('Treasury', () => {
   const doProofs = true;
+  const cache = Cache.FileSystem('./caches');
 
   let { keys, addresses } = randomAccounts('treasury', 'p1', 'p2');
   let feePayerKey: PrivateKey;

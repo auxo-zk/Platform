@@ -213,7 +213,7 @@ export const CreateProject = ZkProgram({
   },
 });
 
-class ProjectProof extends ZkProgram.Proof(CreateProject) {}
+export class ProjectProof extends ZkProgram.Proof(CreateProject) {}
 
 export enum EventEnum {
   PROJECT_CREATED = 'project-created',

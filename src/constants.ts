@@ -1,26 +1,11 @@
 import { Constants } from '@auxo-dev/dkg';
 export const PROJECT_MEMBER_MAX_SIZE = 2 ** 4;
-export const ADDRESS_MAX_SIZE = 8;
+export const ADDRESS_MAX_SIZE = 16;
 export const INSTANCE_LIMITS = {
   PROJECT: 2 ** 2,
   CAMPAIGN: 2 ** 2,
   PARTICIPATION: Constants.REQUEST_MAX_SIZE,
 };
-
-export enum ZkAppEnum {
-  COMMITTEE,
-  DKG,
-  ROUND1,
-  ROUND2,
-  RESPONSE,
-  REQUEST,
-  PROJECT,
-  CAMPAIGN,
-  PARTICIPATION,
-  FUNDING,
-  TREASURY,
-}
-
 export enum Contract {
   COMMITTEE = 'committee',
   DKG = 'dkg',
@@ -34,3 +19,16 @@ export enum Contract {
   FUNDING = 'funding',
   TREASURY = 'treasury',
 }
+
+function createEnumIndexMap(enumObj: any): { [key: string]: number } {
+  const map: { [key: string]: number } = {};
+  let index = 0;
+  for (const key in enumObj) {
+    if (enumObj.hasOwnProperty(key)) {
+      map[enumObj[key]] = index++;
+    }
+  }
+  return map;
+}
+
+export const ZkAppEnum = createEnumIndexMap(Contract);

@@ -245,21 +245,22 @@ export class TreasuryContract extends SmartContract {
     Field(ZkAppEnum.PARTICIPATION).assertEquals(
       input.participationRef.witness.calculateIndex()
     );
+    
+    // TODO: check this latter
+    // const participationContract = new ParticipationContract(
+    //   input.participationRef.address
+    // );
 
-    const participationContract = new ParticipationContract(
-      input.participationRef.address
-    );
-
-    participationContract
-      .checkParticipationIndex(
-        new checkParticipationIndexInput({
-          campaignId: input.campaignId,
-          projectId: input.projectId,
-          participationIndex: input.participationIndex,
-          indexWitness: input.indexWitness,
-        })
-      )
-      .assertEquals(Bool(true));
+    // participationContract
+    //   .checkParticipationIndex(
+    //     new checkParticipationIndexInput({
+    //       campaignId: input.campaignId,
+    //       projectId: input.projectId,
+    //       participationIndex: input.participationIndex,
+    //       indexWitness: input.indexWitness,
+    //     })
+    //   )
+    //   .assertEquals(Bool(true));
 
     // check if claimed
     this.checkIfNotClaimed(

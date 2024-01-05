@@ -63,6 +63,7 @@ export class joinCampaignInput extends Struct({
   indexWitness: indexAndInfoWitness,
   memberLv1Witness: projectLv1Witness,
   memberLv2Witness: projectLv2Witness,
+  projectRef: ZkAppRef,
 }) {
   static fromFields(fields: Field[]): joinCampaignInput {
     return super.fromFields(fields) as joinCampaignInput;
@@ -219,7 +220,7 @@ export class ParticipationContract extends SmartContract {
     this.lastRolledUpActionState.set(Reducer.initialActionState);
   }
 
-  @method joinCampaign(input: joinCampaignInput, projectRef: ZkAppRef) {
+  @method joinCampaign(input: joinCampaignInput) {
     // TODO: check campaign status
 
     // check owner
@@ -227,13 +228,13 @@ export class ParticipationContract extends SmartContract {
 
     // check project contract
     zkApps.assertEquals(
-      projectRef.witness.calculateRoot(
-        Poseidon.hash(projectRef.address.toFields())
+      input.projectRef.witness.calculateRoot(
+        Poseidon.hash(input.projectRef.address.toFields())
       )
     );
-    Field(ZkAppEnum.PROJECT).assertEquals(projectRef.witness.calculateIndex());
+    Field(ZkAppEnum.PROJECT).assertEquals(input.projectRef.witness.calculateIndex());
 
-    let projectContract = new ProjectContract(projectRef.address);
+    let projectContract = new ProjectContract(input.projectRef.address);
 
     let isOwner = projectContract.checkProjectOwner(
       new CheckProjectOwerInput({

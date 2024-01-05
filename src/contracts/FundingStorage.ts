@@ -42,36 +42,6 @@ export abstract class FundingStorage {
   }
 }
 
-export class MStorage extends FundingStorage {
-  level1: Level1MT;
-
-  constructor(level1?: Level1MT) {
-    super(level1);
-  }
-
-  calculateLeaf(m: RequestVector): Field {
-    return Poseidon.hash(m.toFields());
-  }
-
-  calculateLevel1Index({
-    campaignId,
-    projectId,
-  }: {
-    campaignId: Field;
-    projectId: Field;
-  }): Field {
-    return campaignId.mul(Field.from(INSTANCE_LIMITS.PROJECT)).add(projectId);
-  }
-
-  getWitness(level1Index: Field): Level1Witness {
-    return super.getWitness(level1Index) as Level1Witness;
-  }
-
-  updateLeaf(leaf: Field, level1Index: Field): void {
-    super.updateLeaf(leaf, level1Index);
-  }
-}
-
 export class ValueStorage extends FundingStorage {
   level1: Level1MT;
 
