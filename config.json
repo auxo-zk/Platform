@@ -1,4 +1,47 @@
 {
   "version": 1,
-  "deployAliases": {}
+  "deployAliases": {
+    "project": {
+      "url": "https://proxy.berkeley.minaexplorer.com/graphql",
+      "keyPath": "keys/project.json",
+      "feepayerKeyPath": "/Users/bleu210/.cache/zkapp-cli/keys/deploy.json",
+      "feepayerAlias": "deploy",
+      "fee": "0.1"
+    },
+    "campaign": {
+      "url": "https://proxy.berkeley.minaexplorer.com/graphql",
+      "keyPath": "keys/campaign.json",
+      "feepayerKeyPath": "/Users/bleu210/.cache/zkapp-cli/keys/deploy.json",
+      "feepayerAlias": "deploy",
+      "fee": "0.1"
+    },
+    "participation": {
+      "url": "https://proxy.berkeley.minaexplorer.com/graphql",
+      "keyPath": "keys/participation.json",
+      "feepayerKeyPath": "/Users/bleu210/.cache/zkapp-cli/keys/deploy.json",
+      "feepayerAlias": "deploy",
+      "fee": "0.1"
+    },
+    "funding": {
+      "url": "https://proxy.berkeley.minaexplorer.com/graphql",
+      "keyPath": "keys/funding.json",
+      "feepayerKeyPath": "/Users/bleu210/.cache/zkapp-cli/keys/deploy.json",
+      "feepayerAlias": "deploy",
+      "fee": "0.1"
+    },
+    "treasury": {
+      "url": "https://proxy.berkeley.minaexplorer.com/graphql",
+      "keyPath": "keys/treasury.json",
+      "feepayerKeyPath": "/Users/bleu210/.cache/zkapp-cli/keys/deploy.json",
+      "feepayerAlias": "deploy",
+      "fee": "0.1"
+    },
+    "request": {
+      "url": "https://proxy.berkeley.minaexplorer.com/graphql",
+      "keyPath": "keys/request.json",
+      "feepayerKeyPath": "/Users/bleu210/.cache/zkapp-cli/keys/deploy.json",
+      "feepayerAlias": "deploy",
+      "fee": "0.1"
+    }
+  }
 }
