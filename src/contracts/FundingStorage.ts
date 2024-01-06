@@ -1,8 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Field, MerkleTree, MerkleWitness, Poseidon } from 'o1js';
 import { INSTANCE_LIMITS } from '../constants.js';
-import { RequestVector } from '@auxo-dev/dkg/build/esm/src/contracts/Request';
-
+import { ZkApp } from '@auxo-dev/dkg';
 export const LEVEL_1_TREE_HEIGHT =
   Math.ceil(Math.log2(INSTANCE_LIMITS.CAMPAIGN)) + 1;
 
@@ -43,11 +42,11 @@ export class ValueStorage extends FundingStorage {
     super(level1);
   }
 
-  calculateLeaf(value: RequestVector): Field {
+  calculateLeaf(value: ZkApp.Request.RequestVector): Field {
     return ValueStorage.calculateLeaf(value);
   }
 
-  static calculateLeaf(value: RequestVector): Field {
+  static calculateLeaf(value: ZkApp.Request.RequestVector): Field {
     return Poseidon.hash(value.toFields());
   }
 

@@ -13,7 +13,6 @@ import {
   PublicKey,
   Void,
   Bool,
-  MerkleMap,
   MerkleMapWitness,
   Group,
   Scalar,
@@ -32,13 +31,6 @@ import {
 } from './TreasuryStorage.js';
 
 import { ZkApp } from '@auxo-dev/dkg';
-
-import { FundingContract, CheckValueInput } from './Funding.js';
-
-import {
-  ParticipationContract,
-  checkParticipationIndexInput,
-} from './Participation.js';
 
 import { INSTANCE_LIMITS, ZkAppEnum } from '../constants.js';
 

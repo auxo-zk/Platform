@@ -7,7 +7,6 @@ import {
   PublicKey,
   Group,
   Reducer,
-  MerkleMap,
   MerkleMapWitness,
   Struct,
   SelfProof,
@@ -21,19 +20,13 @@ import {
   AccountUpdate,
 } from 'o1js';
 
-import {
-  CustomScalar,
-  GroupDynamicArray,
-  ScalarDynamicArray,
-} from '@auxo-dev/auxo-libs';
+import { ScalarDynamicArray } from '@auxo-dev/auxo-libs';
 import { updateOutOfSnark } from '../libs/utils.js';
 
 import {
   ZkApp as DKG_Contracts,
   Constants as DKG_Constants,
 } from '@auxo-dev/dkg';
-
-import { REQUEST_MAX_SIZE } from '@auxo-dev/dkg/build/esm/src/constants';
 
 import { ZkAppEnum } from '../constants.js';
 
@@ -226,7 +219,7 @@ export const CreateRollupProof = ZkProgram({
         let sum_R = preProof.publicOutput.sum_R;
         let sum_M = preProof.publicOutput.sum_M;
 
-        for (let i = 0; i < REQUEST_MAX_SIZE; i++) {
+        for (let i = 0; i < DKG_Constants.REQUEST_MAX_SIZE; i++) {
           sum_R.set(Field(i), sum_R.get(Field(i)).add(action.R.get(Field(i))));
           sum_M.set(Field(i), sum_M.get(Field(i)).add(action.M.get(Field(i))));
         }
@@ -296,12 +289,12 @@ export class FundingContract extends SmartContract {
     // TODO: remove provable witness
     let totalMinaInvest = Provable.witness(Field, () => {
       let curSum = Scalar.from(0n);
-      for (let i = 0; i < REQUEST_MAX_SIZE; i++) {
+      for (let i = 0; i < DKG_Constants.REQUEST_MAX_SIZE; i++) {
         curSum.add(fundingInput.secretVector.get(Field(i)).toScalar());
       }
       return Field(curSum.toBigInt());
     });
-    for (let i = 0; i < REQUEST_MAX_SIZE; i++) {
+    for (let i = 0; i < DKG_Constants.REQUEST_MAX_SIZE; i++) {
       let random = fundingInput.random.get(Field(i)).toScalar();
       R.push(
         Provable.if(
@@ -326,7 +319,7 @@ export class FundingContract extends SmartContract {
       );
       M.push(M_i);
     }
-    let dercementAmount = Field(REQUEST_MAX_SIZE).sub(dimension);
+    let dercementAmount = Field(DKG_Constants.REQUEST_MAX_SIZE).sub(dimension);
     R.decrementLength(dercementAmount);
     M.decrementLength(dercementAmount);
 
