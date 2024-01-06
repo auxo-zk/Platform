@@ -29,7 +29,7 @@ export async function compile(
   cache?: Cache,
   logMemory?: boolean,
   profiler?: Profiler
-) {
+): Promise<void> {
   if (logMemory) logMemUsage();
   console.log(`Compiling ${prg.name}...`);
   if (profiler) profiler.start(`${prg.name}.compile`);
