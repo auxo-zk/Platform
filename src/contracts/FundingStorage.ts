@@ -1,11 +1,5 @@
-import {
-  Field,
-  MerkleTree,
-  MerkleWitness,
-  Poseidon,
-  PublicKey,
-  Struct,
-} from 'o1js';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { Field, MerkleTree, MerkleWitness, Poseidon } from 'o1js';
 import { INSTANCE_LIMITS } from '../constants.js';
 import { RequestVector } from '@auxo-dev/dkg/build/esm/src/contracts/Request';
 
@@ -50,7 +44,7 @@ export class ValueStorage extends FundingStorage {
   }
 
   calculateLeaf(value: RequestVector): Field {
-    return this.calculateLeaf(value);
+    return ValueStorage.calculateLeaf(value);
   }
 
   static calculateLeaf(value: RequestVector): Field {

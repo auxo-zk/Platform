@@ -1,13 +1,6 @@
-import {
-  Field,
-  MerkleTree,
-  MerkleWitness,
-  Poseidon,
-  PublicKey,
-  Struct,
-} from 'o1js';
+import { Field, MerkleTree, MerkleWitness, Poseidon } from 'o1js';
 import { INSTANCE_LIMITS } from '../constants.js';
-import { IPFSHash, PublicKeyDynamicArray } from '@auxo-dev/auxo-libs';
+import { IPFSHash } from '@auxo-dev/auxo-libs';
 
 export const LEVEL_1_COMBINED_TREE_HEIGHT =
   Math.ceil(Math.log2(INSTANCE_LIMITS.CAMPAIGN * INSTANCE_LIMITS.PROJECT)) + 1;
@@ -39,7 +32,7 @@ export class IndexStorage {
   }
 
   calculateLeaf(index: Field): Field {
-    return this.calculateLeaf(index);
+    return IndexStorage.calculateLeaf(index);
   }
 
   static calculateLeaf(index: Field): Field {
@@ -53,7 +46,7 @@ export class IndexStorage {
     campaignId: Field;
     projectId: Field;
   }): Field {
-    return this.calculateLevel1Index({ campaignId, projectId });
+    return IndexStorage.calculateLevel1Index({ campaignId, projectId });
   }
 
   static calculateLevel1Index({
@@ -87,7 +80,7 @@ export class InfoStorage {
   }
 
   calculateLeaf(ipfshash: IPFSHash): Field {
-    return this.calculateLeaf(ipfshash);
+    return InfoStorage.calculateLeaf(ipfshash);
   }
 
   static calculateLeaf(ipfshash: IPFSHash): Field {
@@ -125,7 +118,7 @@ export class CounterStorage {
   }
 
   calculateLeaf(counter: Field): Field {
-    return this.calculateLeaf(counter);
+    return CounterStorage.calculateLeaf(counter);
   }
 
   static calculateLeaf(counter: Field): Field {

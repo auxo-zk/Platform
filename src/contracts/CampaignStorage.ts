@@ -1,13 +1,7 @@
-import {
-  Field,
-  MerkleTree,
-  MerkleWitness,
-  Poseidon,
-  PublicKey,
-  Struct,
-} from 'o1js';
-import { PROJECT_MEMBER_MAX_SIZE, INSTANCE_LIMITS } from '../constants.js';
-import { IPFSHash, PublicKeyDynamicArray } from '@auxo-dev/auxo-libs';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { Field, MerkleTree, MerkleWitness, Poseidon, PublicKey } from 'o1js';
+import { INSTANCE_LIMITS } from '../constants.js';
+import { IPFSHash } from '@auxo-dev/auxo-libs';
 
 export const LEVEL_1_TREE_HEIGHT =
   Math.ceil(Math.log2(INSTANCE_LIMITS.CAMPAIGN)) + 1;
@@ -74,7 +68,7 @@ export class OwnerStorage extends CampaignStorage {
   }
 
   calculateLeaf(publicKey: PublicKey): Field {
-    return this.calculateLeaf(publicKey);
+    return OwnerStorage.calculateLeaf(publicKey);
   }
 
   static calculateLeaf(publicKey: PublicKey): Field {
@@ -102,7 +96,7 @@ export class StatusStorage extends CampaignStorage {
   }
 
   calculateLeaf(status: StatusEnum): Field {
-    return this.calculateLeaf(status);
+    return StatusStorage.calculateLeaf(status);
   }
 
   static calculateLeaf(status: StatusEnum): Field {
@@ -136,7 +130,7 @@ export class ConfigStorage extends CampaignStorage {
     committeeId: Field;
     keyId: Field;
   }): Field {
-    return this.calculateLeaf({
+    return ConfigStorage.calculateLeaf({
       committeeId,
       keyId,
     });

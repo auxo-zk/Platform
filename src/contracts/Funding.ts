@@ -31,7 +31,7 @@ import { updateOutOfSnark } from '../libs/utils.js';
 import {
   ZkApp as DKG_Contracts,
   Constants as DKG_Constants,
-} from '@auxo-dev/dkg/';
+} from '@auxo-dev/dkg';
 
 import { REQUEST_MAX_SIZE } from '@auxo-dev/dkg/build/esm/src/constants';
 

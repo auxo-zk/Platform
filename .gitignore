@@ -142,4 +142,7 @@ config.json
 # Cache data
 caches
 
+# Mock data
+mock
+
 .DS_Store

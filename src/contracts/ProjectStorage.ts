@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   Field,
   MerkleTree,
@@ -107,7 +108,7 @@ export class MemberStorage extends ProjectStorage {
   }
 
   calculateLeaf(publicKey: PublicKey): Field {
-    return this.calculateLeaf(publicKey);
+    return MemberStorage.calculateLeaf(publicKey);
   }
 
   static calculateLeaf(publicKey: PublicKey): Field {
@@ -139,7 +140,7 @@ export class InfoStorage extends ProjectStorage {
   }
 
   calculateLeaf(ipfsHash: IPFSHash): Field {
-    return this.calculateLeaf(ipfsHash);
+    return InfoStorage.calculateLeaf(ipfsHash);
   }
 
   static calculateLeaf(ipfsHash: IPFSHash): Field {
@@ -167,7 +168,7 @@ export class AddressStorage extends ProjectStorage {
   }
 
   calculateLeaf(address: PublicKey): Field {
-    return this.calculateLeaf(address);
+    return AddressStorage.calculateLeaf(address);
   }
 
   static calculateLeaf(address: PublicKey): Field {

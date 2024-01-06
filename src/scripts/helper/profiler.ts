@@ -1,11 +1,18 @@
-import { time } from 'console';
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import fs from 'fs';
 
-export { getProfiler };
+export { getProfiler, Profiler };
 
 const round = (x: number) => Math.round(x * 100) / 100;
 
-function getProfiler(name: string) {
+type Profiler = {
+  times: Record<string, any>;
+  start: (lable: string) => void;
+  stop: () => Profiler;
+  store: () => void;
+};
+
+function getProfiler(name: string): Profiler {
   let times: Record<string, any> = {};
   let label: string;
 

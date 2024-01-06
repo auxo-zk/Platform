@@ -245,7 +245,7 @@ export class TreasuryContract extends SmartContract {
     Field(ZkAppEnum.PARTICIPATION).assertEquals(
       input.participationRef.witness.calculateIndex()
     );
-    
+
     // TODO: check this latter
     // const participationContract = new ParticipationContract(
     //   input.participationRef.address

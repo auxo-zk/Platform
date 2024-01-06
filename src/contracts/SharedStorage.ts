@@ -1,5 +1,4 @@
 import {
-  Encoding,
   Field,
   MerkleMap,
   MerkleMapWitness,
@@ -9,7 +8,7 @@ import {
   PublicKey,
   Struct,
 } from 'o1js';
-import { ADDRESS_MAX_SIZE, ZkAppEnum } from '../constants.js';
+import { ADDRESS_MAX_SIZE } from '../constants.js';
 
 export const ADDRESS_TREE_HEIGHT = Math.ceil(Math.log2(ADDRESS_MAX_SIZE)) + 1;
 export class AddressMT extends MerkleTree {}
@@ -35,7 +34,7 @@ export class AddressStorage {
   }
 
   calculateLeaf(address: PublicKey): Field {
-    return this.calculateLeaf(address);
+    return AddressStorage.calculateLeaf(address);
   }
 
   static calculateIndex(index: Field | number): Field {
@@ -43,7 +42,7 @@ export class AddressStorage {
   }
 
   calculateIndex(index: Field | number): Field {
-    return this.calculateIndex(index);
+    return AddressStorage.calculateIndex(index);
   }
 
   getWitness(index: Field): AddressWitness {
@@ -77,8 +76,12 @@ export class ReduceStorage {
     this.actions = actions || EMPTY_REDUCE_MT();
   }
 
-  calculateLeaf(status: ActionStatus): Field {
+  static calculateLeaf(status: ActionStatus): Field {
     return Field(status);
+  }
+
+  calculateLeaf(status: ActionStatus): Field {
+    return ReduceStorage.calculateLeaf(status);
   }
 
   calculateIndex(actionState: Field): Field {

@@ -1,12 +1,5 @@
-import {
-  Bool,
-  Field,
-  MerkleTree,
-  MerkleWitness,
-  Poseidon,
-  PublicKey,
-  Struct,
-} from 'o1js';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { Bool, Field, MerkleTree, MerkleWitness } from 'o1js';
 import { INSTANCE_LIMITS } from '../constants.js';
 
 export const LEVEL_1_COMBINED_TREE_HEIGHT =
@@ -53,7 +46,7 @@ export class ClaimedStorage extends TreasuryStorage {
   }
 
   calculateLeaf(state: Bool): Field {
-    return this.calculateLeaf(state);
+    return ClaimedStorage.calculateLeaf(state);
   }
 
   static calculateLeaf(state: Bool): Field {
@@ -77,7 +70,7 @@ export class ClaimedStorage extends TreasuryStorage {
     campaignId: Field;
     projectId: Field;
   }): Field {
-    return this.calculateLevel1Index({
+    return ClaimedStorage.calculateLevel1Index({
       campaignId: campaignId,
       projectId: projectId,
     });
