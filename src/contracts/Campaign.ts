@@ -260,12 +260,12 @@ export class CampaignContract extends SmartContract {
 
   @method rollup(proof: CampaignProof) {
     proof.verify();
-    let ownerTreeRoot = this.ownerTreeRoot.getAndAssertEquals();
-    let infoTreeRoot = this.infoTreeRoot.getAndAssertEquals();
-    let statusTreeRoot = this.statusTreeRoot.getAndAssertEquals();
-    let configTreeRoot = this.configTreeRoot.getAndAssertEquals();
+    let ownerTreeRoot = this.ownerTreeRoot.getAndRequireEquals();
+    let infoTreeRoot = this.infoTreeRoot.getAndRequireEquals();
+    let statusTreeRoot = this.statusTreeRoot.getAndRequireEquals();
+    let configTreeRoot = this.configTreeRoot.getAndRequireEquals();
     let lastRolledUpActionState =
-      this.lastRolledUpActionState.getAndAssertEquals();
+      this.lastRolledUpActionState.getAndRequireEquals();
 
     ownerTreeRoot.assertEquals(proof.publicOutput.initialOwnerTreeRoot);
     infoTreeRoot.assertEquals(proof.publicOutput.initialInfoTreeRoot);
@@ -275,7 +275,7 @@ export class CampaignContract extends SmartContract {
       proof.publicOutput.initialLastRolledUpACtionState
     );
 
-    let lastActionState = this.account.actionState.getAndAssertEquals();
+    let lastActionState = this.account.actionState.getAndRequireEquals();
     lastActionState.assertEquals(
       proof.publicOutput.finalLastRolledUpActionState
     );

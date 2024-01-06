@@ -31,21 +31,28 @@ import {
   AddressStorage as PayeeStorage,
   EMPTY_LEVEL_2_TREE,
 } from '../contracts/ProjectStorage.js';
-import { CampaignContract } from '../contracts/Campaign.js';
+import { CampaignContract, CreateCampaign } from '../contracts/Campaign.js';
 import {
   InfoStorage as CampaignInfoStorage,
   OwnerStorage,
   StatusStorage,
   ConfigStorage,
 } from '../contracts/CampaignStorage.js';
-import { FundingContract } from '../contracts/Funding.js';
+import {
+  FundingContract,
+  CreateReduceProof,
+  CreateRollupProof,
+} from '../contracts/Funding.js';
 import { ValueStorage } from '../contracts/FundingStorage.js';
-import { ParticipationContract } from '../contracts/Participation.js';
+import {
+  ParticipationContract,
+  JoinCampaign,
+} from '../contracts/Participation.js';
 import {
   InfoStorage as ParticipationInfoStorage,
   CounterStorage,
 } from '../contracts/ParticipationStorage.js';
-import { TreasuryContract } from '../contracts/Treasury.js';
+import { TreasuryContract, ClaimFund } from '../contracts/Treasury.js';
 import { ClaimedStorage } from '../contracts/TreasuryStorage.js';
 import {
   ContractList,
@@ -56,7 +63,14 @@ import {
   wait,
 } from '../libs/utils.js';
 
-const sendMoney = false;
+// const isCompile = false;
+
+const isDeploy = true;
+const isProject = true;
+const isCampaign = false;
+const isParticipation = false;
+const isFunding = false;
+const isTreasury = false;
 
 async function main() {
   console.time('runTime');
@@ -71,16 +85,6 @@ async function main() {
   let contracts: ContractList = {};
 
   let configJson: Config = JSON.parse(await fs.readFile('config.json', 'utf8'));
-
-  // let acc1: { privateKey: string; publicKey: string } = JSON.parse(
-  //   await fs.readFile(configJson.deployAliases['acc1'].keyPath, 'utf8')
-  // );
-  // let acc2: { privateKey: string; publicKey: string } = JSON.parse(
-  //   await fs.readFile(configJson.deployAliases['acc2'].keyPath, 'utf8')
-  // );
-  // let acc3: { privateKey: string; publicKey: string } = JSON.parse(
-  //   await fs.readFile(configJson.deployAliases['acc3'].keyPath, 'utf8')
-  // );
 
   // Testworld + Berkeley
   feePayerKey = {
@@ -117,27 +121,6 @@ async function main() {
   } while (!dk);
 
   console.log('Nonce: ', feePayerNonce);
-
-  // let members: Key[] = [
-  //   {
-  //     privateKey: PrivateKey.fromBase58(acc1.privateKey),
-  //     publicKey: PublicKey.fromBase58(acc1.publicKey),
-  //   },
-  //   {
-  //     privateKey: PrivateKey.fromBase58(acc2.privateKey),
-  //     publicKey: PublicKey.fromBase58(acc2.publicKey),
-  //   },
-  // ];
-
-  console.log('fetch all account');
-  console.time('accounts');
-  // const promises = members.map(async (member) => {
-  //   const sender = await fetchAccount({ publicKey: member.publicKey });
-  //   return Number(sender.account?.nonce) - 1;
-  // });
-  console.timeEnd('accounts');
-
-  // const memberNonces: number[] = await Promise.all(promises);
 
   let addressMerkleTree = EMPTY_ADDRESS_MT();
 
@@ -210,176 +193,266 @@ async function main() {
   let claimedStorage = new ClaimedStorage();
   let treasuryAddressStorage = new AddressStorage(addressMerkleTree);
 
-  // if (sendMoney) {
-  //   let tx = await Mina.transaction(
-  //     { sender: feePayerKey.publicKey, fee, nonce: ++feePayerNonce },
-  //     () => {
-  //       AccountUpdate.fundNewAccount(feePayerKey.publicKey, members.length);
-  //       let feePayerAccount = AccountUpdate.createSigned(feePayerKey.publicKey);
-  //       for (let i = 0; i < members.length; i++) {
-  //         feePayerAccount.send({
-  //           to: members[i].publicKey,
-  //           amount: 3 * 10 ** 9,
-  //         }); // 3 Mina
-  //       }
-  //     }
-  //   );
-  //   await tx.sign([feePayerKey.privateKey]).send();
-  //   await waitConfig(2 * 60 * 1000);
-  // }
-
   await compile(CreateProject, cache, logMemory, profiler);
-  // await compile(CreateCampaign, cache, logMemory, profiler);
-  // await compile(CreateReduceProof, cache, logMemory, profiler);
-  // await compile(CreateRollupProof, cache, logMemory, profiler);
-  // await compile(JoinCampaign, cache, logMemory, profiler);
-  // await compile(ClaimFund, cache, logMemory, profiler);
+  await compile(CreateCampaign, cache, logMemory, profiler);
+  await compile(CreateReduceProof, cache, logMemory, profiler);
+  await compile(CreateRollupProof, cache, logMemory, profiler);
+  await compile(JoinCampaign, cache, logMemory, profiler);
+  await compile(ClaimFund, cache, logMemory, profiler);
 
   await compile(ProjectContract, cache, logMemory, profiler);
-  // await compile(CampaignContract, cache, logMemory, profiler);
-  // await compile(FundingContract, cache, logMemory, profiler);
-  // await compile(ParticipationContract, cache, logMemory, profiler);
-  // await compile(TreasuryContract, cache, logMemory, profiler);
+  await compile(CampaignContract, cache, logMemory, profiler);
+  await compile(FundingContract, cache, logMemory, profiler);
+  await compile(ParticipationContract, cache, logMemory, profiler);
+  await compile(TreasuryContract, cache, logMemory, profiler);
 
   let tx;
 
-  // // Deploy ProjectContract
-  // await deploy(
-  //   contracts[Contract.PROJECT],
-  //   [],
-  //   feePayerKey,
-  //   fee,
-  //   ++feePayerNonce
-  // );
+  if (isDeploy) {
+    // // Deploy ProjectContract
+    await deploy(
+      contracts[Contract.PROJECT],
+      [],
+      feePayerKey,
+      fee,
+      ++feePayerNonce
+    );
 
-  // // Deploy CampaignContract
-  // await deploy(
-  //   contracts[Contract.CAMPAIGN],
-  //   [['zkApps', campaignAddressStorage.addresses.getRoot()]],
-  //   feePayerKey,
-  //   fee,
-  //   ++feePayerNonce
-  // );
+    // // Deploy CampaignContract
+    await deploy(
+      contracts[Contract.CAMPAIGN],
+      [['zkApps', campaignAddressStorage.addresses.getRoot()]],
+      feePayerKey,
+      fee,
+      ++feePayerNonce
+    );
 
-  // // Deploy FundingContract
-  // await deploy(
-  //   contracts[Contract.FUNDING],
-  //   [['zkApps', fundingAddressStorage.addresses.getRoot()]],
-  //   feePayerKey,
-  //   fee,
-  //   ++feePayerNonce
-  // );
+    // // Deploy FundingContract
+    await deploy(
+      contracts[Contract.FUNDING],
+      [['zkApps', fundingAddressStorage.addresses.getRoot()]],
+      feePayerKey,
+      fee,
+      ++feePayerNonce
+    );
 
-  // // Deploy ParticipationContract
-  // await deploy(
-  //   contracts[Contract.PARTICIPATION],
-  //   [['zkApps', participationAddressStorage.addresses.getRoot()]],
-  //   feePayerKey,
-  //   fee,
-  //   ++feePayerNonce
-  // );
+    // // Deploy ParticipationContract
+    await deploy(
+      contracts[Contract.PARTICIPATION],
+      [['zkApps', participationAddressStorage.addresses.getRoot()]],
+      feePayerKey,
+      fee,
+      ++feePayerNonce
+    );
 
-  // // Deploy TreasuryContract
-  // await deploy(
-  //   contracts[Contract.TREASURY],
-  //   [['zkApps', treasuryAddressStorage.addresses.getRoot()]],
-  //   feePayerKey,
-  //   fee,
-  //   ++feePayerNonce
-  // );
+    // // Deploy TreasuryContract
+    await deploy(
+      contracts[Contract.TREASURY],
+      [['zkApps', treasuryAddressStorage.addresses.getRoot()]],
+      feePayerKey,
+      fee,
+      ++feePayerNonce
+    );
+    
+    if(isProject) await wait();
+  }
 
-  // await wait();
+  if (isProject) {
+    await fetchAllContract(contracts, [Contract.PROJECT]);
+    console.log('Create projects...');
+    let numProjects = 5;
+    let projectContract = contracts[Contract.PROJECT]
+      .contract as ProjectContract;
+    let arrayPublicKey = [
+      'B62qjvrida5Kr4rj7f4gDZyG77TdFMp2ntZ9uf5Xzb7iPodykUgwYqm',
+      'B62qnhBkHqUeUTmYiAvvGdywce7j5PeTdU6t6mi7UAL8emD3mDPtQW2',
+      'B62qnk1is4cK94PCX1QTwPM1SxfeCF9CcN6Nr7Eww3JLDgvxfWdhR5S',
+      'B62qmtfTkHLzmvoKYcTLPeqvuVatnB6wtnXsP6jrEi6i2eUEjcxWauH',
+    ].map((e) => PublicKey.fromBase58(e));
+    let memberArray = new MemberArray(arrayPublicKey);
 
-  await fetchAllContract(contracts, [Contract.PROJECT]);
+    for (let i = 0; i < numProjects; i++) {
+      let createProjectInput = new CreateProjectInput({
+        members: memberArray,
+        ipfsHash: IPFSHash.fromString(
+          'QmNQLoDczHM3HXKodoYQnRszgd4JR4ZxzEKYe534eEBCc2'
+        ),
+        payeeAccount: PublicKey.fromBase58(
+          'B62qnk1is4cK94PCX1QTwPM1SxfeCF9CcN6Nr7Eww3JLDgvxfWdhR5S'
+        ),
+      });
 
-  console.log('Create projects...');
-  let numProjects = 5;
-  let projectContract = contracts[Contract.PROJECT].contract as ProjectContract;
-  let arrayPublicKey = [
-    'B62qjvrida5Kr4rj7f4gDZyG77TdFMp2ntZ9uf5Xzb7iPodykUgwYqm',
-    'B62qnhBkHqUeUTmYiAvvGdywce7j5PeTdU6t6mi7UAL8emD3mDPtQW2',
-    'B62qnk1is4cK94PCX1QTwPM1SxfeCF9CcN6Nr7Eww3JLDgvxfWdhR5S',
-    'B62qmtfTkHLzmvoKYcTLPeqvuVatnB6wtnXsP6jrEi6i2eUEjcxWauH',
-  ].map((e) => PublicKey.fromBase58(e));
-  let memberArray = new MemberArray(arrayPublicKey);
+      tx = await Mina.transaction(
+        { sender: feePayerKey.publicKey, fee, nonce: ++feePayerNonce },
+        () => {
+          projectContract.createProject(createProjectInput);
+        }
+      );
+      await proveAndSend(tx, feePayerKey, 'ProjectContract', 'createProject');
 
-  for (let i = 0; i < numProjects; i++) {
-    let createProjectInput = new CreateProjectInput({
-      members: memberArray,
-      ipfsHash: IPFSHash.fromString(
-        'QmNQLoDczHM3HXKodoYQnRszgd4JR4ZxzEKYe534eEBCc2'
-      ),
-      payeeAccount: PublicKey.fromBase58(
-        'B62qnk1is4cK94PCX1QTwPM1SxfeCF9CcN6Nr7Eww3JLDgvxfWdhR5S'
-      ),
-    });
+      projectActions.push(
+        new ProjectAction({
+          projectId: Field(-1),
+          members: createProjectInput.members,
+          ipfsHash: createProjectInput.ipfsHash,
+          payeeAccount: createProjectInput.payeeAccount,
+        })
+      );
+    }
+
+    await wait();
+
+    console.log('Reduce projects...');
+
+    let createProjectProof = await CreateProject.firstStep(
+      projectContract.nextProjectId.get(),
+      projectContract.memberTreeRoot.get(),
+      projectContract.projectInfoTreeRoot.get(),
+      projectContract.payeeTreeRoot.get(),
+      projectContract.lastRolledUpActionState.get()
+    );
+
+    let tree1 = EMPTY_LEVEL_2_TREE();
+    for (let i = 0; i < Number(memberArray.length); i++) {
+      tree1.setLeaf(BigInt(i), MemberArray.hash(memberArray.get(Field(i))));
+    }
+
+    for (let i = 0; i < numProjects; i++) {
+      console.log('Step', i);
+      createProjectProof = await CreateProject.nextStep(
+        createProjectProof,
+        projectActions[i],
+        memberStorage.getLevel1Witness(
+          memberStorage.calculateLevel1Index(Field(i))
+        ),
+        projectInfoStorage.getLevel1Witness(
+          projectInfoStorage.calculateLevel1Index(Field(i))
+        ),
+        payeeStorage.getLevel1Witness(
+          payeeStorage.calculateLevel1Index(Field(i))
+        )
+      );
+
+      // update storage:
+      memberStorage.updateInternal(Field(i), tree1);
+      projectInfoStorage.updateLeaf(
+        projectInfoStorage.calculateLeaf(projectActions[i].ipfsHash),
+        Field(i)
+      );
+      payeeStorage.updateLeaf(
+        payeeStorage.calculateLeaf(projectActions[i].payeeAccount),
+        Field(i)
+      );
+    }
 
     tx = await Mina.transaction(
       { sender: feePayerKey.publicKey, fee, nonce: ++feePayerNonce },
       () => {
-        projectContract.createProject(createProjectInput);
+        projectContract.rollup(createProjectProof);
       }
     );
-    await proveAndSend(tx, feePayerKey, 'ProjectContract', 'createProject');
+    await proveAndSend(tx, feePayerKey, 'ProjectContract', 'rollup');
+    
+    if(isCampaign) await wait();
+  }
 
-    projectActions.push(
-      new ProjectAction({
-        projectId: Field(-1),
-        members: createProjectInput.members,
-        ipfsHash: createProjectInput.ipfsHash,
-        payeeAccount: createProjectInput.payeeAccount,
-      })
-    );
+  if (isCampaign) {
+    await fetchAllContract(contracts, [Contract.CAMPAIGN]);
+    console.log('Create projects...');
+    let numProjects = 5;
+    let projectContract = contracts[Contract.PROJECT]
+      .contract as ProjectContract;
+    let arrayPublicKey = [
+      'B62qjvrida5Kr4rj7f4gDZyG77TdFMp2ntZ9uf5Xzb7iPodykUgwYqm',
+      'B62qnhBkHqUeUTmYiAvvGdywce7j5PeTdU6t6mi7UAL8emD3mDPtQW2',
+      'B62qnk1is4cK94PCX1QTwPM1SxfeCF9CcN6Nr7Eww3JLDgvxfWdhR5S',
+      'B62qmtfTkHLzmvoKYcTLPeqvuVatnB6wtnXsP6jrEi6i2eUEjcxWauH',
+    ].map((e) => PublicKey.fromBase58(e));
+    let memberArray = new MemberArray(arrayPublicKey);
+
+    for (let i = 0; i < numProjects; i++) {
+      let createProjectInput = new CreateProjectInput({
+        members: memberArray,
+        ipfsHash: IPFSHash.fromString(
+          'QmNQLoDczHM3HXKodoYQnRszgd4JR4ZxzEKYe534eEBCc2'
+        ),
+        payeeAccount: PublicKey.fromBase58(
+          'B62qnk1is4cK94PCX1QTwPM1SxfeCF9CcN6Nr7Eww3JLDgvxfWdhR5S'
+        ),
+      });
+
+      tx = await Mina.transaction(
+        { sender: feePayerKey.publicKey, fee, nonce: ++feePayerNonce },
+        () => {
+          projectContract.createProject(createProjectInput);
+        }
+      );
+      await proveAndSend(tx, feePayerKey, 'ProjectContract', 'createProject');
+
+      projectActions.push(
+        new ProjectAction({
+          projectId: Field(-1),
+          members: createProjectInput.members,
+          ipfsHash: createProjectInput.ipfsHash,
+          payeeAccount: createProjectInput.payeeAccount,
+        })
+      );
+    }
 
     await wait();
-  }
 
-  console.log('Reduce projects...');
+    console.log('Reduce projects...');
 
-  let createProjectProof = await CreateProject.firstStep(
-    projectContract.nextProjectId.get(),
-    projectContract.memberTreeRoot.get(),
-    projectContract.projectInfoTreeRoot.get(),
-    projectContract.payeeTreeRoot.get(),
-    projectContract.lastRolledUpActionState.get()
-  );
-
-  let tree1 = EMPTY_LEVEL_2_TREE();
-  for (let i = 0; i < Number(memberArray.length); i++) {
-    tree1.setLeaf(BigInt(i), MemberArray.hash(memberArray.get(Field(i))));
-  }
-
-  for (let i = 0; i < numProjects; i++) {
-    console.log('Step', i);
-    createProjectProof = await CreateProject.nextStep(
-      createProjectProof,
-      projectActions[i],
-      memberStorage.getLevel1Witness(
-        memberStorage.calculateLevel1Index(Field(i))
-      ),
-      projectInfoStorage.getLevel1Witness(
-        projectInfoStorage.calculateLevel1Index(Field(i))
-      ),
-      payeeStorage.getLevel1Witness(payeeStorage.calculateLevel1Index(Field(i)))
+    let createProjectProof = await CreateProject.firstStep(
+      projectContract.nextProjectId.get(),
+      projectContract.memberTreeRoot.get(),
+      projectContract.projectInfoTreeRoot.get(),
+      projectContract.payeeTreeRoot.get(),
+      projectContract.lastRolledUpActionState.get()
     );
 
-    // update storage:
-    memberStorage.updateInternal(Field(i), tree1);
-    projectInfoStorage.updateLeaf(
-      projectInfoStorage.calculateLeaf(projectActions[i].ipfsHash),
-      Field(i)
-    );
-    payeeStorage.updateLeaf(
-      payeeStorage.calculateLeaf(projectActions[i].payeeAccount),
-      Field(i)
-    );
-  }
+    let tree1 = EMPTY_LEVEL_2_TREE();
+    for (let i = 0; i < Number(memberArray.length); i++) {
+      tree1.setLeaf(BigInt(i), MemberArray.hash(memberArray.get(Field(i))));
+    }
 
-  tx = await Mina.transaction(feePayerKey.publicKey, () => {
-    projectContract.rollup(createProjectProof);
-  });
-  await proveAndSend(tx, feePayerKey, 'ProjectContract', 'rollup');
-  await wait();
+    for (let i = 0; i < numProjects; i++) {
+      console.log('Step', i);
+      createProjectProof = await CreateProject.nextStep(
+        createProjectProof,
+        projectActions[i],
+        memberStorage.getLevel1Witness(
+          memberStorage.calculateLevel1Index(Field(i))
+        ),
+        projectInfoStorage.getLevel1Witness(
+          projectInfoStorage.calculateLevel1Index(Field(i))
+        ),
+        payeeStorage.getLevel1Witness(
+          payeeStorage.calculateLevel1Index(Field(i))
+        )
+      );
+
+      // update storage:
+      memberStorage.updateInternal(Field(i), tree1);
+      projectInfoStorage.updateLeaf(
+        projectInfoStorage.calculateLeaf(projectActions[i].ipfsHash),
+        Field(i)
+      );
+      payeeStorage.updateLeaf(
+        payeeStorage.calculateLeaf(projectActions[i].payeeAccount),
+        Field(i)
+      );
+    }
+
+    tx = await Mina.transaction(
+      { sender: feePayerKey.publicKey, fee, nonce: ++feePayerNonce },
+      () => {
+        projectContract.rollup(createProjectProof);
+      }
+    );
+    await proveAndSend(tx, feePayerKey, 'ProjectContract', 'rollup');
+    // await wait();
+  }
 
   console.log('done all');
   console.timeEnd('runTime');

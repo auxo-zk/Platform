@@ -76,7 +76,7 @@ export class CreateProjectProofOutput extends Struct({
   initialMemberTreeRoot: Field,
   initialProjectInfoTreeRoot: Field,
   initialPayeeTreeRoot: Field,
-  initialLastRolledUpACtionState: Field,
+  initialLastRolledUpActionState: Field,
   finalNextProjectId: Field,
   finalMemberTreeRoot: Field,
   finalProjectInfoTreeRoot: Field,
@@ -99,19 +99,19 @@ export const CreateProject = ZkProgram({
         initialMemberTreeRoot: Field,
         initialProjectInfoTreeRoot: Field,
         initialPayeeTreeRoot: Field,
-        initialLastRolledUpACtionState: Field
+        initialLastRolledUpActionState: Field
       ): CreateProjectProofOutput {
         return new CreateProjectProofOutput({
           initialNextProjectId,
           initialMemberTreeRoot,
           initialProjectInfoTreeRoot,
           initialPayeeTreeRoot,
-          initialLastRolledUpACtionState,
+          initialLastRolledUpActionState,
           finalNextProjectId: initialNextProjectId,
           finalMemberTreeRoot: initialMemberTreeRoot,
           finalProjectInfoTreeRoot: initialProjectInfoTreeRoot,
           finalPayeeTreeRoot: initialPayeeTreeRoot,
-          finalLastRolledUpActionState: initialLastRolledUpACtionState,
+          finalLastRolledUpActionState: initialLastRolledUpActionState,
         });
       },
     },
@@ -197,8 +197,8 @@ export const CreateProject = ZkProgram({
           initialProjectInfoTreeRoot:
             preProof.publicOutput.initialProjectInfoTreeRoot,
           initialPayeeTreeRoot: preProof.publicOutput.initialPayeeTreeRoot,
-          initialLastRolledUpACtionState:
-            preProof.publicOutput.initialLastRolledUpACtionState,
+          initialLastRolledUpActionState:
+            preProof.publicOutput.initialLastRolledUpActionState,
           finalNextProjectId: nextProjectId,
           finalMemberTreeRoot: newMemberTreeRoot,
           finalProjectInfoTreeRoot: newProjectInfoTreeRoot,
@@ -316,7 +316,7 @@ export class ProjectContract extends SmartContract {
     );
     payeeTreeRoot.assertEquals(proof.publicOutput.initialPayeeTreeRoot);
     lastRolledUpActionState.assertEquals(
-      proof.publicOutput.initialLastRolledUpACtionState
+      proof.publicOutput.initialLastRolledUpActionState
     );
 
     let lastActionState = this.account.actionState.getAndRequireEquals();

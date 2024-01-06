@@ -38,7 +38,7 @@ import { ZkAppEnum } from '../constants.js';
 const DefaultLevel1Root = EMPTY_LEVEL_1_TREE().getRoot();
 
 export enum EventEnum {
-  ACTION_REDUCED = 'action-reduced',
+  ACTIONS_REDUCED = 'actions-reduced',
 }
 
 export class ParticipationAction extends Struct({
@@ -211,7 +211,7 @@ export class ParticipationContract extends SmartContract {
 
   reducer = Reducer({ actionType: ParticipationAction });
   events = {
-    [EventEnum.ACTION_REDUCED]: Field,
+    [EventEnum.ACTIONS_REDUCED]: Field,
   };
 
   init() {
@@ -321,7 +321,7 @@ export class ParticipationContract extends SmartContract {
       proof.publicOutput.finalLastRolledUpActionState
     );
 
-    this.emitEvent(EventEnum.ACTION_REDUCED, lastActionState);
+    this.emitEvent(EventEnum.ACTIONS_REDUCED, lastActionState);
   }
 
   @method checkParticipationIndex(input: checkParticipationIndexInput): Bool {
