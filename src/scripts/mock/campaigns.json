@@ -1,0 +1,40 @@
+[
+  {
+    "name": "Test Campaign 1",
+    "img": "",
+    "description": "Amet mollit ipsum in tempor. Culpa aute occaecat eiusmod aute id Lorem. Ullamco occaecat quis anim ad consequat duis sint culpa. Ipsum qui veniam anim mollit dolore deserunt est officia. Voluptate occaecat velit voluptate aute duis nulla dolor commodo. Ea enim culpa magna officia qui Lorem qui non.",
+    "timeline": {
+      "application": {
+        "from": "1704541265342",
+        "to": "1704541285342"
+      },
+      "investment": {
+        "from": "1704541285342",
+        "to": "1704541305342"
+      },
+      "allocation": {
+        "from": "1704541305342",
+        "to": "1704541325342"
+      }
+    },
+    "privacyOption": {
+      "isPrivate": true,
+      "committeeId": 0,
+      "keyId": 0
+    },
+    "capacity": 4,
+    "fundingOption": 0,
+    "questions": [
+      {
+        "question": "What are your visions?",
+        "hint": "Sit non minim cupidatat nostrud ipsum pariatur. Et Lorem et nulla nostrud ipsum fugiat irure non in qui laborum culpa ea exercitation. Excepteur aute fugiat ex dolor exercitation aliquip laboris quis irure labore mollit sit.",
+        "isRequired": true
+      },
+      {
+        "question": "What is your roadmap?",
+        "hint": "Sit non minim cupidatat nostrud ipsum pariatur. Et Lorem et nulla nostrud ipsum fugiat irure non in qui laborum culpa ea exercitation. Excepteur aute fugiat ex dolor exercitation aliquip laboris quis irure labore mollit sit.",
+        "isRequired": false
+      }
+    ]
+  }
+]
