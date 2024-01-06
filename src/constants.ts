@@ -7,11 +7,11 @@ export const INSTANCE_LIMITS = {
   PARTICIPATION: Constants.REQUEST_MAX_SIZE,
 };
 export enum Contract {
-  // COMMITTEE = 'committee',
-  // DKG = 'dkg',
-  // ROUND1 = 'round1',
-  // ROUND2 = 'round2',
-  // RESPONSE = 'response',
+  COMMITTEE = 'committee',
+  DKG = 'dkg',
+  ROUND1 = 'round1',
+  ROUND2 = 'round2',
+  RESPONSE = 'response',
   REQUEST = 'request',
   PROJECT = 'project',
   CAMPAIGN = 'campaign',

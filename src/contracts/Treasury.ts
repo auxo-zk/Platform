@@ -98,9 +98,9 @@ export class CheckIfNotClaimedInput extends Struct({
 
 export class ClaimFundProofOutput extends Struct({
   initialClaimedTreeRoot: Field,
-  initiallastReducedActionState: Field,
+  initiallastRolledUpActionState: Field,
   finalClaimedTreeRoot: Field,
-  finallastReducedActionState: Field,
+  finalLastRolledUpActionState: Field,
 }) {
   hash(): Field {
     return Poseidon.hash(ClaimFundProofOutput.toFields(this));
@@ -115,13 +115,13 @@ export const ClaimFund = ZkProgram({
       privateInputs: [Field, Field],
       method(
         initialClaimedTreeRoot,
-        initiallastReducedActionState
+        initiallastRolledUpActionState
       ): ClaimFundProofOutput {
         return new ClaimFundProofOutput({
           initialClaimedTreeRoot,
-          initiallastReducedActionState,
+          initiallastRolledUpActionState,
           finalClaimedTreeRoot: initialClaimedTreeRoot,
-          finallastReducedActionState: initiallastReducedActionState,
+          finalLastRolledUpActionState: initiallastRolledUpActionState,
         });
       },
     },
@@ -155,11 +155,11 @@ export const ClaimFund = ZkProgram({
 
         return new ClaimFundProofOutput({
           initialClaimedTreeRoot: preProof.publicOutput.initialClaimedTreeRoot,
-          initiallastReducedActionState:
-            preProof.publicOutput.initiallastReducedActionState,
+          initiallastRolledUpActionState:
+            preProof.publicOutput.initiallastRolledUpActionState,
           finalClaimedTreeRoot: newClaimedTreeRoot,
-          finallastReducedActionState: updateOutOfSnark(
-            preProof.publicOutput.finallastReducedActionState,
+          finalLastRolledUpActionState: updateOutOfSnark(
+            preProof.publicOutput.finalLastRolledUpActionState,
             [TreasuryAction.toFields(newAction)]
           ),
         });
@@ -171,7 +171,7 @@ export const ClaimFund = ZkProgram({
 class TreasuryProof extends ZkProgram.Proof(ClaimFund) {}
 
 export enum EventEnum {
-  ACTION_REDUCED = 'action_reduced',
+  ACTIONS_REDUCED = 'actions-reduced',
 }
 
 export class TreasuryContract extends SmartContract {
@@ -179,18 +179,18 @@ export class TreasuryContract extends SmartContract {
   @state(Field) claimedTreeRoot = State<Field>();
   // MT of other zkApp address
   @state(Field) zkApps = State<Field>();
-  @state(Field) lastReducedActionState = State<Field>();
+  @state(Field) lastRolledUpActionState = State<Field>();
 
   reducer = Reducer({ actionType: TreasuryAction });
 
   events = {
-    [EventEnum.ACTION_REDUCED]: Field,
+    [EventEnum.ACTIONS_REDUCED]: Field,
   };
 
   init() {
     super.init();
     this.claimedTreeRoot.set(DefaultLevel1Root);
-    this.lastReducedActionState.set(Reducer.initialActionState);
+    this.lastRolledUpActionState.set(Reducer.initialActionState);
   }
 
   @method claimFund(input: ClaimFundInput) {
@@ -204,21 +204,21 @@ export class TreasuryContract extends SmartContract {
 
     let id = action.id();
 
-    let lastReducedActionState =
-      this.lastReducedActionState.getAndRequireEquals();
+    let lastRolledUpActionState =
+      this.lastRolledUpActionState.getAndRequireEquals();
 
     // TODO: not really able to do this, check again. If both of them send at the same block
     // checking if the request have the same id already exists within the accumulator
     let { state: exists } = this.reducer.reduce(
       this.reducer.getActions({
-        fromActionState: lastReducedActionState,
+        fromActionState: lastRolledUpActionState,
       }),
       Bool,
       (state: Bool, action: TreasuryAction) => {
         return action.id().equals(id).or(state);
       },
       // initial state
-      { state: Bool(false), actionState: lastReducedActionState }
+      { state: Bool(false), actionState: lastRolledUpActionState }
     );
 
     // if exists then don't dispatch any more
@@ -284,7 +284,27 @@ export class TreasuryContract extends SmartContract {
   @method rollup(proof: TreasuryProof) {
     proof.verify();
 
-    this.emitEvent(EventEnum.ACTION_REDUCED, Field(0));
+    let claimedTreeRoot = this.claimedTreeRoot.getAndRequireEquals();
+    let lastRolledUpActionState =
+      this.lastRolledUpActionState.getAndRequireEquals();
+
+    claimedTreeRoot.assertEquals(proof.publicOutput.initialClaimedTreeRoot);
+    lastRolledUpActionState.assertEquals(
+      proof.publicOutput.initiallastRolledUpActionState
+    );
+
+    let lastActionState = this.account.actionState.getAndRequireEquals();
+    lastActionState.assertEquals(
+      proof.publicOutput.finalLastRolledUpActionState
+    );
+
+    // update on-chain state
+    this.claimedTreeRoot.set(proof.publicOutput.finalClaimedTreeRoot);
+    this.lastRolledUpActionState.set(
+      proof.publicOutput.finalLastRolledUpActionState
+    );
+
+    this.emitEvent(EventEnum.ACTIONS_REDUCED, lastActionState);
   }
 
   @method checkIfNotClaimed(input: CheckIfNotClaimedInput): Bool {

@@ -47,6 +47,23 @@ import {
 
 const DefaultLevel1Root = EMPTY_LEVEL_1_TREE().getRoot();
 
+export enum EventEnum {
+  ACTIONS_REDUCED = 'actions-reduced',
+  REQUEST_SENT = 'request-sent',
+}
+
+export class RequestSent extends Struct({
+  campaignId: Field,
+  committeeId: Field,
+  keyId: Field,
+  sumR: DKG_Contracts.Request.RequestVector,
+  sumM: DKG_Contracts.Request.RequestVector,
+}) {
+  static fromFields(action: Field[]): RequestSent {
+    return super.fromFields(action) as RequestSent;
+  }
+}
+
 export class CustomScalarArray extends ScalarDynamicArray(
   DKG_Constants.REQUEST_MAX_SIZE
 ) {}
@@ -256,6 +273,10 @@ export class FundingContract extends SmartContract {
   @state(Field) zkApps = State<Field>();
 
   reducer = Reducer({ actionType: FundingAction });
+  events = {
+    [EventEnum.ACTIONS_REDUCED]: Field,
+    [EventEnum.REQUEST_SENT]: RequestSent,
+  };
 
   init() {
     super.init();
@@ -340,7 +361,7 @@ export class FundingContract extends SmartContract {
     return { R, M };
   }
 
-  @method rollupActionsState(proof: ReduceProof) {
+  @method reduce(proof: ReduceProof) {
     // Verify proof
     proof.verify();
 
@@ -358,6 +379,9 @@ export class FundingContract extends SmartContract {
 
     this.actionState.set(lastActionState);
     this.actionStatus.set(proof.publicOutput.finalActionStatus);
+
+    // Emit events
+    this.emitEvent(EventEnum.ACTIONS_REDUCED, lastActionState);
   }
 
   // TODO: adding N, T to check REQUEST_MAX_SIZE by interact with Committee contract
@@ -422,6 +446,17 @@ export class FundingContract extends SmartContract {
         committeeId,
         keyId,
         R: proof.publicOutput.sum_R,
+      })
+    );
+
+    this.emitEvent(
+      EventEnum.REQUEST_SENT,
+      new RequestSent({
+        campaignId: proof.publicOutput.campaignId,
+        committeeId,
+        keyId,
+        sumR: proof.publicOutput.sum_R,
+        sumM: proof.publicOutput.sum_M,
       })
     );
   }

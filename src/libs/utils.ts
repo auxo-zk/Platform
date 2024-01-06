@@ -66,7 +66,7 @@ export async function deploy(
     AccountUpdate.fundNewAccount(feePayer.publicKey, 1);
     ct.contract.deploy();
     for (let i = 0; i < initArgs.length; i++) {
-      (ct as any)[initArgs[i][0]].set(initArgs[i][1]);
+      ct.contract[initArgs[i][0]].set(initArgs[i][1]);
     }
   });
   await tx.sign([feePayer.privateKey, ct.key.privateKey]).send();
