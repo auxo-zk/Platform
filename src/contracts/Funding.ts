@@ -63,8 +63,6 @@ export class CustomScalarArray extends ScalarDynamicArray(
 
 export class FundingInput extends Struct({
   campaignId: Field,
-  committeeId: Field,
-  keyId: Field,
   committeePublicKey: PublicKey,
   // TODO wintess to check if it the right publickey
   secretVector: CustomScalarArray,
@@ -169,7 +167,7 @@ export class RollupActionsOutput extends Struct({
   campaignId: Field,
   sum_R: DKG_Contracts.Request.RequestVector,
   sum_M: DKG_Contracts.Request.RequestVector,
-  cur_T: Field,
+  // TODO: make that we can increase number of investor
   initialStatusRoot: Field,
   finalStatusRoot: Field,
 }) {
@@ -228,7 +226,6 @@ export const CreateRollupProof = ZkProgram({
           campaignId: campaignId,
           sum_R,
           sum_M,
-          cur_T: preProof.publicOutput.cur_T.add(Field(1)),
           initialStatusRoot: preProof.publicOutput.initialStatusRoot,
           finalStatusRoot: newRoot,
         });
@@ -240,14 +237,13 @@ export const CreateRollupProof = ZkProgram({
 
       method(
         campaignId: Field,
-        REQUEST_MAX_SIZE: Field,
+        maxInvestorSize: Field,
         initialStatusRoot: Field
       ): RollupActionsOutput {
         return new RollupActionsOutput({
           campaignId,
-          sum_R: DKG_Contracts.Request.RequestVector.empty(REQUEST_MAX_SIZE),
-          sum_M: DKG_Contracts.Request.RequestVector.empty(REQUEST_MAX_SIZE),
-          cur_T: Field(0),
+          sum_R: DKG_Contracts.Request.RequestVector.empty(maxInvestorSize),
+          sum_M: DKG_Contracts.Request.RequestVector.empty(maxInvestorSize),
           initialStatusRoot,
           finalStatusRoot: initialStatusRoot,
         });
@@ -288,11 +284,11 @@ export class FundingContract extends SmartContract {
     let M = new DKG_Contracts.Request.RequestVector();
     // TODO: remove provable witness
     let totalMinaInvest = Provable.witness(Field, () => {
-      let curSum = Scalar.from(0n);
-      for (let i = 0; i < DKG_Constants.REQUEST_MAX_SIZE; i++) {
-        curSum.add(fundingInput.secretVector.get(Field(i)).toScalar());
+      let curSum = 0n;
+      for (let i = 0; i < dimension.toBigInt(); i++) {
+        curSum += fundingInput.secretVector.get(Field(i)).toScalar().toBigInt();
       }
-      return Field(curSum.toBigInt());
+      return Field(curSum);
     });
     for (let i = 0; i < DKG_Constants.REQUEST_MAX_SIZE; i++) {
       let random = fundingInput.random.get(Field(i)).toScalar();
@@ -303,6 +299,9 @@ export class FundingContract extends SmartContract {
           Group.generator.scale(random)
         )
       );
+      // // Trick to avoiding scale zero vector
+      // let tempSecretScalar = fundingInput.secretVector.get(Field(i)).toScalar();
+
       let M_i = Provable.if(
         Poseidon.hash(
           fundingInput.secretVector.get(Field(i)).toFields()
@@ -335,6 +334,8 @@ export class FundingContract extends SmartContract {
     Field(ZkAppEnum.TREASURY).assertEquals(
       fundingInput.treasuryContract.witness.calculateIndex()
     );
+
+    Provable.log('totalMinaInvest: ', totalMinaInvest);
 
     let requester = AccountUpdate.createSigned(this.sender);
     // Send invest Mina to treasury contract
@@ -383,8 +384,8 @@ export class FundingContract extends SmartContract {
     proof: ProofRollupAction,
     committeeId: Field,
     keyId: Field,
-    R_wintess: MerkleMapWitness,
-    M_wintess: MerkleMapWitness,
+    R_wintess: Level1Witness,
+    M_wintess: Level1Witness,
     requestZkAppRef: ZkAppRef
   ) {
     proof.verify();
@@ -394,8 +395,10 @@ export class FundingContract extends SmartContract {
     let actionStatus = this.actionStatus.getAndRequireEquals();
 
     actionStatus.assertEquals(proof.publicOutput.initialStatusRoot);
-    let [old_R_root, R_key] = R_wintess.computeRootAndKey(Field(0));
-    let [old_M_root, M_key] = M_wintess.computeRootAndKey(Field(0));
+    let R_key = R_wintess.calculateIndex();
+    let old_R_root = R_wintess.calculateRoot(Field(0));
+    let M_key = M_wintess.calculateIndex();
+    let old_M_root = M_wintess.calculateRoot(Field(0));
 
     R_key.assertEquals(proof.publicOutput.campaignId);
     M_key.assertEquals(proof.publicOutput.campaignId);
@@ -403,11 +406,11 @@ export class FundingContract extends SmartContract {
     R_Root.assertEquals(old_R_root);
     M_Root.assertEquals(old_M_root);
 
-    // TODO: adding check cur_T == T
-    let [new_R_root] = R_wintess.computeRootAndKey(
+    // TODO: check number of investor, maybe add time in the future
+    let new_R_root = R_wintess.calculateRoot(
       ValueStorage.calculateLeaf(proof.publicOutput.sum_R)
     );
-    let [new_M_root] = M_wintess.computeRootAndKey(
+    let new_M_root = M_wintess.calculateRoot(
       ValueStorage.calculateLeaf(proof.publicOutput.sum_M)
     );
 

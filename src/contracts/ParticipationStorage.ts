@@ -14,21 +14,19 @@ export class Level1CWitness extends MerkleWitness(
 ) {}
 
 export class Level1MT extends MerkleTree {}
-export class Level1Witness extends MerkleWitness(
-  LEVEL_1_COMBINED_TREE_HEIGHT
-) {}
+export class Level1Witness extends MerkleWitness(LEVEL_1_TREE_HEIGHT) {}
 
 export const EMPTY_LEVEL_1_COMBINED_TREE = () =>
   new Level1CMT(LEVEL_1_COMBINED_TREE_HEIGHT);
 
-export const EMPTY_LEVEL_1_TREE = () => new Level1CMT(LEVEL_1_TREE_HEIGHT);
+export const EMPTY_LEVEL_1_TREE = () => new Level1MT(LEVEL_1_TREE_HEIGHT);
 
 // Storage
 export class IndexStorage {
-  level1: Level1MT;
+  level1: Level1CMT;
 
-  constructor(level1?: Level1MT) {
-    this.level1 = level1 || EMPTY_LEVEL_1_TREE();
+  constructor(level1?: Level1CMT) {
+    this.level1 = level1 || EMPTY_LEVEL_1_COMBINED_TREE();
   }
 
   calculateLeaf(index: Field): Field {
@@ -36,7 +34,7 @@ export class IndexStorage {
   }
 
   static calculateLeaf(index: Field): Field {
-    return Poseidon.hash([index]);
+    return index;
   }
 
   calculateLevel1Index({
@@ -73,10 +71,10 @@ export class IndexStorage {
 }
 
 export class InfoStorage {
-  level1: Level1MT;
+  level1: Level1CMT;
 
-  constructor(level1?: Level1MT) {
-    this.level1 = level1 || EMPTY_LEVEL_1_TREE();
+  constructor(level1?: Level1CMT) {
+    this.level1 = level1 || EMPTY_LEVEL_1_COMBINED_TREE();
   }
 
   calculateLeaf(ipfshash: IPFSHash): Field {
@@ -122,7 +120,7 @@ export class CounterStorage {
   }
 
   static calculateLeaf(counter: Field): Field {
-    return Poseidon.hash([counter]);
+    return counter;
   }
 
   calculateLevel1Index(campaignId: Field): Field {

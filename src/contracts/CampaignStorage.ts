@@ -43,8 +43,12 @@ export class InfoStorage extends CampaignStorage {
     super(level1);
   }
 
-  calculateLeaf(ipfsHash: IPFSHash): Field {
+  static calculateLeaf(ipfsHash: IPFSHash): Field {
     return Poseidon.hash(ipfsHash.toFields());
+  }
+
+  calculateLeaf(ipfsHash: IPFSHash): Field {
+    return InfoStorage.calculateLeaf(ipfsHash);
   }
 
   calculateLevel1Index(campaignId: Field): Field {

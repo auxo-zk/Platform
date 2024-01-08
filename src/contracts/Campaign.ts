@@ -22,6 +22,7 @@ import {
   StatusEnum,
   ConfigStorage,
   OwnerStorage,
+  InfoStorage,
 } from './CampaignStorage.js';
 
 const DefaultLevel1Root = EMPTY_LEVEL_1_TREE().getRoot();
@@ -153,7 +154,7 @@ export const CreateCampaign = ZkProgram({
 
         // update infoTreeRoot
         let newInfoTreeRoot = infoWitess.calculateRoot(
-          OwnerStorage.calculateLeaf(newAction.owner)
+          InfoStorage.calculateLeaf(newAction.ipfsHash)
         );
 
         ////// caculate in infoTreeRoot
@@ -174,7 +175,7 @@ export const CreateCampaign = ZkProgram({
         preConfigRoot.assertEquals(preProof.publicOutput.finalConfigTreeRoot);
 
         // update infoTreeRoot
-        let newConfigTreeRoot = statusWitess.calculateRoot(
+        let newConfigTreeRoot = configWitess.calculateRoot(
           ConfigStorage.calculateLeaf({
             committeeId: newAction.committeeId,
             keyId: newAction.keyId,

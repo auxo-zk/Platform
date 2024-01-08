@@ -16,7 +16,7 @@ export function updateOutOfSnark(state: Field, action: Field[][]) {
   return AccountUpdate.Actions.updateSequenceState(state, actionsHash);
 }
 
-const DEFAULT_WAIT_TIME = 10 * 60 * 1000; // 10m
+const DEFAULT_WAIT_TIME = 7 * 60 * 1000; // 7m
 
 export async function wait(time?: number): Promise<void> {
   let waitTime = time || DEFAULT_WAIT_TIME;
@@ -75,7 +75,7 @@ export async function deploy(
 
 export async function proveAndSend(
   tx: Mina.Transaction,
-  feePayer: Key,
+  signer: Key[],
   contractName: string,
   methodName: string,
   logMemory?: boolean,
@@ -85,7 +85,7 @@ export async function proveAndSend(
   console.log(
     `Generate proof and submit tx for ${contractName}.${methodName}()...`
   );
-  let retries = 3; // Number of retries
+  let retries = 1; // Number of retries
 
   while (retries > 0) {
     try {
@@ -93,7 +93,7 @@ export async function proveAndSend(
       await tx.prove();
       if (profiler) profiler.stop();
 
-      await tx.sign([feePayer.privateKey]).send();
+      await tx.sign(signer.map((e) => e.privateKey)).send();
       console.log('DONE!');
       break; // Exit the loop if successful
     } catch (error) {

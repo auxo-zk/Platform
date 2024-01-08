@@ -117,4 +117,4 @@ function writeDeployAliasesFile() {
 createFileData();
 writeFiles();
 // Call the new function to write the deploy aliases file
-writeDeployAliasesFile();
+// writeDeployAliasesFile();

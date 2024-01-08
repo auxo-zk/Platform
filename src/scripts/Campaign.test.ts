@@ -139,7 +139,7 @@ describe('Campaign', () => {
       campaignContract.createCampaign(createCampaignInput);
     });
 
-    await proveAndSend(tx, feePayerKey, 'ProjectContract', 'createProject');
+    await proveAndSend(tx, [feePayerKey], 'ProjectContract', 'createProject');
 
     actions.push(
       new CampaignAction({

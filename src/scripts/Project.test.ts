@@ -91,7 +91,7 @@ describe('Project', () => {
     let tx = await Mina.transaction(feePayerKey.publicKey, () => {
       project.contract.createProject(createProjectInput);
     });
-    await proveAndSend(tx, feePayerKey, 'ProjectContract', 'createProject');
+    await proveAndSend(tx, [feePayerKey], 'ProjectContract', 'createProject');
   });
 
   it('should update projects by reduce actions', async () => {
@@ -118,7 +118,7 @@ describe('Project', () => {
     let tx = await Mina.transaction(feePayerKey.publicKey, () => {
       project.contract.rollup(reduceProof);
     });
-    await proveAndSend(tx, feePayerKey, 'ProjectContract', 'rollup');
+    await proveAndSend(tx, [feePayerKey], 'ProjectContract', 'rollup');
 
     let tree1 = EMPTY_LEVEL_2_TREE();
     for (let i = 0; i < Number(memberArray.length); i++) {

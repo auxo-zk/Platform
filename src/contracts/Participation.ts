@@ -18,6 +18,7 @@ import { IPFSHash } from '@auxo-dev/auxo-libs';
 import { updateOutOfSnark } from '../libs/utils.js';
 import {
   EMPTY_LEVEL_1_TREE,
+  EMPTY_LEVEL_1_COMBINED_TREE,
   Level1CWitness as indexAndInfoWitness,
   Level1Witness as counterWitness,
   IndexStorage,
@@ -36,6 +37,7 @@ import { ZkAppRef } from './SharedStorage.js';
 import { ZkAppEnum } from '../constants.js';
 
 const DefaultLevel1Root = EMPTY_LEVEL_1_TREE().getRoot();
+const DefaultLevel1CombinedRoot = EMPTY_LEVEL_1_COMBINED_TREE().getRoot();
 
 export enum EventEnum {
   ACTIONS_REDUCED = 'actions-reduced',
@@ -56,7 +58,7 @@ export class ParticipationAction extends Struct({
   }
 }
 
-export class joinCampaignInput extends Struct({
+export class JoinCampaignInput extends Struct({
   campaignId: Field,
   projectId: Field,
   participationInfo: IPFSHash,
@@ -65,8 +67,8 @@ export class joinCampaignInput extends Struct({
   memberLv2Witness: projectLv2Witness,
   projectRef: ZkAppRef,
 }) {
-  static fromFields(fields: Field[]): joinCampaignInput {
-    return super.fromFields(fields) as joinCampaignInput;
+  static fromFields(fields: Field[]): JoinCampaignInput {
+    return super.fromFields(fields) as JoinCampaignInput;
   }
 }
 
@@ -126,7 +128,7 @@ export const JoinCampaign = ZkProgram({
         });
       },
     },
-    createCampaign: {
+    joinCampaign: {
       privateInputs: [
         SelfProof<Void, CreateParticipationProofOutput>,
         ParticipationAction,
@@ -140,7 +142,7 @@ export const JoinCampaign = ZkProgram({
         newAction: ParticipationAction,
         indexWitness: indexAndInfoWitness,
         infoWitness: indexAndInfoWitness,
-        currentCounter: Field,
+        currentCounter: Field, // of each campaign
         counterWitness: counterWitness
       ): CreateParticipationProofOutput {
         preProof.verify();
@@ -153,7 +155,7 @@ export const JoinCampaign = ZkProgram({
 
         // update counter
         let counterId = counterWitness.calculateIndex();
-        counterId.assertEquals(id);
+        counterId.assertEquals(newAction.campaignId);
         let curCounterTreeRoot = counterWitness.calculateRoot(currentCounter);
         curCounterTreeRoot.assertEquals(
           preProof.publicOutput.finalCounterTreeRoot
@@ -216,11 +218,13 @@ export class ParticipationContract extends SmartContract {
 
   init() {
     super.init();
-    this.indexTreeRoot.set(DefaultLevel1Root);
+    this.indexTreeRoot.set(DefaultLevel1CombinedRoot);
+    this.infoTreeRoot.set(DefaultLevel1CombinedRoot);
+    this.counterTreeRoot.set(DefaultLevel1Root);
     this.lastRolledUpActionState.set(Reducer.initialActionState);
   }
 
-  @method joinCampaign(input: joinCampaignInput) {
+  @method joinCampaign(input: JoinCampaignInput) {
     // TODO: check campaign status
 
     // check owner
@@ -232,20 +236,23 @@ export class ParticipationContract extends SmartContract {
         Poseidon.hash(input.projectRef.address.toFields())
       )
     );
-    Field(ZkAppEnum.PROJECT).assertEquals(input.projectRef.witness.calculateIndex());
+
+    Field(ZkAppEnum.PROJECT).assertEquals(
+      input.projectRef.witness.calculateIndex()
+    );
 
     let projectContract = new ProjectContract(input.projectRef.address);
 
-    let isOwner = projectContract.checkProjectOwner(
-      new CheckProjectOwerInput({
-        owner: this.sender,
-        projectId: input.projectId,
-        memberLevel1Witness: input.memberLv1Witness,
-        memberLevel2Witness: input.memberLv2Witness,
-      })
-    );
-
-    isOwner.assertEquals(Bool(true));
+    // TODO: check latter
+    // let isOwner = projectContract.checkProjectOwner(
+    //   new CheckProjectOwerInput({
+    //     owner: this.sender,
+    //     projectId: input.projectId,
+    //     memberLevel1Witness: input.memberLv1Witness,
+    //     memberLevel2Witness: input.memberLv2Witness,
+    //   })
+    // );
+    // isOwner.assertEquals(Bool(true));
 
     // check if this is first time join campaign
 
