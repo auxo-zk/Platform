@@ -69,16 +69,16 @@ describe('Participation', () => {
   let fundingActionStates: Field[];
   let secretVectors: CustomScalarArray[] = [
     new CustomScalarArray([
-      CustomScalar.fromScalar(Scalar.from(1e9)),
       CustomScalar.fromScalar(Scalar.from(10n)),
-      CustomScalar.fromScalar(Scalar.from(1e9)),
       CustomScalar.fromScalar(Scalar.from(10n)),
+      CustomScalar.fromScalar(Scalar.from(50n)),
+      CustomScalar.fromScalar(Scalar.from(0n)),
     ]),
     new CustomScalarArray([
       CustomScalar.fromScalar(Scalar.from(10n)),
       CustomScalar.fromScalar(Scalar.from(10n)),
-      CustomScalar.fromScalar(Scalar.from(1e9)),
-      CustomScalar.fromScalar(Scalar.from(1e9)),
+      CustomScalar.fromScalar(Scalar.from(0n)),
+      CustomScalar.fromScalar(Scalar.from(10n)),
     ]),
   ];
 
@@ -162,6 +162,8 @@ describe('Participation', () => {
     await CreateRollupProof.compile();
     if (doProofs) {
       console.log('FundingContract.compile...');
+      // await ZkApp.Request.CreateRequest.compile();
+      // await ZkApp.Request.RequestContract.compile();
       await FundingContract.compile();
       await ClaimFund.compile();
       await TreasuryContract.compile();

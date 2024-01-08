@@ -20,7 +20,7 @@ import {
   AccountUpdate,
 } from 'o1js';
 
-import { ScalarDynamicArray } from '@auxo-dev/auxo-libs';
+import { CustomScalar, ScalarDynamicArray } from '@auxo-dev/auxo-libs';
 import { updateOutOfSnark } from '../libs/utils.js';
 
 import {
@@ -299,8 +299,16 @@ export class FundingContract extends SmartContract {
           Group.generator.scale(random)
         )
       );
-      // // Trick to avoiding scale zero vector
-      // let tempSecretScalar = fundingInput.secretVector.get(Field(i)).toScalar();
+      // Trick to avoiding scale zero vector
+
+      let tempSecretScalar = Provable.if(
+        fundingInput.secretVector
+          .get(Field(i))
+          .equals(CustomScalar.fromScalar(Scalar.from(0n))),
+        CustomScalar,
+        CustomScalar.fromScalar(Scalar.from(69n)), // if equal zero
+        fundingInput.secretVector.get(Field(i))
+      );
 
       let M_i = Provable.if(
         Poseidon.hash(
@@ -308,11 +316,16 @@ export class FundingContract extends SmartContract {
         ).equals(Poseidon.hash([Field(0), Field(0)])),
         Group.zero.add(fundingInput.committeePublicKey.toGroup().scale(random)),
         Group.generator
-          .scale(fundingInput.secretVector.get(Field(i)).toScalar())
+          .scale(tempSecretScalar.toScalar())
           .add(fundingInput.committeePublicKey.toGroup().scale(random))
       );
+
       M_i = Provable.if(
-        Field(i).greaterThanOrEqual(dimension),
+        Field(i)
+          .greaterThanOrEqual(dimension)
+          .or(
+            tempSecretScalar.equals(CustomScalar.fromScalar(Scalar.from(69n))) // if secret value equal zero then M_i is zero
+          ),
         Group.fromFields([Field(0), Field(0)]),
         M_i
       );
@@ -337,10 +350,13 @@ export class FundingContract extends SmartContract {
 
     Provable.log('totalMinaInvest: ', totalMinaInvest);
 
-    let requester = AccountUpdate.createSigned(this.sender);
+    Provable.log('this.sender: ', this.sender);
+    Provable.log('this.address: ', this.address);
+
+    let investor = AccountUpdate.createSigned(this.sender);
     // Send invest Mina to treasury contract
-    requester.send({
-      to: fundingInput.treasuryContract.address,
+    investor.send({
+      to: AccountUpdate.create(fundingInput.treasuryContract.address),
       amount: UInt64.from(totalMinaInvest),
     });
 
