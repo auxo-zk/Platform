@@ -62,3 +62,31 @@ export class ValueStorage extends FundingStorage {
     super.updateLeaf(leaf, level1Index);
   }
 }
+
+export class RequestIdStorage extends FundingStorage {
+  level1: Level1MT;
+
+  constructor(level1?: Level1MT) {
+    super(level1);
+  }
+
+  calculateLeaf(requestId: Field): Field {
+    return RequestIdStorage.calculateLeaf(requestId);
+  }
+
+  static calculateLeaf(requestId: Field): Field {
+    return requestId;
+  }
+
+  calculateLevel1Index(campaignId: Field): Field {
+    return campaignId;
+  }
+
+  getWitness(level1Index: Field): Level1Witness {
+    return super.getWitness(level1Index) as Level1Witness;
+  }
+
+  updateLeaf(leaf: Field, level1Index: Field): void {
+    super.updateLeaf(leaf, level1Index);
+  }
+}

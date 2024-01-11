@@ -36,6 +36,7 @@ import {
   Level1Witness,
   EMPTY_LEVEL_1_TREE,
   ValueStorage,
+  RequestIdStorage,
 } from './FundingStorage.js';
 
 const DefaultLevel1Root = EMPTY_LEVEL_1_TREE().getRoot();
@@ -49,6 +50,7 @@ export class RequestSent extends Struct({
   campaignId: Field,
   committeeId: Field,
   keyId: Field,
+  requestId: Field,
   sumR: DKG_Contracts.Request.RequestVector,
   sumM: DKG_Contracts.Request.RequestVector,
 }) {
@@ -257,8 +259,9 @@ class ProofRollupAction extends ZkProgram.Proof(CreateRollupProof) {}
 export class FundingContract extends SmartContract {
   @state(Field) actionState = State<Field>();
   @state(Field) actionStatus = State<Field>();
-  @state(Field) R_Root = State<Field>(); // campaignId -> sum R
-  @state(Field) M_Root = State<Field>(); // campaignId -> sum M
+  @state(Field) R_root = State<Field>(); // campaignId -> sum R
+  @state(Field) M_root = State<Field>(); // campaignId -> sum M
+  @state(Field) requestId_root = State<Field>(); // campaignId -> requestId
   @state(Field) zkApps = State<Field>();
 
   reducer = Reducer({ actionType: FundingAction });
@@ -271,8 +274,9 @@ export class FundingContract extends SmartContract {
     super.init();
     this.actionState.set(Reducer.initialActionState);
     this.actionStatus.set(EMPTY_REDUCE_MT().getRoot());
-    this.R_Root.set(DefaultLevel1Root);
-    this.M_Root.set(DefaultLevel1Root);
+    this.R_root.set(DefaultLevel1Root);
+    this.M_root.set(DefaultLevel1Root);
+    this.requestId_root.set(DefaultLevel1Root);
   }
 
   @method fund(fundingInput: FundingInput): {
@@ -348,11 +352,6 @@ export class FundingContract extends SmartContract {
       fundingInput.treasuryContract.witness.calculateIndex()
     );
 
-    Provable.log('totalMinaInvest: ', totalMinaInvest);
-
-    Provable.log('this.sender: ', this.sender);
-    Provable.log('this.address: ', this.address);
-
     let investor = AccountUpdate.createSigned(this.sender);
     // Send invest Mina to treasury contract
     investor.send({
@@ -395,44 +394,63 @@ export class FundingContract extends SmartContract {
   }
 
   // TODO: adding N, T to check REQUEST_MAX_SIZE by interact with Committee contract
-  // TODO: checking Campaign contract -> committeeId and keyId
+  // TODO: checking Campaign contract config -> committeeId and keyId
   @method rollupRequest(
     proof: ProofRollupAction,
     committeeId: Field,
     keyId: Field,
-    R_wintess: Level1Witness,
-    M_wintess: Level1Witness,
+    R_witness: Level1Witness,
+    M_witness: Level1Witness,
+    requestId_witness: Level1Witness,
     requestZkAppRef: ZkAppRef
   ) {
     proof.verify();
 
-    let R_Root = this.R_Root.getAndRequireEquals();
-    let M_Root = this.M_Root.getAndRequireEquals();
+    let requestInput = new DKG_Contracts.Request.RequestInput({
+      committeeId,
+      keyId,
+      R: proof.publicOutput.sum_R,
+    });
+
+    let requestId = requestInput.requestId();
+
+    let R_root = this.R_root.getAndRequireEquals();
+    let M_root = this.M_root.getAndRequireEquals();
+    let requestId_root = this.requestId_root.getAndRequireEquals();
     let actionStatus = this.actionStatus.getAndRequireEquals();
 
     actionStatus.assertEquals(proof.publicOutput.initialStatusRoot);
-    let R_key = R_wintess.calculateIndex();
-    let old_R_root = R_wintess.calculateRoot(Field(0));
-    let M_key = M_wintess.calculateIndex();
-    let old_M_root = M_wintess.calculateRoot(Field(0));
+    let R_key = R_witness.calculateIndex();
+    let old_R_root = R_witness.calculateRoot(Field(0));
+    let M_key = M_witness.calculateIndex();
+    let old_M_root = M_witness.calculateRoot(Field(0));
+    let requestId_key = requestId_witness.calculateIndex();
+    let old_requestId_root = requestId_witness.calculateRoot(Field(0));
 
     R_key.assertEquals(proof.publicOutput.campaignId);
     M_key.assertEquals(proof.publicOutput.campaignId);
+    requestId_key.assertEquals(proof.publicOutput.campaignId);
 
-    R_Root.assertEquals(old_R_root);
-    M_Root.assertEquals(old_M_root);
+    R_root.assertEquals(old_R_root);
+    M_root.assertEquals(old_M_root);
+    requestId_root.assertEquals(old_requestId_root);
 
-    // TODO: check number of investor, maybe add time in the future
-    let new_R_root = R_wintess.calculateRoot(
+    // TODO: check number of investor
+    // maybe add time in the future
+    let new_R_root = R_witness.calculateRoot(
       ValueStorage.calculateLeaf(proof.publicOutput.sum_R)
     );
-    let new_M_root = M_wintess.calculateRoot(
+    let new_M_root = M_witness.calculateRoot(
       ValueStorage.calculateLeaf(proof.publicOutput.sum_M)
+    );
+    let new_requestId_root = requestId_witness.calculateRoot(
+      RequestIdStorage.calculateLeaf(requestId)
     );
 
     // update on-chain state
-    this.R_Root.set(new_R_root);
-    this.M_Root.set(new_M_root);
+    this.R_root.set(new_R_root);
+    this.M_root.set(new_M_root);
+    this.requestId_root.set(new_requestId_root);
     this.actionStatus.set(proof.publicOutput.finalStatusRoot);
 
     // TODO: request to Request contract
@@ -453,13 +471,8 @@ export class FundingContract extends SmartContract {
     const requestZkApp = new DKG_Contracts.Request.RequestContract(
       requestZkAppRef.address
     );
-    requestZkApp.request(
-      new DKG_Contracts.Request.RequestInput({
-        committeeId,
-        keyId,
-        R: proof.publicOutput.sum_R,
-      })
-    );
+
+    requestZkApp.request(requestInput);
 
     this.emitEvent(
       EventEnum.REQUEST_SENT,
@@ -467,6 +480,7 @@ export class FundingContract extends SmartContract {
         campaignId: proof.publicOutput.campaignId,
         committeeId,
         keyId,
+        requestId,
         sumR: proof.publicOutput.sum_R,
         sumM: proof.publicOutput.sum_M,
       })
@@ -483,7 +497,7 @@ export class FundingContract extends SmartContract {
     let caculateCampaignId = wintess.calculateIndex();
     isCorrect = isCorrect.and(campaignId.equals(caculateCampaignId));
 
-    let M_root_on_chain = this.M_Root.getAndRequireEquals();
+    let M_root_on_chain = this.M_root.getAndRequireEquals();
     let calculateM = wintess.calculateRoot(ValueStorage.calculateLeaf(M));
     isCorrect = isCorrect.and(M_root_on_chain.equals(calculateM));
 
@@ -500,7 +514,7 @@ export class FundingContract extends SmartContract {
     let caculateCampaignId = wintess.calculateIndex();
     isCorrect = isCorrect.and(campaignId.equals(caculateCampaignId));
 
-    let R_root_on_chain = this.R_Root.getAndRequireEquals();
+    let R_root_on_chain = this.R_root.getAndRequireEquals();
     let calculateR = wintess.calculateRoot(ValueStorage.calculateLeaf(R));
     isCorrect = isCorrect.and(R_root_on_chain.equals(calculateR));
 

@@ -58,12 +58,8 @@ export class TreasuryAction extends Struct({
 export class ClaimFundInput extends Struct({
   campaignId: Field,
   projectId: Field,
-  committeeId: Field,
-  keyId: Field,
-  //TODO: project config publickey witness
-  payeeAddress: PublicKey,
-  //TODO: campaign config witness
-  R: ZkApp.Request.RequestVector,
+  requestId: Field, // TODO: Funding check requestId
+  payeeAddress: PublicKey, // TODO: Project check address
   M: ZkApp.Request.RequestVector,
   D: ZkApp.Request.RequestVector,
   DWitness: MerkleMapWitness,

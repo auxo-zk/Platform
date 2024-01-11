@@ -61,7 +61,7 @@ import {
   FundingAction,
   FundingInput,
 } from '../contracts/Funding.js';
-import { ValueStorage } from '../contracts/FundingStorage.js';
+import { RequestIdStorage, ValueStorage } from '../contracts/FundingStorage.js';
 import {
   ParticipationContract,
   JoinCampaign,
@@ -91,6 +91,7 @@ import {
   wait,
 } from '../libs/utils.js';
 import { CustomScalarArray, ZkApp } from '@auxo-dev/dkg';
+import { RequestStorage } from '@auxo-dev/dkg/build/esm/src/contracts/storages.js';
 
 // const isCompile = false;
 
@@ -178,6 +179,8 @@ async function main() {
               return new ParticipationContract(key.publicKey);
             case Contract.TREASURY:
               return new TreasuryContract(key.publicKey);
+            case Contract.REQUEST:
+              return new ZkApp.Request.RequestContract(key.publicKey);
             default:
               return new SmartContract(key.publicKey);
           }
@@ -221,6 +224,7 @@ async function main() {
   let fundingReduceStorage = new ReduceStorage();
   let sumRStorage = new ValueStorage();
   let sumMStorage = new ValueStorage();
+  let requestIdStorage = new RequestIdStorage();
   let fundingAddressStorage = new AddressStorage(addressMerkleTree);
   let fundingAction: FundingAction[] = [];
 
@@ -245,6 +249,10 @@ async function main() {
   }
 
   if (isFunding) {
+    await compile(ZkApp.Request.CreateRequest, cache, logMemory, profiler);
+    await compile(ZkApp.Request.RequestContract, cache, logMemory, profiler);
+    await compile(ClaimFund, cache, logMemory, profiler);
+    await compile(TreasuryContract, cache, logMemory, profiler);
     await compile(CreateReduceProof, cache, logMemory, profiler);
     await compile(CreateRollupProof, cache, logMemory, profiler);
     await compile(FundingContract, cache, logMemory, profiler);
@@ -286,30 +294,39 @@ async function main() {
     // );
 
     // Deploy FundingContract
-    // await deploy(
-    //   contracts[Contract.FUNDING],
-    //   [['zkApps', fundingAddressStorage.addresses.getRoot()]],
-    //   feePayerKey,
-    //   fee,
-    //   ++feePayerNonce
-    // );
+    await deploy(
+      contracts[Contract.FUNDING],
+      [['zkApps', fundingAddressStorage.addresses.getRoot()]],
+      feePayerKey,
+      fee,
+      ++feePayerNonce
+    );
 
-    // tx = await Mina.transaction(
-    //   { sender: feePayerKey.publicKey, fee, nonce: ++feePayerNonce },
-    //   () => {
-    //     let feePayerAccount = AccountUpdate.createSigned(feePayerKey.publicKey);
-    //     feePayerAccount.send({
-    //       to: contracts[Contract.FUNDING].contract,
-    //       amount: 3 * 10 ** 9,
-    //     }); // 3 Mina
-    //   }
-    // );
-    // await tx.sign([feePayerKey.privateKey]).send();
+    tx = await Mina.transaction(
+      { sender: feePayerKey.publicKey, fee, nonce: ++feePayerNonce },
+      () => {
+        let feePayerAccount = AccountUpdate.createSigned(feePayerKey.publicKey);
+        feePayerAccount.send({
+          to: contracts[Contract.FUNDING].contract,
+          amount: 5 * 10 ** 9,
+        }); // 5 Mina to send request - which cost 1
+      }
+    );
+    await tx.sign([feePayerKey.privateKey]).send();
 
     // Deploy TreasuryContract
     await deploy(
       contracts[Contract.TREASURY],
       [['zkApps', treasuryAddressStorage.addresses.getRoot()]],
+      feePayerKey,
+      fee,
+      ++feePayerNonce
+    );
+
+    // Deploy RequestConctract
+    await deploy(
+      contracts[Contract.REQUEST],
+      [],
       feePayerKey,
       fee,
       ++feePayerNonce
@@ -522,12 +539,6 @@ async function main() {
   }
 
   if (isParticipation) {
-    Provable.log('EMPTY_LEVEL_1_TREE: ', EMPTY_LEVEL_1_TREE().getRoot());
-    Provable.log(
-      'EMPTY_LEVEL_1_COMBINED_TREE: ',
-      EMPTY_LEVEL_1_COMBINED_TREE().getRoot()
-    );
-
     await fetchAllContract(contracts, [Contract.PARTICIPATION]);
     console.log('Join campaign...');
     let numCampaign = 2;
@@ -694,7 +705,7 @@ async function main() {
       await fs.readFile('keys/acc1.json', 'utf8')
     );
     let acc2: { privateKey: string; publicKey: string } = JSON.parse(
-      await fs.readFile('keys/acc1.json', 'utf8')
+      await fs.readFile('keys/acc2.json', 'utf8')
     );
 
     let investors: Key[] = [
@@ -712,13 +723,13 @@ async function main() {
     let secretVectors: CustomScalarArray[] = [
       new CustomScalarArray([
         CustomScalar.fromScalar(Scalar.from(1e7)),
-        CustomScalar.fromScalar(Scalar.from(10n)),
+        CustomScalar.fromScalar(Scalar.from(0n)),
         CustomScalar.fromScalar(Scalar.from(1e7)),
-        CustomScalar.fromScalar(Scalar.from(10n)),
+        CustomScalar.fromScalar(Scalar.from(0n)),
       ]),
       new CustomScalarArray([
-        CustomScalar.fromScalar(Scalar.from(10n)),
-        CustomScalar.fromScalar(Scalar.from(10n)),
+        CustomScalar.fromScalar(Scalar.from(0n)),
+        CustomScalar.fromScalar(Scalar.from(0n)),
         CustomScalar.fromScalar(Scalar.from(1e7)),
         CustomScalar.fromScalar(Scalar.from(1e7)),
       ]),
@@ -773,15 +784,24 @@ async function main() {
       R: ZkApp.Request.RequestVector;
       M: ZkApp.Request.RequestVector;
     };
+    let investorNonce = [];
+    for (let i = 0; i < investors.length; i++) {
+      let investor = await fetchAccount({
+        publicKey: investors[i].publicKey,
+      });
+      investorNonce.push(Number(investor.account?.nonce) - 1);
+    }
 
     for (let i = 0; i < investors.length; i++) {
       let balanceBefore = Number(Account(investors[i].publicKey).balance.get());
-      tx = await Mina.transaction(investors[i].publicKey, () => {
-        result = fundingContract.fund(fundingInput[i]);
-      });
-      await proveAndSend(tx, [investors[i]], Contract.FUNDING, 'fund');
-      let balanceAfter = Number(Account(investors[i].publicKey).balance.get());
-      console.log('Balance change: ', balanceBefore - balanceAfter);
+      console.log('Balance before: ', balanceBefore);
+      tx = await Mina.transaction(
+        { sender: investors[i].publicKey, fee, nonce: ++investorNonce[i] },
+        () => {
+          result = fundingContract.fund(fundingInput[i]);
+        }
+      );
+      // await proveAndSend(tx, [investors[i]], Contract.FUNDING, 'fund');
 
       let { R, M } = result!;
 
@@ -794,12 +814,14 @@ async function main() {
       );
     }
 
-    await wait();
+    // await wait();
     await fetchAllContract(contracts, [Contract.FUNDING]);
 
     let lastActionState = fundingContract.actionState.get();
     let fundingActionStates = contracts[Contract.FUNDING].actionStates;
-    let index = fundingActionStates.findIndex((obj) => obj == lastActionState);
+    let index = fundingActionStates.findIndex((obj) =>
+      Boolean(obj.equals(lastActionState))
+    );
 
     console.log('Reduce funding...');
 
@@ -832,7 +854,7 @@ async function main() {
     await proveAndSend(tx, [feePayerKey], Contract.FUNDING, 'reduce');
 
     await wait();
-    await fetchAllContract(contracts, [Contract.FUNDING]);
+    await fetchAllContract(contracts, [Contract.FUNDING, Contract.REQUEST]);
 
     console.log('RollUp funding...');
 
@@ -870,6 +892,9 @@ async function main() {
           ),
           sumMStorage.getLevel1Witness(
             sumMStorage.calculateLevel1Index(fundingAction[0].campaignId)
+          ),
+          requestIdStorage.getLevel1Witness(
+            requestIdStorage.calculateLevel1Index(fundingAction[0].campaignId)
           ),
           getZkAppRef(
             fundingAddressStorage.addresses,

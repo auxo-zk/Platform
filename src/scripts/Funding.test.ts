@@ -15,6 +15,7 @@ import {
   SmartContract,
   Scalar,
   Account,
+  Provable,
 } from 'o1js';
 
 import fs from 'fs/promises';
@@ -27,7 +28,7 @@ import {
   FundingInput,
   FundingAction,
 } from '../contracts/Funding.js';
-import { ValueStorage } from '../contracts/FundingStorage.js';
+import { RequestIdStorage, ValueStorage } from '../contracts/FundingStorage.js';
 import { Key, Config } from './helper/config.js';
 import {
   AddressStorage,
@@ -47,8 +48,8 @@ import { CustomScalar } from '@auxo-dev/auxo-libs';
 import { CustomScalarArray, ZkApp } from '@auxo-dev/dkg';
 import { TreasuryContract, ClaimFund } from '../contracts/Treasury.js';
 
-describe('Participation', () => {
-  const doProofs = true;
+describe('Funding', () => {
+  const doProofs = false;
   const cache = Cache.FileSystem('./caches');
 
   let Local = Mina.LocalBlockchain({ proofsEnabled: doProofs });
@@ -62,6 +63,7 @@ describe('Participation', () => {
   let fundingReduceStorage = new ReduceStorage();
   let sumRStorage = new ValueStorage();
   let sumMStorage = new ValueStorage();
+  let requestIdStorage = new RequestIdStorage();
   let fundingAddressStorage = new AddressStorage(addressMerkleTree);
   let fundingAction: FundingAction[] = [];
   let fundingInput: FundingInput[];
@@ -131,6 +133,8 @@ describe('Participation', () => {
                 return new FundingContract(key.publicKey);
               case Contract.TREASURY:
                 return new TreasuryContract(key.publicKey);
+              case Contract.REQUEST:
+                return new ZkApp.Request.RequestContract(key.publicKey);
               default:
                 return new SmartContract(key.publicKey);
             }
@@ -162,8 +166,6 @@ describe('Participation', () => {
     await CreateRollupProof.compile();
     if (doProofs) {
       console.log('FundingContract.compile...');
-      // await ZkApp.Request.CreateRequest.compile();
-      // await ZkApp.Request.RequestContract.compile();
       await FundingContract.compile();
       await ClaimFund.compile();
       await TreasuryContract.compile();
@@ -180,6 +182,7 @@ describe('Participation', () => {
       feePayerKey
     );
     await deploy(contracts[Contract.TREASURY], [], feePayerKey);
+    await deploy(contracts[Contract.REQUEST], [], feePayerKey);
 
     console.log('Funding...');
 
@@ -237,21 +240,29 @@ describe('Participation', () => {
     }
   });
 
-  xit('Reduce', async () => {
+  it('Reduce', async () => {
     await fetchAllContract(contracts, [Contract.FUNDING]);
 
     let fundingContract = contracts[Contract.FUNDING]
       .contract as FundingContract;
     let lastActionState = fundingContract.actionState.get();
     fundingActionStates = contracts[Contract.FUNDING].actionStates;
-    index = fundingActionStates.findIndex((obj) => obj == lastActionState);
+    index = fundingActionStates.findIndex((obj) =>
+      Boolean(obj.equals(lastActionState))
+    );
+    Provable.log('lastActionStates: ', lastActionState);
+    Provable.log('Funding action states: ', fundingActionStates);
+    Provable.log('Index: ', index);
 
     console.log('Reduce funding...');
 
+    console.log('First step: ');
     let reduceFundingProof = await CreateReduceProof.firstStep(
       fundingContract.actionState.get(),
       fundingContract.actionStatus.get()
     );
+
+    console.log('Next step: ');
 
     for (let i = 0; i < investors.length; i++) {
       console.log('Step', i);
@@ -274,10 +285,12 @@ describe('Participation', () => {
     await proveAndSend(tx, [feePayerKey], Contract.FUNDING, 'reduce');
   });
 
-  xit('RollUp', async () => {
+  it('RollUp', async () => {
     let fundingContract = contracts[Contract.FUNDING]
       .contract as FundingContract;
     console.log('RollUp funding...');
+
+    await fetchAllContract(contracts, [Contract.REQUEST]);
 
     let rollUpFundingProof = await CreateRollupProof.firstStep(
       fundingAction[0].campaignId,
@@ -311,6 +324,9 @@ describe('Participation', () => {
         ),
         sumMStorage.getLevel1Witness(
           sumMStorage.calculateLevel1Index(fundingAction[0].campaignId)
+        ),
+        requestIdStorage.getLevel1Witness(
+          requestIdStorage.calculateLevel1Index(fundingAction[0].campaignId)
         ),
         getZkAppRef(
           fundingAddressStorage.addresses,
