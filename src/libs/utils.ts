@@ -16,7 +16,7 @@ export function updateOutOfSnark(state: Field, action: Field[][]) {
   return AccountUpdate.Actions.updateSequenceState(state, actionsHash);
 }
 
-const DEFAULT_WAIT_TIME = 7 * 60 * 1000; // 7m
+const DEFAULT_WAIT_TIME = 10 * 60 * 1000; // 7m
 
 export async function wait(time?: number): Promise<void> {
   let waitTime = time || DEFAULT_WAIT_TIME;

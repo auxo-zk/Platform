@@ -289,6 +289,8 @@ describe('Funding', () => {
     let fundingContract = contracts[Contract.FUNDING]
       .contract as FundingContract;
     console.log('RollUp funding...');
+    let balance = Number(Account(fundingContract.address).balance.get());
+    console.log('Contract balance: ', balance);
 
     await fetchAllContract(contracts, [Contract.REQUEST]);
 
@@ -335,6 +337,10 @@ describe('Funding', () => {
         )
       );
     });
+
+    balance = Number(Account(fundingContract.address).balance.get());
     await proveAndSend(tx, [feePayerKey], Contract.FUNDING, '');
+
+    console.log('Contract balance after: ', balance);
   });
-});
+})

@@ -1,398 +1,334 @@
-// import {
-//   Field,
-//   Reducer,
-//   Mina,
-//   PrivateKey,
-//   PublicKey,
-//   AccountUpdate,
-//   Poseidon,
-//   MerkleMap,
-//   MerkleTree,
-//   MerkleWitness,
-//   Proof,
-//   Void,
-//   Cache,
-//   SmartContract,
-//   Scalar,
-//   Account,
-//   Provable,
-// } from 'o1js';
+import {
+  Field,
+  Reducer,
+  Mina,
+  PrivateKey,
+  PublicKey,
+  AccountUpdate,
+  Poseidon,
+  MerkleMap,
+  MerkleTree,
+  MerkleWitness,
+  Proof,
+  Void,
+  Cache,
+  SmartContract,
+  Scalar,
+  Account,
+  Provable,
+  Group,
+  Bool,
+} from 'o1js';
 
-// import fs from 'fs/promises';
-// import { getProfiler } from './helper/profiler.js';
-// import randomAccounts from './helper/randomAccounts.js';
-// import {
-//   FundingContract,
-//   CreateReduceProof,
-//   CreateRollupProof,
-//   FundingInput,
-// } from '../contracts/Funding.js';
-// import { ValueStorage } from '../contracts/FundingStorage.js';
-// import { Key, Config } from './helper/config.js';
-// import {
-//   AddressStorage,
-//   EMPTY_ADDRESS_MT,
-//   ReduceStorage,
-//   getZkAppRef,
-//   ActionStatus,
-// } from '../contracts/SharedStorage.js';
-// import { Contract, ZkAppEnum } from '../constants.js';
-// import {
-//   ContractList,
-//   deploy,
-//   proveAndSend,
-//   fetchAllContract,
-// } from '../libs/utils.js';
-// import { CustomScalar } from '@auxo-dev/auxo-libs';
-// import { CustomScalarArray, ZkApp } from '@auxo-dev/dkg';
-// import {
-//   TreasuryContract,
-//   ClaimFund,
-//   TreasuryAction,
-//   ClaimFundInput,
-// } from '../contracts/Treasury.js';
-// import { ClaimedStorage } from '../contracts/TreasuryStorage.js';
-// import { ParticipationContract } from '../contracts/Participation.js';
+import fs from 'fs/promises';
+import { getProfiler } from './helper/profiler.js';
+import randomAccounts from './helper/randomAccounts.js';
+import {
+  FundingContract,
+  CreateReduceProof,
+  CreateRollupProof,
+  FundingInput,
+} from '../contracts/Funding.js';
+import { ValueStorage } from '../contracts/FundingStorage.js';
+import { Key, Config } from './helper/config.js';
+import {
+  AddressStorage,
+  EMPTY_ADDRESS_MT,
+  ReduceStorage,
+  getZkAppRef,
+  ActionStatus,
+} from '../contracts/SharedStorage.js';
+import { Contract, ZkAppEnum } from '../constants.js';
+import {
+  ContractList,
+  deploy,
+  proveAndSend,
+  fetchAllContract,
+} from '../libs/utils.js';
+import { CustomScalar } from '@auxo-dev/auxo-libs';
+import { CustomScalarArray, ZkApp } from '@auxo-dev/dkg';
+import {
+  TreasuryContract,
+  ClaimFund,
+  TreasuryAction,
+  ClaimFundInput,
+  InvestVector,
+} from '../contracts/Treasury.js';
+import { ClaimedStorage } from '../contracts/TreasuryStorage.js';
+import { ParticipationContract } from '../contracts/Participation.js';
+import {
+  Level1CWitness as IndexWitness,
+  IndexStorage,
+} from '../contracts/ParticipationStorage.js';
 
-// describe('Funding', () => {
-//   const doProofs = false;
-//   const cache = Cache.FileSystem('./caches');
+describe('Funding', () => {
+  const doProofs = true;
+  const cache = Cache.FileSystem('./caches');
 
-//   let Local = Mina.LocalBlockchain({ proofsEnabled: doProofs });
-//   Mina.setActiveInstance(Local);
+  let Local = Mina.LocalBlockchain({ proofsEnabled: doProofs });
+  Mina.setActiveInstance(Local);
 
-//   let feePayerKey: Key = Local.testAccounts[0];
-//   let contracts: ContractList = {};
-//   let addressMerkleTree = EMPTY_ADDRESS_MT();
-//   let tx;
-//   // Funding storage
-//   let claimedStorage = new ClaimedStorage();
-//   let allAddressStorage = new AddressStorage(addressMerkleTree);
-//   let treasuryAction: ClaimedStorage[] = [];
-//   let claimFundInput: ClaimFundInput[];
-//   let fundingInput: FundingInput[];
-//   let index: number;
-//   let treasuryActionStates: Field[];
-//   let sumD: CustomScalarArray[] = [
-//     new CustomScalarArray([
-//       CustomScalar.fromScalar(Scalar.from(10n)),
-//       CustomScalar.fromScalar(Scalar.from(10n)),
-//       CustomScalar.fromScalar(Scalar.from(50n)),
-//       CustomScalar.fromScalar(Scalar.from(0n)),
-//     ]),
-//     new CustomScalarArray([
-//       CustomScalar.fromScalar(Scalar.from(10n)),
-//       CustomScalar.fromScalar(Scalar.from(10n)),
-//       CustomScalar.fromScalar(Scalar.from(0n)),
-//       CustomScalar.fromScalar(Scalar.from(10n)),
-//     ]),
-//   ];
-//   let secretVectors: CustomScalarArray[] = [
-//     new CustomScalarArray([
-//       CustomScalar.fromScalar(Scalar.from(10n)),
-//       CustomScalar.fromScalar(Scalar.from(10n)),
-//       CustomScalar.fromScalar(Scalar.from(50n)),
-//       CustomScalar.fromScalar(Scalar.from(0n)),
-//     ]),
-//     new CustomScalarArray([
-//       CustomScalar.fromScalar(Scalar.from(10n)),
-//       CustomScalar.fromScalar(Scalar.from(10n)),
-//       CustomScalar.fromScalar(Scalar.from(0n)),
-//       CustomScalar.fromScalar(Scalar.from(10n)),
-//     ]),
-//   ];
+  let feePayerKey: Key = Local.testAccounts[0];
+  let contracts: ContractList = {};
+  let addressMerkleTree = EMPTY_ADDRESS_MT();
+  let tx;
+  // contract storage
+  let claimedStorage = new ClaimedStorage();
+  let participantIndexStorage = new IndexStorage();
+  let allAddressStorage = new AddressStorage(addressMerkleTree);
 
-//   let randomsVectors: CustomScalarArray[] = [
-//     new CustomScalarArray([
-//       CustomScalar.fromScalar(Scalar.from(100n)),
-//       CustomScalar.fromScalar(Scalar.from(200n)),
-//       CustomScalar.fromScalar(Scalar.from(300n)),
-//       CustomScalar.fromScalar(Scalar.from(400n)),
-//     ]),
-//     new CustomScalarArray([
-//       CustomScalar.fromScalar(Scalar.from(500n)),
-//       CustomScalar.fromScalar(Scalar.from(600n)),
-//       CustomScalar.fromScalar(Scalar.from(700n)),
-//       CustomScalar.fromScalar(Scalar.from(800n)),
-//     ]),
-//   ];
+  let treasuryAction: TreasuryAction[] = [];
+  let claimFundInput: ClaimFundInput[];
+  let index: number;
+  let treasuryActionStates: Field[];
+  let randomPrivateKey = PrivateKey.fromBase58(
+    'EKE3xkv6TyhxSzBPeiiAppDfKsJVp7gXS7iuS2RNj8TGJvvhG6FM'
+  );
+  let randomPublickey = randomPrivateKey.toPublicKey();
+  // mock sumD value
+  let sumD = ZkApp.Request.RequestVector.from([
+    randomPublickey.toGroup(),
+    randomPublickey.toGroup(),
+    randomPublickey.toGroup(),
+    randomPublickey.toGroup(),
+  ]);
 
-//   let projects: Key[] = [
-//     {
-//       privateKey: Local.testAccounts[1].privateKey,
-//       publicKey: Local.testAccounts[1].publicKey,
-//     },
-//     {
-//       privateKey: Local.testAccounts[2].privateKey,
-//       publicKey: Local.testAccounts[2].publicKey,
-//     },
-//   ];
+  // contract request storage:
+  let DStorage = new MerkleMap();
 
-//   beforeAll(async () => {
-//     let configJson: Config = JSON.parse(
-//       await fs.readFile('config.json', 'utf8')
-//     );
-//     await Promise.all(
-//       Object.keys(Contract)
-//         .filter((item) => isNaN(Number(item)))
-//         .map(async (e) => {
-//           let config = configJson.deployAliases[e.toLowerCase()];
-//           // console.log(config);
-//           let keyBase58: { privateKey: string; publicKey: string } = JSON.parse(
-//             await fs.readFile(config.keyPath, 'utf8')
-//           );
-//           let key = {
-//             privateKey: PrivateKey.fromBase58(keyBase58.privateKey),
-//             publicKey: PublicKey.fromBase58(keyBase58.publicKey),
-//           };
-//           let contract = (() => {
-//             switch (e.toLowerCase()) {
-//               case Contract.FUNDING:
-//                 return new FundingContract(key.publicKey);
-//               case Contract.TREASURY:
-//                 return new TreasuryContract(key.publicKey);
-//               case Contract.PARTICIPATION:
-//                 return new ParticipationContract(key.publicKey);
-//               case Contract.REQUEST:
-//                 return new ZkApp.Request.RequestContract(key.publicKey);
-//               default:
-//                 return new SmartContract(key.publicKey);
-//             }
-//           })();
+  // earn 0.01
+  let investVectors = InvestVector.from([
+    Field(1e7),
+    Field(0),
+    Field(1e7),
+    Field(0),
+  ]);
 
-//           addressMerkleTree.setLeaf(
-//             AddressStorage.calculateIndex(ZkAppEnum[e]).toBigInt(),
-//             AddressStorage.calculateLeaf(key.publicKey)
-//           );
+  let tempSumM = [];
 
-//           contracts[e.toLowerCase()] = {
-//             name: e.toLowerCase(),
-//             key: key,
-//             contract: contract,
-//             actionStates: [Reducer.initialActionState],
-//           };
-//         })
-//     );
+  for (let i = 0; i < Number(investVectors.length); i++) {
+    let temp = Group.generator.scale(
+      Scalar.from(investVectors.get(Field(i)).toBigInt())
+    );
+    tempSumM.push(temp.add(sumD.get(Field(i))));
+  }
 
-//     allAddressStorage = new AddressStorage(addressMerkleTree);
-//   });
+  let sumM = ZkApp.Request.RequestVector.from(tempSumM);
 
-//   // beforeEach(() => {});
+  let projects: Key[] = [
+    {
+      privateKey: Local.testAccounts[1].privateKey,
+      publicKey: Local.testAccounts[1].publicKey,
+    },
+    {
+      privateKey: Local.testAccounts[2].privateKey,
+      publicKey: Local.testAccounts[2].publicKey,
+    },
+  ];
 
-//   it('compile proof', async () => {
-//     console.log('ClaimFund.compile...');
-//     await ClaimFund.compile();
-//     if (doProofs) {
-//       console.log('TreasuryContract.compile...');
-//       await TreasuryContract.compile();
-//     } else {
-//       console.log('FundingContract.analyzeMethods...');
-//       TreasuryContract.analyzeMethods();
-//     }
-//   });
+  beforeAll(async () => {
+    let configJson: Config = JSON.parse(
+      await fs.readFile('config.json', 'utf8')
+    );
+    await Promise.all(
+      Object.keys(Contract)
+        .filter((item) => isNaN(Number(item)))
+        .map(async (e) => {
+          let config = configJson.deployAliases[e.toLowerCase()];
+          // console.log(config);
+          let keyBase58: { privateKey: string; publicKey: string } = JSON.parse(
+            await fs.readFile(config.keyPath, 'utf8')
+          );
+          let key = {
+            privateKey: PrivateKey.fromBase58(keyBase58.privateKey),
+            publicKey: PublicKey.fromBase58(keyBase58.publicKey),
+          };
+          let contract = (() => {
+            switch (e.toLowerCase()) {
+              case Contract.FUNDING:
+                return new FundingContract(key.publicKey);
+              case Contract.TREASURY:
+                return new TreasuryContract(key.publicKey);
+              case Contract.PARTICIPATION:
+                return new ParticipationContract(key.publicKey);
+              case Contract.REQUEST:
+                return new ZkApp.Request.RequestContract(key.publicKey);
+              default:
+                return new SmartContract(key.publicKey);
+            }
+          })();
 
-//   it('Deploy and funding', async () => {
-//     await deploy(
-//       contracts[Contract.TREASURY],
-//       [['zkApps', allAddressStorage.addresses.getRoot()]],
-//       feePayerKey
-//     );
+          addressMerkleTree.setLeaf(
+            AddressStorage.calculateIndex(ZkAppEnum[e]).toBigInt(),
+            AddressStorage.calculateLeaf(key.publicKey)
+          );
 
-//     tx = await Mina.transaction(feePayerKey.publicKey, () => {
-//       let feePayerAccount = AccountUpdate.createSigned(feePayerKey.publicKey);
-//       feePayerAccount.send({
-//         to: contracts[Contract.FUNDING].contract,
-//         amount: 100 * 10 ** 9,
-//       }); // 100 Mina to claim fund
-//     });
-//     await tx.sign([feePayerKey.privateKey]).send();
+          contracts[e.toLowerCase()] = {
+            name: e.toLowerCase(),
+            key: key,
+            contract: contract,
+            actionStates: [Reducer.initialActionState],
+          };
+        })
+    );
 
-//     console.log('Claim Fund...');
+    allAddressStorage = new AddressStorage(addressMerkleTree);
+  });
 
-//     let treasuryContract = contracts[Contract.TREASURY]
-//       .contract as TreasuryContract;
+  // beforeEach(() => {});
 
-//     fundingInput = [
-//       new FundingInput({
-//         campaignId: Field(1),
-//         committeePublicKey: contracts[Contract.COMMITTEE].key.publicKey,
-//         secretVector: secretVectors[0],
-//         random: randomsVectors[0],
-//         treasuryContract: getZkAppRef(
-//           allAddressStorage.addresses,
-//           ZkAppEnum.TREASURY,
-//           contracts[Contract.TREASURY].contract.address
-//         ),
-//       }),
-//       new FundingInput({
-//         campaignId: Field(1),
-//         committeePublicKey: contracts[Contract.COMMITTEE].key.publicKey,
-//         secretVector: secretVectors[1],
-//         random: randomsVectors[1],
-//         treasuryContract: getZkAppRef(
-//           allAddressStorage.addresses,
-//           ZkAppEnum.TREASURY,
-//           contracts[Contract.TREASURY].contract.address
-//         ),
-//       }),
-//     ];
+  it('compile proof', async () => {
+    console.log('ClaimFund.compile...');
+    await ClaimFund.compile();
+    if (doProofs) {
+      console.log('TreasuryContract.compile...');
+      await TreasuryContract.compile();
+    } else {
+      console.log('FundingContract.analyzeMethods...');
+      TreasuryContract.analyzeMethods();
+    }
+  });
 
-//     claimFundInput = [
-//       new ClaimFundInput({
-//         campaignId: Field(1),
-//         projectId: Field(1),
-//         committeeId: Field(1),
-//         keyId: Field(1),
-//         payeeAddress: projects[0].publicKey,
-//         R: ZkApp.Request.RequestVector,
-//         M: ZkApp.Request.RequestVector,
-//         D: ZkApp.Request.RequestVector,
-//         DWitness: MerkleMapWitness,
-//         investVector: InvestVector,
-//         participationIndex: Field,
-//         indexWitness: indexWitness,
-//         claimedIndex: Level1CWitness,
-//         participationRef: getZkAppRef(
-//           allAddressStorage.addresses,
-//           ZkAppEnum.PARTICIPATION,
-//           contracts[Contract.PARTICIPATION].contract.address
-//         ),
-//       }),
-//       new ClaimFundInput({
-//         campaignId: Field(1),
-//         committeePublicKey: contracts[Contract.COMMITTEE].key.publicKey,
-//         secretVector: secretVectors[1],
-//         random: randomsVectors[1],
-//         treasuryContract: getZkAppRef(
-//           allAddressStorage.addresses,
-//           ZkAppEnum.TREASURY,
-//           contracts[Contract.TREASURY].contract.address
-//         ),
-//       }),
-//     ];
+  it('Deploy and funding', async () => {
+    let treasuryContract = contracts[Contract.TREASURY]
+      .contract as TreasuryContract;
 
-//     let result: {
-//       R: ZkApp.Request.RequestVector;
-//       M: ZkApp.Request.RequestVector;
-//     };
+    tx = await Mina.transaction(feePayerKey.publicKey, () => {
+      let feePayerAccount = AccountUpdate.fundNewAccount(
+        feePayerKey.publicKey,
+        1
+      );
+      treasuryContract.deploy();
+      treasuryContract.zkApps.set(allAddressStorage.addresses.getRoot());
+      feePayerAccount.send({
+        to: contracts[Contract.TREASURY].contract,
+        amount: 5 * 10 ** 9,
+      });
+    });
+    await tx.prove();
+    await tx
+      .sign([
+        feePayerKey.privateKey,
+        contracts[Contract.TREASURY].key.privateKey,
+      ])
+      .send();
 
-//     for (let i = 0; i < investors.length; i++) {
-//       let balanceBefore = Number(Account(investors[i].publicKey).balance.get());
-//       tx = await Mina.transaction(investors[i].publicKey, () => {
-//         result = treasuryContract.fund(claimFundInput[i]);
-//       });
-//       await proveAndSend(tx, [investors[i]], Contract.FUNDING, 'fund');
-//       let balanceAfter = Number(Account(investors[i].publicKey).balance.get());
-//       console.log('Balance change: ', balanceBefore - balanceAfter);
+    console.log('Claim Fund...');
 
-//       let { R, M } = result!;
+    claimFundInput = [
+      new ClaimFundInput({
+        campaignId: Field(1),
+        projectId: Field(1),
+        requestId: Field(6969),
+        payeeAddress: projects[0].publicKey,
+        M: sumM,
+        D: sumD,
+        DWitness: DStorage.getWitness(Field(6969)),
+        investVector: investVectors,
+        participationIndexWitness: participantIndexStorage.getLevel1Witness(
+          Field(1)
+        ),
+        claimedIndex: claimedStorage.getLevel1Witness(
+          claimedStorage.calculateLevel1Index({
+            campaignId: Field(1),
+            projectId: Field(1),
+          })
+        ),
+        participationRef: getZkAppRef(
+          allAddressStorage.addresses,
+          ZkAppEnum.PARTICIPATION,
+          contracts[Contract.PARTICIPATION].contract.address
+        ),
+      }),
+      new ClaimFundInput({
+        campaignId: Field(1),
+        projectId: Field(2),
+        requestId: Field(6969),
+        payeeAddress: projects[1].publicKey,
+        M: sumM,
+        D: sumD,
+        DWitness: DStorage.getWitness(Field(6969)),
+        investVector: investVectors,
+        participationIndexWitness: participantIndexStorage.getLevel1Witness(
+          Field(3)
+        ),
+        claimedIndex: claimedStorage.getLevel1Witness(
+          claimedStorage.calculateLevel1Index({
+            campaignId: Field(1),
+            projectId: Field(2),
+          })
+        ),
+        participationRef: getZkAppRef(
+          allAddressStorage.addresses,
+          ZkAppEnum.PARTICIPATION,
+          contracts[Contract.PARTICIPATION].contract.address
+        ),
+      }),
+    ];
 
-//       treasuryAction.push(
-//         new TreasuryAction({
-//           campaignId: claimFundInput[i].campaignId,
-//           R,
-//           M,
-//         })
-//       );
-//     }
-//   });
+    for (let i = 0; i < projects.length; i++) {
+      let balanceBefore = Number(Account(projects[i].publicKey).balance.get());
+      tx = await Mina.transaction(projects[i].publicKey, () => {
+        treasuryContract.claimFund(claimFundInput[i]);
+      });
+      await proveAndSend(tx, [projects[i]], Contract.FUNDING, 'fund');
+      let balanceAfter = Number(Account(projects[i].publicKey).balance.get());
+      console.log('Balance change: ', balanceBefore - balanceAfter);
 
-//   it('Reduce', async () => {
-//     await fetchAllContract(contracts, [Contract.FUNDING]);
+      treasuryAction.push(
+        new TreasuryAction({
+          campaignId: claimFundInput[i].campaignId,
+          projectId: claimFundInput[i].projectId,
+        })
+      );
+    }
+  });
 
-//     let treasuryContract = contracts[Contract.FUNDING]
-//       .contract as FundingContract;
-//     let lastActionState = treasuryContract.actionState.get();
-//     treasuryActionStates = contracts[Contract.FUNDING].actionStates;
-//     index = treasuryActionStates.findIndex((obj) =>
-//       Boolean(obj.equals(lastActionState))
-//     );
-//     Provable.log('lastActionStates: ', lastActionState);
-//     Provable.log('Funding action states: ', treasuryActionStates);
-//     Provable.log('Index: ', index);
+  it('Reduce Treasury', async () => {
+    await fetchAllContract(contracts, [Contract.TREASURY]);
 
-//     console.log('Reduce funding...');
+    let treasuryContract = contracts[Contract.TREASURY]
+      .contract as TreasuryContract;
+    let lastActionState = treasuryContract.lastRolledUpActionState.get();
+    treasuryActionStates = contracts[Contract.TREASURY].actionStates;
+    index = treasuryActionStates.findIndex((obj) =>
+      Boolean(obj.equals(lastActionState))
+    );
 
-//     console.log('First step: ');
-//     let reduceFundingProof = await CreateReduceProof.firstStep(
-//       treasuryContract.actionState.get(),
-//       treasuryContract.actionStatus.get()
-//     );
+    console.log('First step: ');
+    let reduceFundingProof = await ClaimFund.firstStep(
+      treasuryContract.claimedTreeRoot.get(),
+      treasuryContract.lastRolledUpActionState.get()
+    );
 
-//     console.log('Next step: ');
+    console.log('Next step: ');
 
-//     for (let i = 0; i < investors.length; i++) {
-//       console.log('Step', i);
-//       reduceFundingProof = await CreateReduceProof.nextStep(
-//         reduceFundingProof,
-//         treasuryAction[i],
-//         fundingReduceStorage.getWitness(treasuryActionStates[index + 1 + i])
-//       );
+    for (let i = 0; i < projects.length; i++) {
+      console.log('Step', i);
+      reduceFundingProof = await ClaimFund.nextStep(
+        reduceFundingProof,
+        treasuryAction[i],
+        claimedStorage.getWitness(
+          claimedStorage.calculateLevel1Index({
+            campaignId: treasuryAction[i].campaignId,
+            projectId: treasuryAction[i].projectId,
+          })
+        )
+      );
 
-//       // update storage:
-//       fundingReduceStorage.updateLeaf(
-//         fundingReduceStorage.calculateIndex(
-//           treasuryActionStates[index + 1 + i]
-//         ),
-//         fundingReduceStorage.calculateLeaf(ActionStatus.REDUCED)
-//       );
-//     }
+      // update storage:
+      claimedStorage.updateLeaf(
+        claimedStorage.calculateLeaf(Bool(true)),
+        claimedStorage.calculateLevel1Index({
+          campaignId: treasuryAction[i].campaignId,
+          projectId: treasuryAction[i].projectId,
+        })
+      );
+    }
 
-//     tx = await Mina.transaction(feePayerKey.publicKey, () => {
-//       treasuryContract.reduce(reduceFundingProof);
-//     });
-//     await proveAndSend(tx, [feePayerKey], Contract.FUNDING, 'reduce');
-//   });
-
-//   it('RollUp', async () => {
-//     let treasuryContract = contracts[Contract.FUNDING]
-//       .contract as FundingContract;
-//     console.log('RollUp funding...');
-
-//     await fetchAllContract(contracts, [Contract.REQUEST]);
-
-//     let rollUpFundingProof = await CreateRollupProof.firstStep(
-//       treasuryAction[0].campaignId,
-//       secretVectors[0].length,
-//       treasuryContract.actionStatus.get()
-//     );
-
-//     for (let i = 0; i < investors.length; i++) {
-//       console.log('Step', i);
-//       rollUpFundingProof = await CreateRollupProof.nextStep(
-//         rollUpFundingProof,
-//         treasuryAction[i],
-//         treasuryActionStates[index + i],
-//         fundingReduceStorage.getWitness(treasuryActionStates[index + 1 + i])
-//       );
-
-//       // update storage:
-//       fundingReduceStorage.updateLeaf(
-//         fundingReduceStorage.calculateIndex(
-//           treasuryActionStates[index + 1 + i]
-//         ),
-//         fundingReduceStorage.calculateLeaf(ActionStatus.ROLL_UPED)
-//       );
-//     }
-
-//     tx = await Mina.transaction(feePayerKey.publicKey, () => {
-//       treasuryContract.rollupRequest(
-//         rollUpFundingProof,
-//         Field(2),
-//         Field(2),
-//         sumRStorage.getLevel1Witness(
-//           sumRStorage.calculateLevel1Index(treasuryAction[0].campaignId)
-//         ),
-//         sumMStorage.getLevel1Witness(
-//           sumMStorage.calculateLevel1Index(treasuryAction[0].campaignId)
-//         ),
-//         getZkAppRef(
-//           allAddressStorage.addresses,
-//           ZkAppEnum.REQUEST,
-//           contracts[Contract.REQUEST].contract.address
-//         )
-//       );
-//     });
-//     await proveAndSend(tx, [feePayerKey], Contract.FUNDING, '');
-//   });
-// });
+    tx = await Mina.transaction(feePayerKey.publicKey, () => {
+      treasuryContract.rollup(reduceFundingProof);
+    });
+    await proveAndSend(tx, [feePayerKey], Contract.TREASURY, 'rollup');
+  });
+});
