@@ -24,6 +24,8 @@ import { FieldDynamicArray } from '@auxo-dev/auxo-libs';
 
 import { ZkAppRef } from './SharedStorage.js';
 
+import { Storage } from '@auxo-dev/dkg';
+
 import {
   EMPTY_LEVEL_1_TREE,
   Level1CWitness,
