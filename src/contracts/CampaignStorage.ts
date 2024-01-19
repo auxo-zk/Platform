@@ -169,6 +169,23 @@ export const enum StatusEnum {
   APPLICATION,
   FUNDING,
   ALLOCATED,
-  FINALIZE_ROUND_1,
+  FINALIZE_ROUND_1, // check this again
   __LENGTH,
+}
+
+export function getStatusFromNumber(num: number): StatusEnum {
+  switch (num) {
+    case 0:
+      return StatusEnum.NOT_STARTED;
+    case 1:
+      return StatusEnum.APPLICATION;
+    case 2:
+      return StatusEnum.FUNDING;
+    case 3:
+      return StatusEnum.ALLOCATED;
+    case 4:
+      return StatusEnum.FINALIZE_ROUND_1;
+    default:
+      throw new Error('Invalid number');
+  }
 }
