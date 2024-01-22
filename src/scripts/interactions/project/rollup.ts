@@ -45,8 +45,7 @@ async function main() {
   await compile(CreateProject, cache);
   await compile(ProjectContract, cache);
 
-  const projectAddress =
-    'B62qoGy5GKNRaa2P8uh4ppdRqnCVjNyHqVSsaD4JMcE6FawLRKmmN4u';
+  const projectAddress = process.env.BERKELEY_PROJECT_ADDRESS as string;
   const projectContract = new ProjectContract(
     PublicKey.fromBase58(projectAddress)
   );
@@ -129,14 +128,14 @@ async function main() {
     }
 
     // update storage:
-    memberStorage.updateInternal(Field(i), tree1);
+    memberStorage.updateInternal(Field(nextProjectId + i), tree1);
     projectInfoStorage.updateLeaf(
       projectInfoStorage.calculateLeaf(reduceActions[i].ipfsHash),
-      Field(i)
+      Field(nextProjectId + i)
     );
     payeeStorage.updateLeaf(
       payeeStorage.calculateLeaf(reduceActions[i].payeeAccount),
-      Field(i)
+      Field(nextProjectId + i)
     );
 
     console.log('DONE');
