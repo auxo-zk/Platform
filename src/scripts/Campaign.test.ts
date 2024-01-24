@@ -7,7 +7,7 @@ import {
     Cache,
     SmartContract,
 } from 'o1js';
-import fs from 'fs';
+import fs from 'fs/promises';
 import { getProfiler } from './helper/profiler.js';
 import {
     CampaignAction,
@@ -47,8 +47,8 @@ describe('Campaign', () => {
 
     let accounts: Key[] = Local.testAccounts.slice(1, 5);
     let feePayerKey: Key = accounts[0];
-    let contracts: ContractList;
-    let actions: CampaignAction[];
+    let contracts: ContractList = {};
+    let actions: CampaignAction[] = [];
 
     let zkAppAddressess = {};
 
@@ -61,7 +61,7 @@ describe('Campaign', () => {
 
     beforeAll(async () => {
         let configJson: Config = JSON.parse(
-            fs.readFileSync('config.json', 'utf8')
+            await fs.readFile('config.json', 'utf8')
         );
 
         await Promise.all(
@@ -71,7 +71,7 @@ describe('Campaign', () => {
                     let config = configJson.deployAliases[e.toLowerCase()];
                     // console.log(config);
                     let keyBase58: { privateKey: string; publicKey: string } =
-                        JSON.parse(fs.readFileSync(config.keyPath, 'utf8'));
+                        JSON.parse(await fs.readFile(config.keyPath, 'utf8'));
                     let key = {
                         privateKey: PrivateKey.fromBase58(keyBase58.privateKey),
                         publicKey: PublicKey.fromBase58(keyBase58.publicKey),
@@ -107,8 +107,6 @@ describe('Campaign', () => {
                 })
         );
     });
-
-    // beforeEach(() => {});
 
     it('should compile programs and contracts', async () => {
         await compile(CreateCampaign, cache, logMemory, profiler);

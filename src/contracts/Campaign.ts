@@ -273,36 +273,38 @@ export class CampaignContract extends SmartContract {
     // eslint-disable-next-line @typescript-eslint/no-empty-function
     @method updateCampaignInfo(input: UpdateCampaignInput) {}
 
-    @method rollup(proof: CampaignProof) {
-        proof.verify();
-        let ownerTreeRoot = this.ownerTreeRoot.getAndRequireEquals();
-        let infoTreeRoot = this.infoTreeRoot.getAndRequireEquals();
-        let statusTreeRoot = this.statusTreeRoot.getAndRequireEquals();
-        let configTreeRoot = this.configTreeRoot.getAndRequireEquals();
-        let lastRolledUpActionState =
-            this.lastRolledUpActionState.getAndRequireEquals();
+  @method rollup(proof: CampaignProof) {
+    proof.verify();
+    let ownerTreeRoot = this.ownerTreeRoot.getAndRequireEquals();
+    let infoTreeRoot = this.infoTreeRoot.getAndRequireEquals();
+    let statusTreeRoot = this.statusTreeRoot.getAndRequireEquals();
+    let configTreeRoot = this.configTreeRoot.getAndRequireEquals();
+    let nextCampaignId = this.nextCampaignId.getAndRequireEquals();
+    let lastRolledUpActionState =
+      this.lastRolledUpActionState.getAndRequireEquals();
 
-        ownerTreeRoot.assertEquals(proof.publicOutput.initialOwnerTreeRoot);
-        infoTreeRoot.assertEquals(proof.publicOutput.initialInfoTreeRoot);
-        statusTreeRoot.assertEquals(proof.publicOutput.initialStatusTreeRoot);
-        configTreeRoot.assertEquals(proof.publicOutput.initialConfigTreeRoot);
-        lastRolledUpActionState.assertEquals(
-            proof.publicOutput.initialLastRolledUpACtionState
-        );
+    ownerTreeRoot.assertEquals(proof.publicOutput.initialOwnerTreeRoot);
+    infoTreeRoot.assertEquals(proof.publicOutput.initialInfoTreeRoot);
+    statusTreeRoot.assertEquals(proof.publicOutput.initialStatusTreeRoot);
+    configTreeRoot.assertEquals(proof.publicOutput.initialConfigTreeRoot);
+    nextCampaignId.assertEquals(proof.publicOutput.initialNextCampaignId);
+    lastRolledUpActionState.assertEquals(
+      proof.publicOutput.initialLastRolledUpACtionState
+    );
 
         let lastActionState = this.account.actionState.getAndRequireEquals();
         lastActionState.assertEquals(
             proof.publicOutput.finalLastRolledUpActionState
         );
 
-        // update on-chain state
-        this.ownerTreeRoot.set(proof.publicOutput.finalOwnerTreeRoot);
-        this.infoTreeRoot.set(proof.publicOutput.finalInfoTreeRoot);
-        this.statusTreeRoot.set(proof.publicOutput.finalStatusTreeRoot);
-        this.configTreeRoot.set(proof.publicOutput.finalConfigTreeRoot);
-        this.lastRolledUpActionState.set(
-            proof.publicOutput.finalLastRolledUpActionState
-        );
+    // update on-chain state
+    this.ownerTreeRoot.set(proof.publicOutput.finalOwnerTreeRoot);
+    this.infoTreeRoot.set(proof.publicOutput.finalInfoTreeRoot);
+    this.statusTreeRoot.set(proof.publicOutput.finalStatusTreeRoot);
+    this.configTreeRoot.set(proof.publicOutput.finalConfigTreeRoot);
+    this.lastRolledUpActionState.set(
+      proof.publicOutput.finalLastRolledUpActionState
+    );
 
         this.emitEvent(
             EventEnum.CAMPAIGN_CREATED,

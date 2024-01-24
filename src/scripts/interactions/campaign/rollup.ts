@@ -51,6 +51,7 @@ import { AddressStorage } from '../../../contracts/SharedStorage.js';
 import axios from 'axios';
 import { IPFSHash } from '@auxo-dev/auxo-libs';
 import { prepare } from '../prepare.js';
+import { Prover } from 'o1js/dist/node/lib/proof_system.js';
 
 // Da test reduce 1 action, 2 action co the sai :v
 async function main() {
@@ -64,7 +65,8 @@ async function main() {
 
   // Do this and state value of contract is fetched in Mina
   await fetchZkAppState(zkAppAddress);
-  const nextCampaignId = Number(zkContract.nextCampaignId.get());
+  let nextCampaignId = Number(zkContract.nextCampaignId.get());
+  nextCampaignId = 4;
 
   // Storage
   let campaignInfoStorage = new CampaignInfoStorage();
@@ -83,7 +85,7 @@ async function main() {
     let campaign = campaigns[i];
     console.log('Campaign id: ', campaign._id);
     if (Boolean(campaign.active)) {
-      console.log('Active!');
+      console.log('Active :)');
 
       ownerStorage.updateLeaf(
         ownerStorage.calculateLeaf(PublicKey.fromBase58(campaign.owner)),
@@ -111,15 +113,22 @@ async function main() {
         }),
         Field(campaign.campaignId)
       );
-    }
+    } else console.log('Not active :(');
   }
 
+  Provable.log('ownerStorage: ', ownerStorage.level1.getRoot());
+  Provable.log('campaignInfoStorage: ', campaignInfoStorage.level1.getRoot());
+  Provable.log('statusStorage: ', statusStorage.level1.getRoot());
+  Provable.log('configStorage: ', configStorage.level1.getRoot());
+
   const fromState = zkContract.lastRolledUpActionState.get();
+  // const fromState = Reducer.initialActionState;
   const rawActions = await fetchActions(zkAppAddress, fromState);
   console.log('rawActions: ', rawActions);
 
   const reduceActions: CampaignAction[] = rawActions.map((e) => {
     let action: Field[] = e.actions[0].map((e) => Field(e));
+    Provable.log('ipfsHash: ', CampaignAction.fromFields(action).ipfsHash);
     return CampaignAction.fromFields(action);
   });
 
@@ -129,7 +138,7 @@ async function main() {
     zkContract.infoTreeRoot.get(),
     zkContract.statusTreeRoot.get(),
     zkContract.configTreeRoot.get(),
-    zkContract.nextCampaignId.get(),
+    Field(nextCampaignId),
     zkContract.lastRolledUpActionState.get()
   );
 

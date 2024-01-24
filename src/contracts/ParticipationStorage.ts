@@ -69,13 +69,13 @@ export abstract class ParticipationCStorage<RawLeaf> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     abstract calculateLevel1Index(args: any): Field;
 
-    getLevel1Witness(level1Index: Field): Level1Witness {
-        return new Level1Witness(
+    getLevel1Witness(level1Index: Field): Level1CWitness {
+        return new Level1CWitness(
             this._level1.getWitness(level1Index.toBigInt())
         );
     }
 
-    getWitness(level1Index: Field): Level1Witness {
+    getWitness(level1Index: Field): Level1CWitness {
         return this.getLevel1Witness(level1Index);
     }
 
@@ -96,7 +96,6 @@ export abstract class ParticipationCStorage<RawLeaf> {
         };
     }
 }
-
 export abstract class ParticipationStorage<RawLeaf> {
     private _level1: Level1MT;
     private _leafs: {

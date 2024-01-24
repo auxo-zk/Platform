@@ -224,7 +224,12 @@ describe('Funding', () => {
                 DWitness: DStorage.getWitness(Field(6969)),
                 investVector: investVectors,
                 participationIndexWitness:
-                    participantIndexStorage.getLevel1Witness(Field(1)),
+                    participantIndexStorage.getLevel1Witness(
+                        participantIndexStorage.calculateLevel1Index({
+                            campaignId: Field(1),
+                            projectId: Field(1),
+                        })
+                    ),
                 claimedIndex: claimedStorage.getLevel1Witness(
                     claimedStorage.calculateLevel1Index({
                         campaignId: Field(1),
@@ -246,7 +251,12 @@ describe('Funding', () => {
                 DWitness: DStorage.getWitness(Field(6969)),
                 investVector: investVectors,
                 participationIndexWitness:
-                    participantIndexStorage.getLevel1Witness(Field(3)),
+                    participantIndexStorage.getLevel1Witness(
+                        participantIndexStorage.calculateLevel1Index({
+                            campaignId: Field(1),
+                            projectId: Field(2),
+                        })
+                    ),
                 claimedIndex: claimedStorage.getLevel1Witness(
                     claimedStorage.calculateLevel1Index({
                         campaignId: Field(1),
@@ -316,11 +326,11 @@ describe('Funding', () => {
 
             // update storage:
             claimedStorage.updateLeaf(
-                claimedStorage.calculateLeaf(Bool(true)),
                 claimedStorage.calculateLevel1Index({
                     campaignId: treasuryAction[i].campaignId,
                     projectId: treasuryAction[i].projectId,
-                })
+                }),
+                claimedStorage.calculateLeaf(Bool(true))
             );
         }
 

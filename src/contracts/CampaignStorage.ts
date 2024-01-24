@@ -175,7 +175,7 @@ export const enum StatusEnum {
     APPLICATION,
     FUNDING,
     ALLOCATED,
-    FINALIZE_ROUND_1, // check this again
+    ENDED, // check this again
     __LENGTH,
 }
 
@@ -190,7 +190,7 @@ export function getStatusFromNumber(num: number): StatusEnum {
         case 3:
             return StatusEnum.ALLOCATED;
         case 4:
-            return StatusEnum.FINALIZE_ROUND_1;
+            return StatusEnum.ENDED;
         default:
             throw new Error('Invalid number');
     }

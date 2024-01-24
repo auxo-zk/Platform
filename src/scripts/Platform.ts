@@ -72,7 +72,6 @@ import {
     ParticipationAction,
     JoinCampaignInput,
 } from '../contracts/Participation.js';
-import mockParticipationIpfs from './mock/participations.js';
 import {
     InfoStorage as ParticipationInfoStorage,
     CounterStorage,
@@ -80,6 +79,7 @@ import {
     EMPTY_LEVEL_1_TREE,
     EMPTY_LEVEL_1_COMBINED_TREE,
 } from '../contracts/ParticipationStorage.js';
+import mockParticipationIpfs from './mock/participations.js';
 import {
     TreasuryContract,
     ClaimFund,
@@ -100,16 +100,15 @@ import { CustomScalarArray, ZkApp } from '@auxo-dev/dkg';
 
 // const isCompile = false;
 
-const isDeploy = false;
+const isDeploy = true;
 const isProject = false;
 const isCampaign = false;
 const isParticipation = false;
 const isFunding = false;
-const isTreasury = true;
+const isTreasury = false;
 
 async function main() {
     console.time('runTime');
-    const doProofs = false;
     const logMemory = true;
     const cache = Cache.FileSystem('./caches');
     const profiling = false;
@@ -255,22 +254,27 @@ async function main() {
             })
     );
 
-    if (isProject) {
+    if (isDeploy || isProject) {
         await compile(CreateProject, cache, logMemory, profiler);
         await compile(ProjectContract, cache, logMemory, profiler);
     }
 
-    if (isCampaign) {
+    if (isDeploy || isCampaign) {
         await compile(CreateCampaign, cache, logMemory, profiler);
         await compile(CampaignContract, cache, logMemory, profiler);
     }
 
-    if (isParticipation) {
+    if (isDeploy || isParticipation) {
         await compile(JoinCampaign, cache, logMemory, profiler);
         await compile(ParticipationContract, cache, logMemory, profiler);
     }
 
-    if (isFunding) {
+    if (isDeploy || isTreasury) {
+        await compile(ClaimFund, cache, logMemory, profiler);
+        await compile(TreasuryContract, cache, logMemory, profiler);
+    }
+
+    if (isDeploy || isFunding) {
         await compile(ZkApp.Request.CreateRequest, cache, logMemory, profiler);
         await compile(
             ZkApp.Request.RequestContract,
@@ -278,71 +282,71 @@ async function main() {
             logMemory,
             profiler
         );
-        await compile(ClaimFund, cache, logMemory, profiler);
-        await compile(TreasuryContract, cache, logMemory, profiler);
+
+        // await compile(ClaimFund, cache, logMemory, profiler);
+        // await compile(TreasuryContract, cache, logMemory, profiler);
+
         await compile(CreateReduceProof, cache, logMemory, profiler);
         await compile(CreateRollupProof, cache, logMemory, profiler);
         await compile(FundingContract, cache, logMemory, profiler);
-    }
-
-    if (isTreasury) {
-        await compile(ClaimFund, cache, logMemory, profiler);
-        await compile(TreasuryContract, cache, logMemory, profiler);
     }
 
     let tx;
 
     if (isDeploy) {
         console.log('Deploying');
-        // // Deploy ProjectContract
-        // await deploy(
-        //   contracts[Contract.PROJECT],
-        //   [],
-        //   feePayerKey,
-        //   fee,
-        //   ++feePayerNonce
-        // );
+        // Deploy ProjectContract
+        await deploy(
+            contracts[Contract.PROJECT],
+            [],
+            feePayerKey,
+            fee,
+            ++feePayerNonce
+        );
 
-        // // Deploy CampaignContract
-        // await deploy(
-        //   contracts[Contract.CAMPAIGN],
-        //   [['zkApps', campaignAddressStorage.addresses.getRoot()]],
-        //   feePayerKey,
-        //   fee,
-        //   ++feePayerNonce
-        // );
+        // Deploy CampaignContract
+        await deploy(
+            contracts[Contract.CAMPAIGN],
+            [['zkApps', campaignAddressStorage.root]],
+            feePayerKey,
+            fee,
+            ++feePayerNonce
+        );
 
-        // // Deploy ParticipationContract
-        // await deploy(
-        //   contracts[Contract.PARTICIPATION],
-        //   [['zkApps', participationAddressStorage.addresses.getRoot()]],
-        //   feePayerKey,
-        //   fee,
-        //   ++feePayerNonce
-        // );
+        // Deploy ParticipationContract
+        await deploy(
+            contracts[Contract.PARTICIPATION],
+            [['zkApps', participationAddressStorage.root]],
+            feePayerKey,
+            fee,
+            ++feePayerNonce
+        );
 
         // Deploy FundingContract
-        // await deploy(
-        //   contracts[Contract.FUNDING],
-        //   [['zkApps', fundingAddressStorage.addresses.getRoot()]],
-        //   feePayerKey,
-        //   fee,
-        //   ++feePayerNonce
-        // );
+        await deploy(
+            contracts[Contract.FUNDING],
+            [['zkApps', fundingAddressStorage.root]],
+            feePayerKey,
+            fee,
+            ++feePayerNonce
+        );
 
-        // tx = await Mina.transaction(
-        //   { sender: feePayerKey.publicKey, fee, nonce: ++feePayerNonce },
-        //   () => {
-        //     let feePayerAccount = AccountUpdate.createSigned(feePayerKey.publicKey);
-        //     feePayerAccount.send({
-        //       to: contracts[Contract.FUNDING].contract,
-        //       amount: 5 * 10 ** 9,
-        //     }); // 5 Mina to send request - which cost 1
-        //   }
-        // );
-        // await tx.sign([feePayerKey.privateKey]).send();
+        // Send money in FundingContract
+        tx = await Mina.transaction(
+            { sender: feePayerKey.publicKey, fee, nonce: ++feePayerNonce },
+            () => {
+                let feePayerAccount = AccountUpdate.createSigned(
+                    feePayerKey.publicKey
+                );
+                feePayerAccount.send({
+                    to: contracts[Contract.FUNDING].contract,
+                    amount: 5 * 10 ** 9,
+                }); // 5 Mina to send request - which cost 1
+            }
+        );
+        await tx.sign([feePayerKey.privateKey]).send();
 
-        // Deploy RequestConctract
+        // // Deploy RequestConctract
         // await deploy(
         //   contracts[Contract.REQUEST],
         //   [],
@@ -378,7 +382,7 @@ async function main() {
             .send();
 
         console.log('Deploy done all');
-        // if (isProject) await wait();
+
         await wait();
     }
 
@@ -686,16 +690,6 @@ async function main() {
         for (let i = 0; i < numCampaign; i++) {
             console.log('Step', i);
 
-            let witness = indexStorage.getLevel1Witness(
-                indexStorage.calculateLevel1Index({
-                    campaignId: participationAction[i].campaignId,
-                    projectId: participationAction[i].projectId,
-                })
-            );
-
-            let rootFormWitness = witness.calculateRoot(Field(i + 1));
-            let rootFormWitnessBEF = witness.calculateRoot(Field(i));
-
             joinCampaignProof = await JoinCampaign.joinCampaign(
                 joinCampaignProof,
                 participationAction[i],
@@ -753,7 +747,7 @@ async function main() {
                 participationContract.rollup(joinCampaignProof);
             }
         );
-        await proveAndSend(tx, [feePayerKey], Contract.CAMPAIGN, 'rollup');
+        await proveAndSend(tx, [feePayerKey], Contract.PARTICIPATION, 'rollup');
 
         if (isFunding) await wait();
     }
@@ -851,10 +845,6 @@ async function main() {
         }
 
         for (let i = 0; i < investors.length; i++) {
-            let balanceBefore = Number(
-                Account(investors[i].publicKey).balance.get()
-            );
-            console.log('Balance before: ', balanceBefore);
             tx = await Mina.transaction(
                 {
                     sender: investors[i].publicKey,
@@ -865,7 +855,7 @@ async function main() {
                     result = fundingContract.fund(fundingInput[i]);
                 }
             );
-            // await proveAndSend(tx, [investors[i]], Contract.FUNDING, 'fund');
+            await proveAndSend(tx, [investors[i]], Contract.FUNDING, 'fund');
 
             let { R, M } = result!;
 
@@ -878,7 +868,7 @@ async function main() {
             );
         }
 
-        // await wait();
+        await wait();
         await fetchAllContract(contracts, [Contract.FUNDING]);
 
         let lastActionState = fundingContract.actionState.get();
@@ -1055,7 +1045,10 @@ async function main() {
                 DWitness: DStorage.getWitness(Field(6969)),
                 investVector: investVectors,
                 participationIndexWitness: indexStorage.getLevel1Witness(
-                    Field(1)
+                    indexStorage.calculateLevel1Index({
+                        campaignId: Field(1),
+                        projectId: Field(1),
+                    })
                 ),
                 claimedIndex: claimedStorage.getLevel1Witness(
                     claimedStorage.calculateLevel1Index({
