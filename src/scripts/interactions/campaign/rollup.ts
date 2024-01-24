@@ -1,0 +1,196 @@
+import fs from 'fs';
+import {
+  Cache,
+  Field,
+  Mina,
+  PrivateKey,
+  Provable,
+  PublicKey,
+  Reducer,
+  fetchAccount,
+} from 'o1js';
+import { Config, JSONKey, Key } from '../../helper/config.js';
+import {
+  ContractList,
+  compile,
+  wait,
+  proveAndSend,
+} from '../../helper/deploy.js';
+import { fetchActions, fetchZkAppState } from '../../helper/deploy.js';
+import {
+  ProjectContract,
+  ProjectAction,
+  CreateProject,
+  CreateProjectInput,
+  ProjectProof,
+} from '../../../contracts/Project.js';
+import {
+  MemberStorage,
+  InfoStorage,
+  MemberArray,
+  InfoStorage as ProjectInfoStorage,
+  AddressStorage as PayeeStorage,
+  EMPTY_LEVEL_2_TREE,
+  Level2Witness,
+} from '../../../contracts/ProjectStorage.js';
+import {
+  CampaignContract,
+  CreateCampaign,
+  CreateCampaignInput,
+  CampaignAction,
+} from '../../../contracts/Campaign.js';
+import {
+  InfoStorage as CampaignInfoStorage,
+  OwnerStorage,
+  StatusStorage,
+  ConfigStorage,
+  StatusEnum,
+  getStatusFromNumber,
+} from '../../../contracts/CampaignStorage.js';
+import { AddressStorage } from '../../../contracts/SharedStorage.js';
+import axios from 'axios';
+import { IPFSHash } from '@auxo-dev/auxo-libs';
+import { prepare } from '../prepare.js';
+
+// Da test reduce 1 action, 2 action co the sai :v
+async function main() {
+  const { cache, feePayer } = await prepare();
+  // Compile programs
+  await compile(CreateCampaign, cache);
+  await compile(CampaignContract, cache);
+
+  const zkAppAddress = process.env.BERKELEY_CAMPAIGN_ADDRESS as string;
+  const zkContract = new CampaignContract(PublicKey.fromBase58(zkAppAddress));
+
+  // Do this and state value of contract is fetched in Mina
+  await fetchZkAppState(zkAppAddress);
+  const nextCampaignId = Number(zkContract.nextCampaignId.get());
+
+  // Storage
+  let campaignInfoStorage = new CampaignInfoStorage();
+  let ownerStorage = new OwnerStorage();
+  let statusStorage = new StatusStorage();
+  let configStorage = new ConfigStorage();
+
+  // Fetch storage trees
+  const campaigns = (await axios.get(`https://api.auxo.fund/v0/campaigns/all`))
+    .data;
+
+  console.log('Campaigns: ', campaigns);
+
+  // Build storage
+  for (let i = 0; i < campaigns.length; i++) {
+    let campaign = campaigns[i];
+    console.log('Campaign id: ', campaign._id);
+    if (Boolean(campaign.active)) {
+      console.log('Active!');
+
+      ownerStorage.updateLeaf(
+        ownerStorage.calculateLeaf(PublicKey.fromBase58(campaign.owner)),
+        Field(campaign.campaignId)
+      );
+
+      campaignInfoStorage.updateLeaf(
+        campaignInfoStorage.calculateLeaf(
+          IPFSHash.fromString(campaign.ipfsHash)
+        ),
+        Field(campaign.campaignId)
+      );
+
+      statusStorage.updateLeaf(
+        statusStorage.calculateLeaf(
+          getStatusFromNumber(Number(campaign.status))
+        ),
+        Field(campaign.campaignId)
+      );
+
+      configStorage.updateLeaf(
+        configStorage.calculateLeaf({
+          committeeId: Field(campaign.committeeId),
+          keyId: Field(campaign.keyId),
+        }),
+        Field(campaign.campaignId)
+      );
+    }
+  }
+
+  const fromState = zkContract.lastRolledUpActionState.get();
+  const rawActions = await fetchActions(zkAppAddress, fromState);
+  console.log('rawActions: ', rawActions);
+
+  const reduceActions: CampaignAction[] = rawActions.map((e) => {
+    let action: Field[] = e.actions[0].map((e) => Field(e));
+    return CampaignAction.fromFields(action);
+  });
+
+  console.log('CreateCampaign.firstStep...');
+  let proof = await CreateCampaign.firstStep(
+    zkContract.ownerTreeRoot.get(),
+    zkContract.infoTreeRoot.get(),
+    zkContract.statusTreeRoot.get(),
+    zkContract.configTreeRoot.get(),
+    zkContract.nextCampaignId.get(),
+    zkContract.lastRolledUpActionState.get()
+  );
+
+  for (let i = 0; i < reduceActions.length; i++) {
+    let action = reduceActions[i];
+    console.log(`${i} - CreateCampaign.createCampaign...`);
+
+    proof = await CreateCampaign.createCampaign(
+      proof,
+      action,
+      ownerStorage.getLevel1Witness(
+        ownerStorage.calculateLevel1Index(Field(nextCampaignId + i))
+      ),
+      campaignInfoStorage.getLevel1Witness(
+        campaignInfoStorage.calculateLevel1Index(Field(nextCampaignId + i))
+      ),
+      statusStorage.getLevel1Witness(
+        statusStorage.calculateLevel1Index(Field(nextCampaignId + i))
+      ),
+      configStorage.getLevel1Witness(
+        configStorage.calculateLevel1Index(Field(nextCampaignId + i))
+      )
+    );
+
+    // update storage:
+    ownerStorage.updateLeaf(ownerStorage.calculateLeaf(action.owner), Field(i));
+    campaignInfoStorage.updateLeaf(
+      campaignInfoStorage.calculateLeaf(action.ipfsHash),
+      Field(i)
+    );
+    statusStorage.updateLeaf(
+      statusStorage.calculateLeaf(StatusEnum.APPLICATION),
+      Field(i)
+    );
+    configStorage.updateLeaf(
+      configStorage.calculateLeaf({
+        committeeId: action.committeeId,
+        keyId: action.keyId,
+      }),
+      Field(i)
+    );
+
+    console.log('DONE');
+  }
+
+  let tx = await Mina.transaction(
+    {
+      sender: feePayer.key.publicKey,
+      fee: feePayer.fee,
+      nonce: feePayer.nonce++,
+    },
+    () => {
+      zkContract.rollup(proof);
+    }
+  );
+  await proveAndSend(tx, feePayer.key, 'CampaignContract', 'rollup');
+}
+
+main()
+  .then()
+  .catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });

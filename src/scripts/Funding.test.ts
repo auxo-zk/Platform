@@ -57,7 +57,7 @@ describe('Funding', () => {
 
     let feePayerKey: Key = Local.testAccounts[0];
     let contracts: ContractList = {};
-    let tx;
+    let tx: any;
     // Funding storage
     let fundingReduceStorage = new ReduceStorage();
     let sumRStorage = new ValueStorage();
@@ -155,199 +155,217 @@ describe('Funding', () => {
         );
     });
 
-    // beforeEach(() => {});
-
-    it('compile proof', async () => {
-        console.log('CreateReduceProof.compile...');
-        await CreateReduceProof.compile();
-        console.log('CreateRollupProof.compile...');
-        await CreateRollupProof.compile();
-        if (doProofs) {
-            console.log('FundingContract.compile...');
-            await FundingContract.compile();
-            await ClaimFund.compile();
-            await TreasuryContract.compile();
-        } else {
-            console.log('FundingContract.analyzeMethods...');
-            FundingContract.analyzeMethods();
-        }
-    });
-
-    it('Deploy and funding', async () => {
-        await deploy(
-            contracts[Contract.FUNDING],
-            [['zkApps', fundingAddressStorage.root]],
-            feePayerKey
-        );
-        await deploy(contracts[Contract.TREASURY], [], feePayerKey);
-        await deploy(contracts[Contract.REQUEST], [], feePayerKey);
-
-        console.log('Funding...');
-
-        let fundingContract = contracts[Contract.FUNDING]
-            .contract as FundingContract;
-
-        fundingInput = [
-            new FundingInput({
-                campaignId: Field(1),
-                committeePublicKey: contracts[Contract.COMMITTEE].key.publicKey,
-                secretVector: secretVectors[0],
-                random: randomsVectors[0],
-                treasuryContract: fundingAddressStorage.getZkAppRef(
-                    ZkAppEnum.TREASURY,
-                    contracts[Contract.TREASURY].contract.address
-                ),
-            }),
-            new FundingInput({
-                campaignId: Field(1),
-                committeePublicKey: contracts[Contract.COMMITTEE].key.publicKey,
-                secretVector: secretVectors[1],
-                random: randomsVectors[1],
-                treasuryContract: fundingAddressStorage.getZkAppRef(
-                    ZkAppEnum.TREASURY,
-                    contracts[Contract.TREASURY].contract.address
-                ),
-            }),
-        ];
-
-        let result: {
-            R: ZkApp.Request.RequestVector;
-            M: ZkApp.Request.RequestVector;
-        };
-
-        for (let i = 0; i < investors.length; i++) {
-            let balanceBefore = Number(
-                Account(investors[i].publicKey).balance.get()
-            );
-            tx = await Mina.transaction(investors[i].publicKey, () => {
-                result = fundingContract.fund(fundingInput[i]);
-            });
-            await proveAndSend(tx, [investors[i]], Contract.FUNDING, 'fund');
-            let balanceAfter = Number(
-                Account(investors[i].publicKey).balance.get()
-            );
-            console.log('Balance change: ', balanceBefore - balanceAfter);
-
-            let { R, M } = result!;
-
-            fundingAction.push(
-                new FundingAction({
-                    campaignId: fundingInput[i].campaignId,
-                    R,
-                    M,
-                })
-            );
-        }
-    });
-
-    it('Reduce', async () => {
-        await fetchAllContract(contracts, [Contract.FUNDING]);
-
-        let fundingContract = contracts[Contract.FUNDING]
-            .contract as FundingContract;
-        let lastActionState = fundingContract.actionState.get();
-        fundingActionStates = contracts[Contract.FUNDING].actionStates;
-        index = fundingActionStates.findIndex((obj) =>
-            Boolean(obj.equals(lastActionState))
-        );
-        Provable.log('lastActionStates: ', lastActionState);
-        Provable.log('Funding action states: ', fundingActionStates);
-        Provable.log('Index: ', index);
-
-        console.log('Reduce funding...');
-
-        console.log('First step: ');
-        let reduceFundingProof = await CreateReduceProof.firstStep(
-            fundingContract.actionState.get(),
-            fundingContract.actionStatus.get()
-        );
-
-        console.log('Next step: ');
-
-        for (let i = 0; i < investors.length; i++) {
-            console.log('Step', i);
-            reduceFundingProof = await CreateReduceProof.nextStep(
-                reduceFundingProof,
-                fundingAction[i],
-                fundingReduceStorage.getWitness(
-                    fundingActionStates[index + 1 + i]
-                )
-            );
-
-            // update storage:
-            fundingReduceStorage.updateLeaf(
-                fundingReduceStorage.calculateIndex(
-                    fundingActionStates[index + 1 + i]
-                ),
-                fundingReduceStorage.calculateLeaf(ActionStatus.REDUCED)
-            );
-        }
-
-        tx = await Mina.transaction(feePayerKey.publicKey, () => {
-            fundingContract.reduce(reduceFundingProof);
-        });
-        await proveAndSend(tx, [feePayerKey], Contract.FUNDING, 'reduce');
-    });
-
     it('RollUp', async () => {
         let fundingContract = contracts[Contract.FUNDING]
             .contract as FundingContract;
         console.log('RollUp funding...');
+        let balance = Number(Account(fundingContract.address).balance.get());
+        console.log('Contract balance: ', balance);
 
-        await fetchAllContract(contracts, [Contract.REQUEST]);
-
-        let rollUpFundingProof = await CreateRollupProof.firstStep(
-            fundingAction[0].campaignId,
-            secretVectors[0].length,
-            fundingContract.actionStatus.get()
-        );
-
-        for (let i = 0; i < investors.length; i++) {
-            console.log('Step', i);
-            rollUpFundingProof = await CreateRollupProof.nextStep(
-                rollUpFundingProof,
-                fundingAction[i],
-                fundingActionStates[index + i],
-                fundingReduceStorage.getWitness(
-                    fundingActionStates[index + 1 + i]
-                )
-            );
-
-            // update storage:
-            fundingReduceStorage.updateLeaf(
-                fundingReduceStorage.calculateIndex(
-                    fundingActionStates[index + 1 + i]
-                ),
-                fundingReduceStorage.calculateLeaf(ActionStatus.ROLL_UPED)
-            );
-        }
-
-        tx = await Mina.transaction(feePayerKey.publicKey, () => {
-            fundingContract.rollupRequest(
-                rollUpFundingProof,
-                Field(2),
-                Field(2),
-                sumRStorage.getLevel1Witness(
-                    sumRStorage.calculateLevel1Index(
-                        fundingAction[0].campaignId
-                    )
-                ),
-                sumMStorage.getLevel1Witness(
-                    sumMStorage.calculateLevel1Index(
-                        fundingAction[0].campaignId
-                    )
-                ),
-                requestIdStorage.getLevel1Witness(
-                    requestIdStorage.calculateLevel1Index(
-                        fundingAction[0].campaignId
-                    )
-                ),
-                fundingAddressStorage.getZkAppRef(
-                    ZkAppEnum.REQUEST,
-                    contracts[Contract.REQUEST].contract.address
-                )
-            );
+        it('compile proof', async () => {
+            console.log('CreateReduceProof.compile...');
+            await CreateReduceProof.compile();
+            console.log('CreateRollupProof.compile...');
+            await CreateRollupProof.compile();
+            if (doProofs) {
+                console.log('FundingContract.compile...');
+                await FundingContract.compile();
+                await ClaimFund.compile();
+                await TreasuryContract.compile();
+            } else {
+                console.log('FundingContract.analyzeMethods...');
+                FundingContract.analyzeMethods();
+            }
         });
+
+        it('Deploy and funding', async () => {
+            await deploy(
+                contracts[Contract.FUNDING],
+                [['zkApps', fundingAddressStorage.root]],
+                feePayerKey
+            );
+            await deploy(contracts[Contract.TREASURY], [], feePayerKey);
+            await deploy(contracts[Contract.REQUEST], [], feePayerKey);
+
+            console.log('Funding...');
+
+            let fundingContract = contracts[Contract.FUNDING]
+                .contract as FundingContract;
+
+            fundingInput = [
+                new FundingInput({
+                    campaignId: Field(1),
+                    committeePublicKey:
+                        contracts[Contract.COMMITTEE].key.publicKey,
+                    secretVector: secretVectors[0],
+                    random: randomsVectors[0],
+                    treasuryContract: fundingAddressStorage.getZkAppRef(
+                        ZkAppEnum.TREASURY,
+                        contracts[Contract.TREASURY].contract.address
+                    ),
+                }),
+                new FundingInput({
+                    campaignId: Field(1),
+                    committeePublicKey:
+                        contracts[Contract.COMMITTEE].key.publicKey,
+                    secretVector: secretVectors[1],
+                    random: randomsVectors[1],
+                    treasuryContract: fundingAddressStorage.getZkAppRef(
+                        ZkAppEnum.TREASURY,
+                        contracts[Contract.TREASURY].contract.address
+                    ),
+                }),
+            ];
+
+            let result: {
+                R: ZkApp.Request.RequestVector;
+                M: ZkApp.Request.RequestVector;
+            };
+
+            for (let i = 0; i < investors.length; i++) {
+                let balanceBefore = Number(
+                    Account(investors[i].publicKey).balance.get()
+                );
+                tx = await Mina.transaction(investors[i].publicKey, () => {
+                    result = fundingContract.fund(fundingInput[i]);
+                });
+                await proveAndSend(
+                    tx,
+                    [investors[i]],
+                    Contract.FUNDING,
+                    'fund'
+                );
+                let balanceAfter = Number(
+                    Account(investors[i].publicKey).balance.get()
+                );
+                console.log('Balance change: ', balanceBefore - balanceAfter);
+
+                let { R, M } = result!;
+
+                fundingAction.push(
+                    new FundingAction({
+                        campaignId: fundingInput[i].campaignId,
+                        R,
+                        M,
+                    })
+                );
+            }
+        });
+
+        it('Reduce', async () => {
+            await fetchAllContract(contracts, [Contract.FUNDING]);
+
+            let fundingContract = contracts[Contract.FUNDING]
+                .contract as FundingContract;
+            let lastActionState = fundingContract.actionState.get();
+            fundingActionStates = contracts[Contract.FUNDING].actionStates;
+            index = fundingActionStates.findIndex((obj) =>
+                Boolean(obj.equals(lastActionState))
+            );
+            Provable.log('lastActionStates: ', lastActionState);
+            Provable.log('Funding action states: ', fundingActionStates);
+            Provable.log('Index: ', index);
+
+            console.log('Reduce funding...');
+
+            console.log('First step: ');
+            let reduceFundingProof = await CreateReduceProof.firstStep(
+                fundingContract.actionState.get(),
+                fundingContract.actionStatus.get()
+            );
+
+            console.log('Next step: ');
+
+            for (let i = 0; i < investors.length; i++) {
+                console.log('Step', i);
+                reduceFundingProof = await CreateReduceProof.nextStep(
+                    reduceFundingProof,
+                    fundingAction[i],
+                    fundingReduceStorage.getWitness(
+                        fundingActionStates[index + 1 + i]
+                    )
+                );
+
+                // update storage:
+                fundingReduceStorage.updateLeaf(
+                    fundingReduceStorage.calculateIndex(
+                        fundingActionStates[index + 1 + i]
+                    ),
+                    fundingReduceStorage.calculateLeaf(ActionStatus.REDUCED)
+                );
+            }
+
+            tx = await Mina.transaction(feePayerKey.publicKey, () => {
+                fundingContract.reduce(reduceFundingProof);
+            });
+            await proveAndSend(tx, [feePayerKey], Contract.FUNDING, 'reduce');
+        });
+
+        it('RollUp', async () => {
+            let fundingContract = contracts[Contract.FUNDING]
+                .contract as FundingContract;
+            console.log('RollUp funding...');
+
+            await fetchAllContract(contracts, [Contract.REQUEST]);
+
+            let rollUpFundingProof = await CreateRollupProof.firstStep(
+                fundingAction[0].campaignId,
+                secretVectors[0].length,
+                fundingContract.actionStatus.get()
+            );
+
+            for (let i = 0; i < investors.length; i++) {
+                console.log('Step', i);
+                rollUpFundingProof = await CreateRollupProof.nextStep(
+                    rollUpFundingProof,
+                    fundingAction[i],
+                    fundingActionStates[index + i],
+                    fundingReduceStorage.getWitness(
+                        fundingActionStates[index + 1 + i]
+                    )
+                );
+
+                // update storage:
+                fundingReduceStorage.updateLeaf(
+                    fundingReduceStorage.calculateIndex(
+                        fundingActionStates[index + 1 + i]
+                    ),
+                    fundingReduceStorage.calculateLeaf(ActionStatus.ROLL_UPED)
+                );
+            }
+
+            tx = await Mina.transaction(feePayerKey.publicKey, () => {
+                fundingContract.rollupRequest(
+                    rollUpFundingProof,
+                    Field(2),
+                    Field(2),
+                    sumRStorage.getLevel1Witness(
+                        sumRStorage.calculateLevel1Index(
+                            fundingAction[0].campaignId
+                        )
+                    ),
+                    sumMStorage.getLevel1Witness(
+                        sumMStorage.calculateLevel1Index(
+                            fundingAction[0].campaignId
+                        )
+                    ),
+                    requestIdStorage.getLevel1Witness(
+                        requestIdStorage.calculateLevel1Index(
+                            fundingAction[0].campaignId
+                        )
+                    ),
+                    fundingAddressStorage.getZkAppRef(
+                        ZkAppEnum.REQUEST,
+                        contracts[Contract.REQUEST].contract.address
+                    )
+                );
+            });
+            await proveAndSend(tx, [feePayerKey], Contract.FUNDING, '');
+        });
+
+        balance = Number(Account(fundingContract.address).balance.get());
         await proveAndSend(tx, [feePayerKey], Contract.FUNDING, '');
+
+        console.log('Contract balance after: ', balance);
     });
 });

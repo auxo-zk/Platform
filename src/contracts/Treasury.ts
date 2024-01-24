@@ -24,6 +24,8 @@ import { FieldDynamicArray } from '@auxo-dev/auxo-libs';
 
 import { ZkAppRef } from './SharedStorage.js';
 
+import { Storage } from '@auxo-dev/dkg';
+
 import {
     EMPTY_LEVEL_1_TREE,
     Level1CWitness,
@@ -34,7 +36,7 @@ import { ZkApp } from '@auxo-dev/dkg';
 
 import { INSTANCE_LIMITS, ZkAppEnum } from '../constants.js';
 
-import { Level1CWitness as indexWitness } from './ParticipationStorage.js';
+import { Level1CWitness as IndexWitness } from './ParticipationStorage.js';
 
 const DefaultLevel1Root = EMPTY_LEVEL_1_TREE().getRoot();
 
@@ -60,12 +62,11 @@ export class ClaimFundInput extends Struct({
     projectId: Field,
     requestId: Field, // TODO: Funding check requestId
     payeeAddress: PublicKey, // TODO: Project check address
-    M: ZkApp.Request.RequestVector,
-    D: ZkApp.Request.RequestVector,
-    DWitness: MerkleMapWitness,
+    M: ZkApp.Request.RequestVector, // check Funding
+    D: ZkApp.Request.RequestVector, // check at request
+    DWitness: MerkleMapWitness, // TODO check request contract
     investVector: InvestVector,
-    participationIndex: Field,
-    indexWitness: indexWitness,
+    participationIndexWitness: IndexWitness,
     claimedIndex: Level1CWitness,
     participationRef: ZkAppRef,
 }) {
@@ -114,7 +115,7 @@ export const ClaimFund = ZkProgram({
                 });
             },
         },
-        createTreasury: {
+        nextStep: {
             privateInputs: [
                 SelfProof<Void, ClaimFundProofOutput>,
                 TreasuryAction,
@@ -241,16 +242,8 @@ export class TreasuryContract extends SmartContract {
         //   input.participationRef.address
         // );
 
-        // participationContract
-        //   .checkParticipationIndex(
-        //     new checkParticipationIndexInput({
-        //       campaignId: input.campaignId,
-        //       projectId: input.projectId,
-        //       participationIndex: input.participationIndex,
-        //       indexWitness: input.indexWitness,
-        //     })
-        //   )
-        //   .assertEquals(Bool(true));
+        let participationIndex =
+            input.participationIndexWitness.calculateIndex();
 
         // check if claimed
         this.checkIfNotClaimed(
@@ -262,7 +255,7 @@ export class TreasuryContract extends SmartContract {
         ).assertEquals(Bool(true));
 
         let claimAmount = input.investVector.get(
-            input.participationIndex.sub(Field(1)) // since index start from 1
+            participationIndex.sub(Field(1)) // since index start from 1
         );
 
         // send invest amount

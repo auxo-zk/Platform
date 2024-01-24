@@ -12,6 +12,10 @@ import {
     Poseidon,
     Account,
     AccountUpdate,
+    Group,
+    MerkleMap,
+    MerkleMapWitness,
+    Bool,
 } from 'o1js';
 import fs from 'fs/promises';
 import { Config, Key } from './helper/config.js';
@@ -80,6 +84,8 @@ import {
     TreasuryContract,
     ClaimFund,
     TreasuryAction,
+    ClaimFundInput,
+    InvestVector,
 } from '../contracts/Treasury.js';
 import { ClaimedStorage } from '../contracts/TreasuryStorage.js';
 import {
@@ -91,7 +97,6 @@ import {
     wait,
 } from '../libs/utils.js';
 import { CustomScalarArray, ZkApp } from '@auxo-dev/dkg';
-import { RequestStorage } from '@auxo-dev/dkg/build/esm/src/contracts/storages.js';
 
 // const isCompile = false;
 
@@ -99,8 +104,8 @@ const isDeploy = false;
 const isProject = false;
 const isCampaign = false;
 const isParticipation = false;
-const isFunding = true;
-const isTreasury = false;
+const isFunding = false;
+const isTreasury = true;
 
 async function main() {
     console.time('runTime');
@@ -288,6 +293,7 @@ async function main() {
     let tx;
 
     if (isDeploy) {
+        console.log('Deploying');
         // // Deploy ProjectContract
         // await deploy(
         //   contracts[Contract.PROJECT],
@@ -300,7 +306,7 @@ async function main() {
         // // Deploy CampaignContract
         // await deploy(
         //   contracts[Contract.CAMPAIGN],
-        //   [['zkApps', campaignAddressStorage.root]],
+        //   [['zkApps', campaignAddressStorage.addresses.getRoot()]],
         //   feePayerKey,
         //   fee,
         //   ++feePayerNonce
@@ -309,53 +315,69 @@ async function main() {
         // // Deploy ParticipationContract
         // await deploy(
         //   contracts[Contract.PARTICIPATION],
-        //   [['zkApps', participationAddressStorage.root]],
+        //   [['zkApps', participationAddressStorage.addresses.getRoot()]],
         //   feePayerKey,
         //   fee,
         //   ++feePayerNonce
         // );
 
         // Deploy FundingContract
-        await deploy(
-            contracts[Contract.FUNDING],
-            [['zkApps', fundingAddressStorage.root]],
-            feePayerKey,
-            fee,
-            ++feePayerNonce
-        );
+        // await deploy(
+        //   contracts[Contract.FUNDING],
+        //   [['zkApps', fundingAddressStorage.addresses.getRoot()]],
+        //   feePayerKey,
+        //   fee,
+        //   ++feePayerNonce
+        // );
 
+        // tx = await Mina.transaction(
+        //   { sender: feePayerKey.publicKey, fee, nonce: ++feePayerNonce },
+        //   () => {
+        //     let feePayerAccount = AccountUpdate.createSigned(feePayerKey.publicKey);
+        //     feePayerAccount.send({
+        //       to: contracts[Contract.FUNDING].contract,
+        //       amount: 5 * 10 ** 9,
+        //     }); // 5 Mina to send request - which cost 1
+        //   }
+        // );
+        // await tx.sign([feePayerKey.privateKey]).send();
+
+        // Deploy RequestConctract
+        // await deploy(
+        //   contracts[Contract.REQUEST],
+        //   [],
+        //   feePayerKey,
+        //   fee,
+        //   ++feePayerNonce
+        // );
+
+        // Deploy TreasuryContract
+        let treasuryContract = contracts[Contract.TREASURY]
+            .contract as TreasuryContract;
         tx = await Mina.transaction(
             { sender: feePayerKey.publicKey, fee, nonce: ++feePayerNonce },
             () => {
-                let feePayerAccount = AccountUpdate.createSigned(
-                    feePayerKey.publicKey
+                let feePayerAccount = AccountUpdate.fundNewAccount(
+                    feePayerKey.publicKey,
+                    1
                 );
+                treasuryContract.deploy();
+                treasuryContract.zkApps.set(treasuryAddressStorage.root);
                 feePayerAccount.send({
-                    to: contracts[Contract.FUNDING].contract,
-                    amount: 5 * 10 ** 9,
-                }); // 5 Mina to send request - which cost 1
+                    to: contracts[Contract.TREASURY].contract,
+                    amount: 1 * 10 ** 9,
+                }); // Mina for investor to claim
             }
         );
-        await tx.sign([feePayerKey.privateKey]).send();
+        await tx.prove();
+        await tx
+            .sign([
+                feePayerKey.privateKey,
+                contracts[Contract.TREASURY].key.privateKey,
+            ])
+            .send();
 
-        // Deploy TreasuryContract
-        await deploy(
-            contracts[Contract.TREASURY],
-            [['zkApps', treasuryAddressStorage.root]],
-            feePayerKey,
-            fee,
-            ++feePayerNonce
-        );
-
-        // Deploy RequestConctract
-        await deploy(
-            contracts[Contract.REQUEST],
-            [],
-            feePayerKey,
-            fee,
-            ++feePayerNonce
-        );
-
+        console.log('Deploy done all');
         // if (isProject) await wait();
         await wait();
     }
@@ -965,7 +987,178 @@ async function main() {
     }
 
     if (isTreasury) {
-        //
+        let treasuryContract = contracts[Contract.TREASURY]
+            .contract as TreasuryContract;
+
+        await fetchAllContract(contracts, [Contract.TREASURY]);
+
+        let acc1: { privateKey: string; publicKey: string } = JSON.parse(
+            await fs.readFile('keys/acc1.json', 'utf8')
+        );
+        let acc2: { privateKey: string; publicKey: string } = JSON.parse(
+            await fs.readFile('keys/acc2.json', 'utf8')
+        );
+
+        let projects: Key[] = [
+            {
+                privateKey: PrivateKey.fromBase58(acc1.privateKey),
+                publicKey: PublicKey.fromBase58(acc1.publicKey),
+            },
+            {
+                privateKey: PrivateKey.fromBase58(acc2.privateKey),
+                publicKey: PublicKey.fromBase58(acc2.publicKey),
+            },
+        ];
+
+        let randomPrivateKey = PrivateKey.fromBase58(
+            'EKE3xkv6TyhxSzBPeiiAppDfKsJVp7gXS7iuS2RNj8TGJvvhG6FM'
+        );
+        let randomPublickey = randomPrivateKey.toPublicKey();
+        // mock sumD value
+        let sumD = ZkApp.Request.RequestVector.from([
+            randomPublickey.toGroup(),
+            randomPublickey.toGroup(),
+            randomPublickey.toGroup(),
+            randomPublickey.toGroup(),
+        ]);
+
+        // earn each 0.01 total 0.02
+        let investVectors = InvestVector.from([
+            Field(1e7),
+            Field(0),
+            Field(1e7),
+            Field(0),
+        ]);
+
+        let tempSumM = [];
+
+        for (let i = 0; i < Number(investVectors.length); i++) {
+            let temp = Group.generator.scale(
+                Scalar.from(investVectors.get(Field(i)).toBigInt())
+            );
+            tempSumM.push(temp.add(sumD.get(Field(i))));
+        }
+
+        let sumM = ZkApp.Request.RequestVector.from(tempSumM);
+
+        // contract request storage:
+        let DStorage = new MerkleMap();
+
+        let claimFundInput = [
+            new ClaimFundInput({
+                campaignId: Field(1),
+                projectId: Field(1),
+                requestId: Field(6969),
+                payeeAddress: projects[0].publicKey,
+                M: sumM,
+                D: sumD,
+                DWitness: DStorage.getWitness(Field(6969)),
+                investVector: investVectors,
+                participationIndexWitness: indexStorage.getLevel1Witness(
+                    Field(1)
+                ),
+                claimedIndex: claimedStorage.getLevel1Witness(
+                    claimedStorage.calculateLevel1Index({
+                        campaignId: Field(1),
+                        projectId: Field(1),
+                    })
+                ),
+                participationRef: treasuryAddressStorage.getZkAppRef(
+                    ZkAppEnum.PARTICIPATION,
+                    contracts[Contract.PARTICIPATION].contract.address
+                ),
+            }),
+            new ClaimFundInput({
+                campaignId: Field(1),
+                projectId: Field(2),
+                requestId: Field(6969),
+                payeeAddress: projects[1].publicKey,
+                M: sumM,
+                D: sumD,
+                DWitness: DStorage.getWitness(Field(6969)),
+                investVector: investVectors,
+                participationIndexWitness: indexStorage.getLevel1Witness(
+                    Field(3)
+                ),
+                claimedIndex: claimedStorage.getLevel1Witness(
+                    claimedStorage.calculateLevel1Index({
+                        campaignId: Field(1),
+                        projectId: Field(2),
+                    })
+                ),
+                participationRef: treasuryAddressStorage.getZkAppRef(
+                    ZkAppEnum.PARTICIPATION,
+                    contracts[Contract.PARTICIPATION].contract.address
+                ),
+            }),
+        ];
+
+        for (let i = 0; i < projects.length; i++) {
+            await fetchAccount({ publicKey: projects[i].publicKey });
+            let balanceBefore = Number(
+                Account(projects[i].publicKey).balance.get()
+            );
+            // tx = await Mina.transaction(
+            //   { sender: projects[i].publicKey, fee },
+            //   () => {
+            //     treasuryContract.claimFund(claimFundInput[i]);
+            //   }
+            // );
+            // await proveAndSend(tx, [projects[i]], Contract.TREASURY, 'claimFund');
+            let balanceAfter = Number(
+                Account(projects[i].publicKey).balance.get()
+            );
+            console.log('Balance change: ', balanceBefore - balanceAfter);
+
+            treasuryAction.push(
+                new TreasuryAction({
+                    campaignId: claimFundInput[i].campaignId,
+                    projectId: claimFundInput[i].projectId,
+                })
+            );
+        }
+
+        // await wait();
+        await fetchAllContract(contracts, [Contract.TREASURY]);
+
+        console.log('First step: ');
+        let reduceFundingProof = await ClaimFund.firstStep(
+            treasuryContract.claimedTreeRoot.get(),
+            Reducer.initialActionState
+        );
+
+        console.log('Next step: ');
+
+        for (let i = projects.length - 1; i >= 0; i--) {
+            console.log('Step', i);
+            reduceFundingProof = await ClaimFund.nextStep(
+                reduceFundingProof,
+                treasuryAction[i],
+                claimedStorage.getWitness(
+                    claimedStorage.calculateLevel1Index({
+                        campaignId: treasuryAction[i].campaignId,
+                        projectId: treasuryAction[i].projectId,
+                    })
+                )
+            );
+
+            // update storage:
+            claimedStorage.updateLeaf(
+                claimedStorage.calculateLeaf(Bool(true)),
+                claimedStorage.calculateLevel1Index({
+                    campaignId: treasuryAction[i].campaignId,
+                    projectId: treasuryAction[i].projectId,
+                })
+            );
+        }
+
+        tx = await Mina.transaction(
+            { sender: feePayerKey.publicKey, fee, nonce: ++feePayerNonce },
+            () => {
+                treasuryContract.rollup(reduceFundingProof);
+            }
+        );
+        await proveAndSend(tx, [feePayerKey], Contract.TREASURY, 'rollup');
     }
 
     console.log('done all');
