@@ -1,92 +1,122 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Field, MerkleTree, MerkleWitness, Poseidon } from 'o1js';
 import { INSTANCE_LIMITS } from '../constants.js';
 import { ZkApp } from '@auxo-dev/dkg';
+
 export const LEVEL_1_TREE_HEIGHT =
-  Math.ceil(Math.log2(INSTANCE_LIMITS.CAMPAIGN)) + 1;
+    Math.ceil(Math.log2(INSTANCE_LIMITS.CAMPAIGN)) + 1;
 
 export class Level1MT extends MerkleTree {}
 export class Level1Witness extends MerkleWitness(LEVEL_1_TREE_HEIGHT) {}
 
 export const EMPTY_LEVEL_1_TREE = () => new Level1MT(LEVEL_1_TREE_HEIGHT);
 
-// Storage
-export abstract class FundingStorage {
-  level1: Level1MT;
+export abstract class FundingStorage<RawLeaf> {
+    private _level1: Level1MT;
+    private _leafs: {
+        [key: string]: { raw: RawLeaf | undefined; leaf: Field };
+    };
 
-  constructor(level1?: Level1MT) {
-    this.level1 = level1 || EMPTY_LEVEL_1_TREE();
-  }
+    constructor(
+        leafs?: {
+            level1Index: Field;
+            leaf: RawLeaf | Field;
+        }[]
+    ) {
+        this._level1 = EMPTY_LEVEL_1_TREE();
+        this._leafs = {};
+        if (leafs) {
+            for (let i = 0; i < leafs.length; i++) {
+                if (leafs[i].leaf instanceof Field) {
+                    this.updateLeaf(
+                        leafs[i].level1Index,
+                        leafs[i].leaf as Field
+                    );
+                } else {
+                    this.updateRawLeaf(
+                        leafs[i].level1Index,
+                        leafs[i].leaf as RawLeaf
+                    );
+                }
+            }
+        }
+    }
 
-  abstract calculateLeaf(args: any): Field;
-  abstract calculateLevel1Index(args: any): Field;
-  calculateLevel2Index?(args: any): Field;
+    get root(): Field {
+        return this._level1.getRoot();
+    }
 
-  getLevel1Witness(level1Index: Field): Level1Witness {
-    return new Level1Witness(this.level1.getWitness(level1Index.toBigInt()));
-  }
+    get leafs(): { [key: string]: { raw: RawLeaf | undefined; leaf: Field } } {
+        return this._leafs;
+    }
 
-  getWitness(level1Index: Field): Level1Witness {
-    return this.getLevel1Witness(level1Index);
-  }
+    abstract calculateLeaf(rawLeaf: RawLeaf): Field;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    abstract calculateLevel1Index(args: any): Field;
 
-  updateLeaf(leaf: Field, level1Index: Field): void {
-    this.level1.setLeaf(level1Index.toBigInt(), leaf);
-  }
+    getLevel1Witness(level1Index: Field): Level1Witness {
+        return new Level1Witness(
+            this._level1.getWitness(level1Index.toBigInt())
+        );
+    }
+
+    getWitness(level1Index: Field): Level1Witness {
+        return this.getLevel1Witness(level1Index);
+    }
+
+    updateLeaf(level1Index: Field, leaf: Field): void {
+        this._level1.setLeaf(level1Index.toBigInt(), leaf);
+        this._leafs[level1Index.toString()] = {
+            raw: undefined,
+            leaf: leaf,
+        };
+    }
+
+    updateRawLeaf(level1Index: Field, rawLeaf: RawLeaf): void {
+        let leaf = this.calculateLeaf(rawLeaf);
+        this._level1.setLeaf(level1Index.toBigInt(), leaf);
+        this._leafs[level1Index.toString()] = {
+            raw: rawLeaf,
+            leaf: leaf,
+        };
+    }
 }
 
-export class ValueStorage extends FundingStorage {
-  level1: Level1MT;
+export type ValueLeaf = ZkApp.Request.RequestVector;
 
-  constructor(level1?: Level1MT) {
-    super(level1);
-  }
+export class ValueStorage extends FundingStorage<ValueLeaf> {
+    static calculateLeaf(requestVecor: ValueLeaf): Field {
+        return Poseidon.hash(requestVecor.toFields());
+    }
 
-  calculateLeaf(value: ZkApp.Request.RequestVector): Field {
-    return ValueStorage.calculateLeaf(value);
-  }
+    calculateLeaf(requestVecor: ValueLeaf): Field {
+        return ValueStorage.calculateLeaf(requestVecor);
+    }
 
-  static calculateLeaf(value: ZkApp.Request.RequestVector): Field {
-    return Poseidon.hash(value.toFields());
-  }
+    static calculateLevel1Index(campaignId: Field): Field {
+        return campaignId;
+    }
 
-  calculateLevel1Index(campaignId: Field): Field {
-    return campaignId;
-  }
-
-  getWitness(level1Index: Field): Level1Witness {
-    return super.getWitness(level1Index) as Level1Witness;
-  }
-
-  updateLeaf(leaf: Field, level1Index: Field): void {
-    super.updateLeaf(leaf, level1Index);
-  }
+    calculateLevel1Index(campaignId: Field): Field {
+        return ValueStorage.calculateLevel1Index(campaignId);
+    }
 }
 
-export class RequestIdStorage extends FundingStorage {
-  level1: Level1MT;
+export type RequestIdLeaf = Field;
 
-  constructor(level1?: Level1MT) {
-    super(level1);
-  }
+export class RequestIdStorage extends FundingStorage<RequestIdLeaf> {
+    static calculateLeaf(requestId: RequestIdLeaf): Field {
+        return requestId;
+    }
 
-  calculateLeaf(requestId: Field): Field {
-    return RequestIdStorage.calculateLeaf(requestId);
-  }
+    calculateLeaf(requestId: RequestIdLeaf): Field {
+        return RequestIdStorage.calculateLeaf(requestId);
+    }
 
-  static calculateLeaf(requestId: Field): Field {
-    return requestId;
-  }
+    static calculateLevel1Index(campaignId: Field): Field {
+        return campaignId;
+    }
 
-  calculateLevel1Index(campaignId: Field): Field {
-    return campaignId;
-  }
-
-  getWitness(level1Index: Field): Level1Witness {
-    return super.getWitness(level1Index) as Level1Witness;
-  }
-
-  updateLeaf(leaf: Field, level1Index: Field): void {
-    super.updateLeaf(leaf, level1Index);
-  }
+    calculateLevel1Index(campaignId: Field): Field {
+        return RequestIdStorage.calculateLevel1Index(campaignId);
+    }
 }

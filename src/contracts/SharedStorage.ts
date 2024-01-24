@@ -1,12 +1,12 @@
 import {
-  Field,
-  MerkleMap,
-  MerkleMapWitness,
-  MerkleTree,
-  MerkleWitness,
-  Poseidon,
-  PublicKey,
-  Struct,
+    Field,
+    MerkleMap,
+    MerkleMapWitness,
+    MerkleTree,
+    MerkleWitness,
+    Poseidon,
+    PublicKey,
+    Struct,
 } from 'o1js';
 import { ADDRESS_MAX_SIZE } from '../constants.js';
 
@@ -18,81 +18,156 @@ export class ReduceWitness extends MerkleMapWitness {}
 export const EMPTY_REDUCE_MT = () => new MerkleMap();
 
 export class ZkAppRef extends Struct({
-  address: PublicKey,
-  witness: AddressWitness,
+    address: PublicKey,
+    witness: AddressWitness,
 }) {}
 
 export class AddressStorage {
-  addresses: AddressMT;
+    private _addressMap: AddressMT;
+    private _addresses: {
+        [key: string]: { raw: PublicKey | undefined; leaf: Field };
+    };
 
-  constructor(addresses?: AddressMT) {
-    this.addresses = addresses || EMPTY_ADDRESS_MT();
-  }
+    constructor(addresses?: { index: Field | number; address: PublicKey }[]) {
+        this._addressMap = EMPTY_ADDRESS_MT();
+        this._addresses = {};
+        if (addresses) {
+            for (let i = 0; i < addresses.length; i++) {
+                this.updateAddress(
+                    AddressStorage.calculateIndex(addresses[i].index),
+                    addresses[i].address
+                );
+            }
+        }
+    }
 
-  static calculateLeaf(address: PublicKey): Field {
-    return Poseidon.hash(address.toFields());
-  }
+    get root(): Field {
+        return this._addressMap.getRoot();
+    }
 
-  calculateLeaf(address: PublicKey): Field {
-    return AddressStorage.calculateLeaf(address);
-  }
+    get addresses(): {
+        [key: string]: { raw: PublicKey | undefined; leaf: Field };
+    } {
+        return this._addresses;
+    }
 
-  static calculateIndex(index: Field | number): Field {
-    return Field(index);
-  }
+    static calculateLeaf(address: PublicKey): Field {
+        return Poseidon.hash(address.toFields());
+    }
 
-  calculateIndex(index: Field | number): Field {
-    return AddressStorage.calculateIndex(index);
-  }
+    calculateLeaf(address: PublicKey): Field {
+        return AddressStorage.calculateLeaf(address);
+    }
 
-  getWitness(index: Field): AddressWitness {
-    return new AddressWitness(this.addresses.getWitness(index.toBigInt()));
-  }
+    static calculateIndex(index: Field | number): Field {
+        return Field(index);
+    }
+
+    calculateIndex(index: Field | number): Field {
+        return AddressStorage.calculateIndex(index);
+    }
+
+    getWitness(index: Field): AddressWitness {
+        return new AddressWitness(
+            this._addressMap.getWitness(index.toBigInt())
+        );
+    }
+
+    getAddresses(): (PublicKey | undefined)[] {
+        return Object.values(this._addressMap);
+    }
+
+    updateLeaf(index: Field, leaf: Field): void {
+        this._addressMap.setLeaf(index.toBigInt(), leaf);
+        this._addresses[index.toString()] = {
+            raw: undefined,
+            leaf: leaf,
+        };
+    }
+
+    updateAddress(index: Field, address: PublicKey) {
+        let leaf = this.calculateLeaf(address);
+        this._addressMap.setLeaf(index.toBigInt(), leaf);
+        this._addresses[index.toString()] = {
+            raw: address,
+            leaf: leaf,
+        };
+    }
+
+    getZkAppRef(index: Field | number, address: PublicKey) {
+        return new ZkAppRef({
+            address: address,
+            witness: this.getWitness(this.calculateIndex(index)),
+        });
+    }
 }
 
 export function getZkAppRef(
-  map: AddressMT,
-  index: Field | number,
-  address: PublicKey
+    map: AddressMT,
+    index: Field | number,
+    address: PublicKey
 ) {
-  return new ZkAppRef({
-    address: address,
-    witness: new AddressWitness(
-      map.getWitness(new AddressStorage().calculateIndex(index).toBigInt())
-    ),
-  });
+    return new ZkAppRef({
+        address: address,
+        witness: new AddressWitness(
+            map.getWitness(AddressStorage.calculateIndex(index).toBigInt())
+        ),
+    });
 }
 
 export const enum ActionStatus {
-  NOT_EXISTED,
-  REDUCED,
-  ROLL_UPED,
+    NOT_EXISTED,
+    REDUCED,
+    ROLL_UPED,
 }
 
 export class ReduceStorage {
-  actions: MerkleMap;
+    private _actionMap: MerkleMap;
+    private _actions: { [key: string]: Field };
 
-  constructor(actions?: MerkleMap) {
-    this.actions = actions || EMPTY_REDUCE_MT();
-  }
+    constructor(actions?: { actionState: Field; status: ActionStatus }[]) {
+        this._actionMap = EMPTY_REDUCE_MT();
+        this._actions = {};
+        if (actions) {
+            for (let i = 0; i < actions.length; i++) {
+                this.updateLeaf(
+                    actions[i].actionState,
+                    ReduceStorage.calculateLeaf(actions[i].status)
+                );
+            }
+        }
+    }
 
-  static calculateLeaf(status: ActionStatus): Field {
-    return Field(status);
-  }
+    get root(): Field {
+        return this._actionMap.getRoot();
+    }
 
-  calculateLeaf(status: ActionStatus): Field {
-    return ReduceStorage.calculateLeaf(status);
-  }
+    get actions(): { [key: string]: Field } {
+        return this._actions;
+    }
 
-  calculateIndex(actionState: Field): Field {
-    return actionState;
-  }
+    static calculateLeaf(status: ActionStatus): Field {
+        return Field(status);
+    }
 
-  getWitness(index: Field): MerkleMapWitness {
-    return this.actions.getWitness(index);
-  }
+    calculateLeaf(status: ActionStatus): Field {
+        return ReduceStorage.calculateLeaf(status);
+    }
 
-  updateLeaf(index: Field, leaf: Field): void {
-    this.actions.set(index, leaf);
-  }
+    static calculateIndex(actionState: Field): Field {
+        return actionState;
+    }
+
+    calculateIndex(actionState: Field): Field {
+        return ReduceStorage.calculateIndex(actionState);
+    }
+
+    getWitness(index: Field): MerkleMapWitness {
+        return this._actionMap.getWitness(index);
+    }
+
+    updateLeaf(index: Field, leaf: Field): void {
+        this._actionMap.set(index, leaf);
+        this._actions[index.toString()] = leaf;
+    }
 }

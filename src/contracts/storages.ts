@@ -5,9 +5,9 @@ import * as FundingStorage from './FundingStorage.js';
 import * as TreasuryStorage from './TreasuryStorage.js';
 
 export {
-  CampaignStorage,
-  ProjectStorage,
-  ParticipationStorage,
-  FundingStorage,
-  TreasuryStorage,
+    CampaignStorage,
+    ProjectStorage,
+    ParticipationStorage,
+    FundingStorage,
+    TreasuryStorage,
 };

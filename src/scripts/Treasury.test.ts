@@ -194,7 +194,7 @@
 //   it('Deploy and funding', async () => {
 //     await deploy(
 //       contracts[Contract.TREASURY],
-//       [['zkApps', allAddressStorage.addresses.getRoot()]],
+//       [['zkApps', allAddressStorage.root]],
 //       feePayerKey
 //     );
 

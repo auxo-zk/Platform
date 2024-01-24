@@ -1,19 +1,18 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import {
-  Field,
-  MerkleTree,
-  MerkleWitness,
-  Poseidon,
-  PublicKey,
-  Struct,
+    Field,
+    MerkleTree,
+    MerkleWitness,
+    Poseidon,
+    PublicKey,
+    Struct,
 } from 'o1js';
 import { PROJECT_MEMBER_MAX_SIZE, INSTANCE_LIMITS } from '../constants.js';
 import { IPFSHash, PublicKeyDynamicArray } from '@auxo-dev/auxo-libs';
 
 export const LEVEL_1_TREE_HEIGHT =
-  Math.ceil(Math.log2(INSTANCE_LIMITS.PROJECT)) + 1;
+    Math.ceil(Math.log2(INSTANCE_LIMITS.PROJECT)) + 1;
 export const LEVEL_2_TREE_HEIGHT =
-  Math.ceil(Math.log2(PROJECT_MEMBER_MAX_SIZE)) + 1;
+    Math.ceil(Math.log2(PROJECT_MEMBER_MAX_SIZE)) + 1;
 
 export class Level1MT extends MerkleTree {}
 export class Level1Witness extends MerkleWitness(LEVEL_1_TREE_HEIGHT) {}
@@ -24,171 +23,270 @@ export const EMPTY_LEVEL_1_TREE = () => new Level1MT(LEVEL_1_TREE_HEIGHT);
 export const EMPTY_LEVEL_2_TREE = () => new Level2MT(LEVEL_2_TREE_HEIGHT);
 
 export class FullMTWitness extends Struct({
-  level1: Level1Witness,
-  level2: Level2Witness,
+    level1: Level1Witness,
+    level2: Level2Witness,
 }) {}
 
 // Storage
-export abstract class ProjectStorage {
-  level1: Level1MT;
-  level2s: { [key: string]: Level2MT };
+export abstract class ProjectStorage<RawLeaf> {
+    private _level1: Level1MT;
+    private _level2s: { [key: string]: Level2MT };
+    private _leafs: {
+        [key: string]: { raw: RawLeaf | undefined; leaf: Field };
+    };
 
-  constructor(
-    level1?: Level1MT,
-    level2s?: { index: Field; level2: Level2MT }[]
-  ) {
-    this.level1 = level1 || EMPTY_LEVEL_1_TREE();
-    this.level2s = {};
-    if (level2s) {
-      for (let i = 0; i < level2s.length; i++) {
-        this.level2s[level2s[i].index.toString()] = level2s[i].level2;
-      }
+    constructor(
+        leafs?: {
+            level1Index: Field;
+            level2Index?: Field;
+            leaf: RawLeaf | Field;
+        }[]
+    ) {
+        this._level1 = EMPTY_LEVEL_1_TREE();
+        this._level2s = {};
+        this._leafs = {};
+        if (leafs) {
+            for (let i = 0; i < leafs.length; i++) {
+                if (leafs[i].leaf instanceof Field) {
+                    this.updateLeaf(
+                        {
+                            level1Index: leafs[i].level1Index,
+                            level2Index: leafs[i].level2Index,
+                        },
+                        leafs[i].leaf as Field
+                    );
+                } else {
+                    this.updateRawLeaf(
+                        {
+                            level1Index: leafs[i].level1Index,
+                            level2Index: leafs[i].level2Index,
+                        },
+                        leafs[i].leaf as RawLeaf
+                    );
+                }
+            }
+        }
     }
-  }
 
-  abstract calculateLeaf(args: any): Field;
-  abstract calculateLevel1Index(args: any): Field;
-  calculateLevel2Index?(args: any): Field;
-
-  getLevel1Witness(level1Index: Field): Level1Witness {
-    return new Level1Witness(this.level1.getWitness(level1Index.toBigInt()));
-  }
-
-  getLevel2Witness(level1Index: Field, level2Index: Field): Level2Witness {
-    let level2 = this.level2s[level1Index.toString()];
-    if (level2 === undefined)
-      throw new Error('Level 2 MT does not exist at this index');
-    return new Level2Witness(level2.getWitness(level2Index.toBigInt()));
-  }
-
-  getWitness(
-    level1Index: Field,
-    level2Index?: Field
-  ): Level1Witness | FullMTWitness {
-    if (level2Index) {
-      return new FullMTWitness({
-        level1: this.getLevel1Witness(level1Index),
-        level2: this.getLevel2Witness(level1Index, level2Index),
-      });
-    } else {
-      return this.getLevel1Witness(level1Index);
+    get root(): Field {
+        return this._level1.getRoot();
     }
-  }
 
-  updateInternal(level1Index: Field, level2: Level2MT) {
-    Object.assign(this.level2s, {
-      [level1Index.toString()]: level2,
-    });
-    this.level1.setLeaf(level1Index.toBigInt(), level2.getRoot());
-  }
+    get leafs(): { [key: string]: { raw: RawLeaf | undefined; leaf: Field } } {
+        return this._leafs;
+    }
 
-  updateLeaf(leaf: Field, level1Index: Field, level2Index?: Field): void {
-    if (level2Index) {
-      if (Object.keys(this.level2s).length == 0)
-        throw new Error('This storage does support level 2 MT');
+    abstract calculateLeaf(rawLeaf: RawLeaf): Field;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    abstract calculateLevel1Index(args: any): Field;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    calculateLevel2Index?(args: any): Field;
 
-      let level2 = this.level2s[level1Index.toString()];
-      if (level2 === undefined) level2 = EMPTY_LEVEL_2_TREE();
+    getLevel1Witness(level1Index: Field): Level1Witness {
+        return new Level1Witness(
+            this._level1.getWitness(level1Index.toBigInt())
+        );
+    }
 
-      level2.setLeaf(level2Index.toBigInt(), leaf);
-      this.updateInternal(level1Index, level2);
-    } else this.level1.setLeaf(level1Index.toBigInt(), leaf);
-  }
+    getLevel2Witness(level1Index: Field, level2Index: Field): Level2Witness {
+        let level2 = this._level2s[level1Index.toString()];
+        if (level2 === undefined)
+            throw new Error('Level 2 MT does not exist at this index');
+        return new Level2Witness(level2.getWitness(level2Index.toBigInt()));
+    }
+
+    getWitness(
+        level1Index: Field,
+        level2Index?: Field
+    ): Level1Witness | FullMTWitness {
+        if (level2Index) {
+            return new FullMTWitness({
+                level1: this.getLevel1Witness(level1Index),
+                level2: this.getLevel2Witness(level1Index, level2Index),
+            });
+        } else {
+            return this.getLevel1Witness(level1Index);
+        }
+    }
+
+    updateInternal(level1Index: Field, level2: Level2MT) {
+        Object.assign(this._level2s, {
+            [level1Index.toString()]: level2,
+        });
+        this._level1.setLeaf(level1Index.toBigInt(), level2.getRoot());
+    }
+
+    updateLeaf(
+        {
+            level1Index,
+            level2Index,
+        }: { level1Index: Field; level2Index?: Field },
+        leaf: Field
+    ): void {
+        let leafId = level1Index.toString();
+        if (level2Index) {
+            leafId += '-' + level2Index.toString();
+            let level2 = this._level2s[level1Index.toString()];
+            if (level2 === undefined) level2 = EMPTY_LEVEL_2_TREE();
+
+            level2.setLeaf(level2Index.toBigInt(), leaf);
+            this.updateInternal(level1Index, level2);
+        } else this._level1.setLeaf(level1Index.toBigInt(), leaf);
+
+        this._leafs[leafId] = {
+            raw: undefined,
+            leaf: leaf,
+        };
+    }
+
+    updateRawLeaf(
+        {
+            level1Index,
+            level2Index,
+        }: { level1Index: Field; level2Index?: Field },
+        rawLeaf: RawLeaf
+    ): void {
+        let leafId = level1Index.toString();
+        let leaf = this.calculateLeaf(rawLeaf);
+        if (level2Index) {
+            leafId += '-' + level2Index.toString();
+            let level2 = this._level2s[level1Index.toString()];
+            if (level2 === undefined) level2 = EMPTY_LEVEL_2_TREE();
+
+            level2.setLeaf(level2Index.toBigInt(), leaf);
+            this.updateInternal(level1Index, level2);
+        } else this._level1.setLeaf(level1Index.toBigInt(), leaf);
+
+        this._leafs[leafId] = {
+            raw: rawLeaf,
+            leaf: leaf,
+        };
+    }
 }
 
-export class MemberStorage extends ProjectStorage {
-  level1: Level1MT;
-  level2s: { [key: string]: Level2MT };
+export type MemberLeaf = PublicKey;
 
-  constructor(
-    level1?: Level1MT,
-    level2s?: { index: Field; level2: Level2MT }[]
-  ) {
-    super(level1, level2s);
-  }
+export class MemberStorage extends ProjectStorage<MemberLeaf> {
+    static calculateLeaf(publicKey: MemberLeaf): Field {
+        return Poseidon.hash(publicKey.toFields());
+    }
 
-  calculateLeaf(publicKey: PublicKey): Field {
-    return MemberStorage.calculateLeaf(publicKey);
-  }
+    calculateLeaf(publicKey: MemberLeaf): Field {
+        return MemberStorage.calculateLeaf(publicKey);
+    }
 
-  static calculateLeaf(publicKey: PublicKey): Field {
-    return Poseidon.hash(publicKey.toFields());
-  }
+    static calculateLevel1Index(projectId: Field): Field {
+        return projectId;
+    }
 
-  calculateLevel1Index(projectId: Field): Field {
-    return projectId;
-  }
+    calculateLevel1Index(projectId: Field): Field {
+        return MemberStorage.calculateLevel1Index(projectId);
+    }
 
-  calculateLevel2Index(memberId: Field): Field {
-    return memberId;
-  }
+    static calculateLevel2Index(memberId: Field): Field {
+        return memberId;
+    }
 
-  getWitness(level1Index: Field, level2Index: Field): FullMTWitness {
-    return super.getWitness(level1Index, level2Index) as FullMTWitness;
-  }
+    calculateLevel2Index(memberId: Field): Field {
+        return MemberStorage.calculateLevel2Index(memberId);
+    }
 
-  updateLeaf(leaf: Field, level1Index: Field, level2Index?: Field): void {
-    super.updateLeaf(leaf, level1Index, level2Index ?? undefined);
-  }
+    getWitness(level1Index: Field, level2Index: Field): FullMTWitness {
+        return super.getWitness(level1Index, level2Index) as FullMTWitness;
+    }
+
+    updateLeaf(
+        {
+            level1Index,
+            level2Index,
+        }: { level1Index: Field; level2Index: Field },
+        leaf: Field
+    ): void {
+        super.updateLeaf({ level1Index, level2Index }, leaf);
+    }
+
+    updateRawLeaf(
+        {
+            level1Index,
+            level2Index,
+        }: { level1Index: Field; level2Index: Field },
+        rawLeaf: MemberLeaf
+    ): void {
+        super.updateRawLeaf({ level1Index, level2Index }, rawLeaf);
+    }
 }
 
-export class InfoStorage extends ProjectStorage {
-  level1: Level1MT;
+export type InfoLeaf = IPFSHash;
 
-  constructor(level1?: Level1MT) {
-    super(level1);
-  }
+export class InfoStorage extends ProjectStorage<InfoLeaf> {
+    static calculateLeaf(ipfsHash: InfoLeaf): Field {
+        return Poseidon.hash(ipfsHash.toFields());
+    }
 
-  calculateLeaf(ipfsHash: IPFSHash): Field {
-    return InfoStorage.calculateLeaf(ipfsHash);
-  }
+    calculateLeaf(ipfsHash: InfoLeaf): Field {
+        return InfoStorage.calculateLeaf(ipfsHash);
+    }
 
-  static calculateLeaf(ipfsHash: IPFSHash): Field {
-    return Poseidon.hash(ipfsHash.toFields());
-  }
+    static calculateLevel1Index(projectId: Field): Field {
+        return projectId;
+    }
 
-  calculateLevel1Index(projectId: Field): Field {
-    return projectId;
-  }
+    calculateLevel1Index(projectId: Field): Field {
+        return InfoStorage.calculateLevel1Index(projectId);
+    }
 
-  getWitness(level1Index: Field): Level1Witness {
-    return super.getWitness(level1Index) as Level1Witness;
-  }
+    getWitness(level1Index: Field): Level1Witness {
+        return super.getWitness(level1Index) as Level1Witness;
+    }
 
-  updateLeaf(leaf: Field, level1Index: Field): void {
-    super.updateLeaf(leaf, level1Index);
-  }
+    updateLeaf({ level1Index }: { level1Index: Field }, leaf: Field): void {
+        super.updateLeaf({ level1Index }, leaf);
+    }
+
+    updateRawLeaf(
+        { level1Index }: { level1Index: Field },
+        rawLeaf: InfoLeaf
+    ): void {
+        super.updateRawLeaf({ level1Index }, rawLeaf);
+    }
 }
 
-export class AddressStorage extends ProjectStorage {
-  level1: Level1MT;
+export type AddressLeaf = PublicKey;
 
-  constructor(level1?: Level1MT) {
-    super(level1);
-  }
+export class AddressStorage extends ProjectStorage<AddressLeaf> {
+    static calculateLeaf(address: AddressLeaf): Field {
+        return Poseidon.hash(address.toFields());
+    }
 
-  calculateLeaf(address: PublicKey): Field {
-    return AddressStorage.calculateLeaf(address);
-  }
+    calculateLeaf(address: AddressLeaf): Field {
+        return AddressStorage.calculateLeaf(address);
+    }
 
-  static calculateLeaf(address: PublicKey): Field {
-    return Poseidon.hash(address.toFields());
-  }
+    static calculateLevel1Index(projectId: Field): Field {
+        return projectId;
+    }
 
-  calculateLevel1Index(projectId: Field): Field {
-    return projectId;
-  }
+    calculateLevel1Index(projectId: Field): Field {
+        return AddressStorage.calculateLevel1Index(projectId);
+    }
 
-  getWitness(level1Index: Field): Level1Witness {
-    return super.getWitness(level1Index) as Level1Witness;
-  }
+    getWitness(level1Index: Field): Level1Witness {
+        return super.getWitness(level1Index) as Level1Witness;
+    }
 
-  updateLeaf(leaf: Field, level1Index: Field): void {
-    super.updateLeaf(leaf, level1Index);
-  }
+    updateLeaf({ level1Index }: { level1Index: Field }, leaf: Field): void {
+        super.updateLeaf({ level1Index }, leaf);
+    }
+
+    updateRawLeaf(
+        { level1Index }: { level1Index: Field },
+        rawLeaf: AddressLeaf
+    ): void {
+        super.updateRawLeaf({ level1Index }, rawLeaf);
+    }
 }
 
 // Type
 export class MemberArray extends PublicKeyDynamicArray(
-  PROJECT_MEMBER_MAX_SIZE
+    PROJECT_MEMBER_MAX_SIZE
 ) {}

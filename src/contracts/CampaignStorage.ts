@@ -1,10 +1,9 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Field, MerkleTree, MerkleWitness, Poseidon, PublicKey } from 'o1js';
 import { INSTANCE_LIMITS } from '../constants.js';
 import { IPFSHash } from '@auxo-dev/auxo-libs';
 
 export const LEVEL_1_TREE_HEIGHT =
-  Math.ceil(Math.log2(INSTANCE_LIMITS.CAMPAIGN)) + 1;
+    Math.ceil(Math.log2(INSTANCE_LIMITS.CAMPAIGN)) + 1;
 
 export class Level1MT extends MerkleTree {}
 export class Level1Witness extends MerkleWitness(LEVEL_1_TREE_HEIGHT) {}
@@ -12,163 +11,166 @@ export class Level1Witness extends MerkleWitness(LEVEL_1_TREE_HEIGHT) {}
 export const EMPTY_LEVEL_1_TREE = () => new Level1MT(LEVEL_1_TREE_HEIGHT);
 
 // Storage
-export abstract class CampaignStorage {
-  level1: Level1MT;
+export abstract class CampaignStorage<RawLeaf> {
+    private _level1: Level1MT;
+    private _leafs: {
+        [key: string]: { raw: RawLeaf | undefined; leaf: Field };
+    };
 
-  constructor(level1?: Level1MT) {
-    this.level1 = level1 || EMPTY_LEVEL_1_TREE();
-  }
+    constructor(
+        leafs?: {
+            level1Index: Field;
+            leaf: RawLeaf | Field;
+        }[]
+    ) {
+        this._level1 = EMPTY_LEVEL_1_TREE();
+        this._leafs = {};
+        if (leafs) {
+            for (let i = 0; i < leafs.length; i++) {
+                if (leafs[i].leaf instanceof Field) {
+                    this.updateLeaf(
+                        leafs[i].level1Index,
+                        leafs[i].leaf as Field
+                    );
+                } else {
+                    this.updateRawLeaf(
+                        leafs[i].level1Index,
+                        leafs[i].leaf as RawLeaf
+                    );
+                }
+            }
+        }
+    }
 
-  abstract calculateLeaf(args: any): Field;
-  abstract calculateLevel1Index(args: any): Field;
-  calculateLevel2Index?(args: any): Field;
+    get root(): Field {
+        return this._level1.getRoot();
+    }
 
-  getLevel1Witness(level1Index: Field): Level1Witness {
-    return new Level1Witness(this.level1.getWitness(level1Index.toBigInt()));
-  }
+    get leafs(): { [key: string]: { raw: RawLeaf | undefined; leaf: Field } } {
+        return this._leafs;
+    }
 
-  getWitness(level1Index: Field): Level1Witness {
-    return this.getLevel1Witness(level1Index);
-  }
+    abstract calculateLeaf(rawLeaf: RawLeaf): Field;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    abstract calculateLevel1Index(args: any): Field;
 
-  updateLeaf(leaf: Field, level1Index: Field): void {
-    this.level1.setLeaf(level1Index.toBigInt(), leaf);
-  }
+    getLevel1Witness(level1Index: Field): Level1Witness {
+        return new Level1Witness(
+            this._level1.getWitness(level1Index.toBigInt())
+        );
+    }
+
+    getWitness(level1Index: Field): Level1Witness {
+        return this.getLevel1Witness(level1Index);
+    }
+
+    updateLeaf(level1Index: Field, leaf: Field): void {
+        this._level1.setLeaf(level1Index.toBigInt(), leaf);
+        this._leafs[level1Index.toString()] = {
+            raw: undefined,
+            leaf: leaf,
+        };
+    }
+
+    updateRawLeaf(level1Index: Field, rawLeaf: RawLeaf): void {
+        let leaf = this.calculateLeaf(rawLeaf);
+        this._level1.setLeaf(level1Index.toBigInt(), leaf);
+        this._leafs[level1Index.toString()] = {
+            raw: rawLeaf,
+            leaf: leaf,
+        };
+    }
 }
 
-export class InfoStorage extends CampaignStorage {
-  level1: Level1MT;
+export type InfoLeaf = IPFSHash;
 
-  constructor(level1?: Level1MT) {
-    super(level1);
-  }
+export class InfoStorage extends CampaignStorage<InfoLeaf> {
+    static calculateLeaf(ipfsHash: InfoLeaf): Field {
+        return Poseidon.hash(ipfsHash.toFields());
+    }
 
-  static calculateLeaf(ipfsHash: IPFSHash): Field {
-    return Poseidon.hash(ipfsHash.toFields());
-  }
+    calculateLeaf(ipfsHash: InfoLeaf): Field {
+        return InfoStorage.calculateLeaf(ipfsHash);
+    }
 
-  calculateLeaf(ipfsHash: IPFSHash): Field {
-    return InfoStorage.calculateLeaf(ipfsHash);
-  }
+    static calculateLevel1Index(campaignId: Field): Field {
+        return campaignId;
+    }
 
-  calculateLevel1Index(campaignId: Field): Field {
-    return campaignId;
-  }
-
-  getWitness(level1Index: Field): Level1Witness {
-    return super.getWitness(level1Index) as Level1Witness;
-  }
-
-  updateLeaf(leaf: Field, level1Index: Field): void {
-    super.updateLeaf(leaf, level1Index);
-  }
+    calculateLevel1Index(campaignId: Field): Field {
+        return InfoStorage.calculateLevel1Index(campaignId);
+    }
 }
 
-export class OwnerStorage extends CampaignStorage {
-  level1: Level1MT;
+export type OwnerLeaf = PublicKey;
 
-  constructor(level1?: Level1MT) {
-    super(level1);
-  }
+export class OwnerStorage extends CampaignStorage<OwnerLeaf> {
+    static calculateLeaf(publicKey: OwnerLeaf): Field {
+        return Poseidon.hash(publicKey.toFields());
+    }
 
-  calculateLeaf(publicKey: PublicKey): Field {
-    return OwnerStorage.calculateLeaf(publicKey);
-  }
+    calculateLeaf(publicKey: OwnerLeaf): Field {
+        return OwnerStorage.calculateLeaf(publicKey);
+    }
 
-  static calculateLeaf(publicKey: PublicKey): Field {
-    return Poseidon.hash(publicKey.toFields());
-  }
+    static calculateLevel1Index(campaignId: Field): Field {
+        return campaignId;
+    }
 
-  calculateLevel1Index(campaignId: Field): Field {
-    return campaignId;
-  }
-
-  getWitness(level1Index: Field): Level1Witness {
-    return super.getWitness(level1Index) as Level1Witness;
-  }
-
-  updateLeaf(leaf: Field, level1Index: Field): void {
-    super.updateLeaf(leaf, level1Index);
-  }
+    calculateLevel1Index(campaignId: Field): Field {
+        return OwnerStorage.calculateLevel1Index(campaignId);
+    }
 }
 
-export class StatusStorage extends CampaignStorage {
-  level1: Level1MT;
+export type StatusLeaf = StatusEnum;
 
-  constructor(level1?: Level1MT) {
-    super(level1);
-  }
+export class StatusStorage extends CampaignStorage<StatusLeaf> {
+    static calculateLeaf(status: StatusLeaf): Field {
+        return Field(status);
+    }
 
-  calculateLeaf(status: StatusEnum): Field {
-    return StatusStorage.calculateLeaf(status);
-  }
+    calculateLeaf(status: StatusLeaf): Field {
+        return StatusStorage.calculateLeaf(status);
+    }
 
-  static calculateLeaf(status: StatusEnum): Field {
-    return Field(status);
-  }
+    static calculateLevel1Index(campaignId: Field): Field {
+        return campaignId;
+    }
 
-  calculateLevel1Index(campaignId: Field): Field {
-    return campaignId;
-  }
-
-  getWitness(level1Index: Field): Level1Witness {
-    return super.getWitness(level1Index) as Level1Witness;
-  }
-
-  updateLeaf(leaf: Field, level1Index: Field): void {
-    super.updateLeaf(leaf, level1Index);
-  }
+    calculateLevel1Index(campaignId: Field): Field {
+        return StatusStorage.calculateLevel1Index(campaignId);
+    }
 }
 
-export class ConfigStorage extends CampaignStorage {
-  level1: Level1MT;
-
-  constructor(level1?: Level1MT) {
-    super(level1);
-  }
-
-  calculateLeaf({
-    committeeId,
-    keyId,
-  }: {
+export type ConfigLeaf = {
     committeeId: Field;
     keyId: Field;
-  }): Field {
-    return ConfigStorage.calculateLeaf({
-      committeeId,
-      keyId,
-    });
-  }
+};
 
-  static calculateLeaf({
-    committeeId,
-    keyId,
-  }: {
-    committeeId: Field;
-    keyId: Field;
-  }): Field {
-    return Poseidon.hash([committeeId, keyId]);
-  }
+export class ConfigStorage extends CampaignStorage<ConfigLeaf> {
+    static calculateLeaf(rawLeaf: ConfigLeaf): Field {
+        return Poseidon.hash([rawLeaf.committeeId, rawLeaf.keyId]);
+    }
 
-  calculateLevel1Index(projectId: Field): Field {
-    return projectId;
-  }
+    calculateLeaf(rawLeaf: ConfigLeaf): Field {
+        return ConfigStorage.calculateLeaf(rawLeaf);
+    }
 
-  getWitness(level1Index: Field): Level1Witness {
-    return super.getWitness(level1Index) as Level1Witness;
-  }
+    static calculateLevel1Index(projectId: Field): Field {
+        return projectId;
+    }
 
-  updateLeaf(leaf: Field, level1Index: Field): void {
-    super.updateLeaf(leaf, level1Index);
-  }
+    calculateLevel1Index(projectId: Field): Field {
+        return ConfigStorage.calculateLevel1Index(projectId);
+    }
 }
 
 // Type
 export const enum StatusEnum {
-  NOT_STARTED,
-  APPLICATION,
-  FUNDING,
-  ALLOCATED,
-  FINALIZE_ROUND_1,
-  __LENGTH,
+    NOT_STARTED,
+    APPLICATION,
+    FUNDING,
+    ALLOCATED,
+    FINALIZE_ROUND_1,
+    __LENGTH,
 }
