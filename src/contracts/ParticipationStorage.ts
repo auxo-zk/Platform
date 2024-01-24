@@ -57,6 +57,10 @@ export abstract class ParticipationCStorage<RawLeaf> {
         return this._level1.getRoot();
     }
 
+    get level1(): Level1CMT {
+        return this._level1;
+    }
+
     get leafs(): { [key: string]: { raw: RawLeaf | undefined; leaf: Field } } {
         return this._leafs;
     }
@@ -126,6 +130,10 @@ export abstract class ParticipationStorage<RawLeaf> {
 
     get root(): Field {
         return this._level1.getRoot();
+    }
+
+    get level1(): Level1MT {
+        return this._level1;
     }
 
     get leafs(): { [key: string]: { raw: RawLeaf | undefined; leaf: Field } } {

@@ -46,6 +46,10 @@ export abstract class CampaignStorage<RawLeaf> {
         return this._level1.getRoot();
     }
 
+    get level1(): Level1MT {
+        return this._level1;
+    }
+
     get leafs(): { [key: string]: { raw: RawLeaf | undefined; leaf: Field } } {
         return this._leafs;
     }
