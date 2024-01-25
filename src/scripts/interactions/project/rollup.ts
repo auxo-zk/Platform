@@ -62,7 +62,7 @@ async function main() {
     // Build storage
     projects.map((project: any) => {
         if (Boolean(project.active)) {
-            console.log(project);
+            console.log('projectId: ', project.projectId);
             let level2Tree = EMPTY_LEVEL_2_TREE();
             for (let i = 0; i < project.members.length; i++) {
                 level2Tree.setLeaf(
