@@ -279,7 +279,7 @@ export class CampaignContract extends SmartContract {
         let infoTreeRoot = this.infoTreeRoot.getAndRequireEquals();
         let statusTreeRoot = this.statusTreeRoot.getAndRequireEquals();
         let configTreeRoot = this.configTreeRoot.getAndRequireEquals();
-        // let nextCampaignId = this.nextCampaignId.getAndRequireEquals();
+        let nextCampaignId = this.nextCampaignId.getAndRequireEquals();
         let lastRolledUpActionState =
             this.lastRolledUpActionState.getAndRequireEquals();
 
@@ -287,7 +287,7 @@ export class CampaignContract extends SmartContract {
         infoTreeRoot.assertEquals(proof.publicOutput.initialInfoTreeRoot);
         statusTreeRoot.assertEquals(proof.publicOutput.initialStatusTreeRoot);
         configTreeRoot.assertEquals(proof.publicOutput.initialConfigTreeRoot);
-        // nextCampaignId.assertEquals(proof.publicOutput.initialNextCampaignId);
+        nextCampaignId.assertEquals(proof.publicOutput.initialNextCampaignId);
         lastRolledUpActionState.assertEquals(
             proof.publicOutput.initialLastRolledUpACtionState
         );
