@@ -302,6 +302,7 @@ export class CampaignContract extends SmartContract {
         this.infoTreeRoot.set(proof.publicOutput.finalInfoTreeRoot);
         this.statusTreeRoot.set(proof.publicOutput.finalStatusTreeRoot);
         this.configTreeRoot.set(proof.publicOutput.finalConfigTreeRoot);
+        this.nextCampaignId.set(proof.publicOutput.finalNextCampaignId);
         this.lastRolledUpActionState.set(
             proof.publicOutput.finalLastRolledUpActionState
         );
