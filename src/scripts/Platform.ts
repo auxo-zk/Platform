@@ -98,8 +98,6 @@ import {
 } from '../libs/utils.js';
 import { CustomScalarArray, ZkApp } from '@auxo-dev/dkg';
 
-// const isCompile = false;
-
 const isDeploy = true;
 const isProject = false;
 const isCampaign = false;
