@@ -66,7 +66,6 @@ async function main() {
     // Do this and state value of contract is fetched in Mina
     await fetchZkAppState(zkAppAddress);
     let nextCampaignId = Number(zkContract.nextCampaignId.get());
-    nextCampaignId = 4;
 
     // Storage
     let campaignInfoStorage = new CampaignInfoStorage();
@@ -165,23 +164,23 @@ async function main() {
 
         // update storage:
         ownerStorage.updateLeaf(
-            ownerStorage.calculateLeaf(action.owner),
-            Field(i)
+            Field(i),
+            ownerStorage.calculateLeaf(action.owner)
         );
         campaignInfoStorage.updateLeaf(
-            campaignInfoStorage.calculateLeaf(action.ipfsHash),
-            Field(i)
+            Field(i),
+            campaignInfoStorage.calculateLeaf(action.ipfsHash)
         );
         statusStorage.updateLeaf(
-            statusStorage.calculateLeaf(StatusEnum.APPLICATION),
-            Field(i)
+            Field(i),
+            statusStorage.calculateLeaf(StatusEnum.APPLICATION)
         );
         configStorage.updateLeaf(
+            Field(i),
             configStorage.calculateLeaf({
                 committeeId: action.committeeId,
                 keyId: action.keyId,
-            }),
-            Field(i)
+            })
         );
 
         console.log('DONE');

@@ -1089,13 +1089,13 @@ async function main() {
             let balanceBefore = Number(
                 Account(projects[i].publicKey).balance.get()
             );
-            // tx = await Mina.transaction(
-            //   { sender: projects[i].publicKey, fee },
-            //   () => {
-            //     treasuryContract.claimFund(claimFundInput[i]);
-            //   }
-            // );
-            // await proveAndSend(tx, [projects[i]], Contract.TREASURY, 'claimFund');
+            tx = await Mina.transaction(
+              { sender: projects[i].publicKey, fee },
+              () => {
+                treasuryContract.claimFund(claimFundInput[i]);
+              }
+            );
+            await proveAndSend(tx, [projects[i]], Contract.TREASURY, 'claimFund');
             let balanceAfter = Number(
                 Account(projects[i].publicKey).balance.get()
             );
