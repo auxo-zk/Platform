@@ -125,7 +125,6 @@ async function main() {
 
     const reduceActions: CampaignAction[] = rawActions.map((e) => {
         let action: Field[] = e.actions[0].map((e) => Field(e));
-        Provable.log('ipfsHash: ', CampaignAction.fromFields(action).ipfsHash);
         return CampaignAction.fromFields(action);
     });
 
@@ -164,19 +163,19 @@ async function main() {
 
         // update storage:
         ownerStorage.updateLeaf(
-            Field(i),
+            Field(nextCampaignId + i),
             ownerStorage.calculateLeaf(action.owner)
         );
         campaignInfoStorage.updateLeaf(
-            Field(i),
+            Field(nextCampaignId + i),
             campaignInfoStorage.calculateLeaf(action.ipfsHash)
         );
         statusStorage.updateLeaf(
-            Field(i),
+            Field(nextCampaignId + i),
             statusStorage.calculateLeaf(StatusEnum.APPLICATION)
         );
         configStorage.updateLeaf(
-            Field(i),
+            Field(nextCampaignId + i),
             configStorage.calculateLeaf({
                 committeeId: action.committeeId,
                 keyId: action.keyId,

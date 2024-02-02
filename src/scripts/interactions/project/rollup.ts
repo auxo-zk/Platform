@@ -103,6 +103,8 @@ async function main() {
 
     const reduceActions = actions;
 
+    if (reduceActions.length == 0) return;
+
     console.log('CreateProject.firstStep...');
     let proof = await CreateProject.firstStep(
         projectContract.nextProjectId.get(),
