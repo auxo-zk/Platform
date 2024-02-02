@@ -72,20 +72,14 @@ export class JoinCampaignInput extends Struct({
     }
 }
 
-export class checkParticipationIndexInput extends Struct({
+export class CheckParticipationIndexInput extends Struct({
     campaignId: Field,
     projectId: Field,
     participationIndex: Field,
     indexWitness: indexAndInfoWitness,
 }) {
-    static fromFields(fields: Field[]): checkParticipationIndexInput {
-        return super.fromFields(fields) as checkParticipationIndexInput;
-    }
-}
-
-export class UpdateCampaignInput extends Struct({}) {
-    static fromFields(fields: Field[]): UpdateCampaignInput {
-        return super.fromFields(fields) as UpdateCampaignInput;
+    static fromFields(fields: Field[]): CheckParticipationIndexInput {
+        return super.fromFields(fields) as CheckParticipationIndexInput;
     }
 }
 
@@ -208,7 +202,7 @@ export const JoinCampaign = ZkProgram({
     },
 });
 
-class ParticipationProof extends ZkProgram.Proof(JoinCampaign) {}
+export class ParticipationProof extends ZkProgram.Proof(JoinCampaign) {}
 
 export class ParticipationContract extends SmartContract {
     // campaignId -> projectId -> index. start from 1, if index = 0 means that project have not participate
@@ -267,7 +261,7 @@ export class ParticipationContract extends SmartContract {
         // check if this is first time join campaign
 
         let notIn = this.checkParticipationIndex(
-            new checkParticipationIndexInput({
+            new CheckParticipationIndexInput({
                 campaignId: input.campaignId,
                 projectId: input.projectId,
                 participationIndex: Field(0),
@@ -341,7 +335,7 @@ export class ParticipationContract extends SmartContract {
         this.emitEvent(EventEnum.ACTIONS_REDUCED, lastActionState);
     }
 
-    @method checkParticipationIndex(input: checkParticipationIndexInput): Bool {
+    @method checkParticipationIndex(input: CheckParticipationIndexInput): Bool {
         let isValid = Bool(true);
 
         let index = IndexStorage.calculateLevel1Index({
