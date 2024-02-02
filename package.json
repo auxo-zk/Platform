@@ -1,6 +1,6 @@
 {
     "name": "@auxo-dev/platform",
-    "version": "0.1.7",
+    "version": "0.1.8",
     "description": "Auxo's On-chain Funding platform on Mina blockchain",
     "author": "",
     "license": "Apache-2.0",

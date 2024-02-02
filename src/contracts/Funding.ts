@@ -266,7 +266,7 @@ export const CreateRollupProof = ZkProgram({
     },
 });
 
-class ProofRollupAction extends ZkProgram.Proof(CreateRollupProof) {}
+export class ProofRollupAction extends ZkProgram.Proof(CreateRollupProof) {}
 
 export class FundingContract extends SmartContract {
     @state(Field) actionState = State<Field>();

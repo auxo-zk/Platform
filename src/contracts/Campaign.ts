@@ -220,7 +220,7 @@ export const CreateCampaign = ZkProgram({
     },
 });
 
-class CampaignProof extends ZkProgram.Proof(CreateCampaign) {}
+export class CampaignProof extends ZkProgram.Proof(CreateCampaign) {}
 
 export enum EventEnum {
     CAMPAIGN_CREATED = 'campaign-created',

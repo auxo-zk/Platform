@@ -159,7 +159,7 @@ export const ClaimFund = ZkProgram({
     },
 });
 
-class TreasuryProof extends ZkProgram.Proof(ClaimFund) {}
+export class TreasuryProof extends ZkProgram.Proof(ClaimFund) {}
 
 export enum EventEnum {
     ACTIONS_REDUCED = 'actions-reduced',
