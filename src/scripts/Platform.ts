@@ -65,7 +65,11 @@ import {
     FundingAction,
     FundingInput,
 } from '../contracts/Funding.js';
-import { RequestIdStorage, ValueStorage } from '../contracts/FundingStorage.js';
+import {
+    RequestIdStorage,
+    ValueStorage,
+    TotalFundStorage,
+} from '../contracts/FundingStorage.js';
 import {
     ParticipationContract,
     JoinCampaign,
@@ -181,6 +185,7 @@ async function main() {
     let fundingReduceStorage = new ReduceStorage();
     let sumRStorage = new ValueStorage();
     let sumMStorage = new ValueStorage();
+    let totalFundStorage = new TotalFundStorage();
     let requestIdStorage = new RequestIdStorage();
     let fundingAddressStorage = new AddressStorage();
     let fundingAction: FundingAction[] = [];
@@ -857,11 +862,24 @@ async function main() {
 
             let { R, M } = result!;
 
+            let dimension = fundingInput[i].secretVector.length;
+            let totalMinaInvest = Provable.witness(Field, () => {
+                let curSum = 0n;
+                for (let j = 0; j < dimension.toBigInt(); j++) {
+                    curSum += fundingInput[i].secretVector
+                        .get(Field(j))
+                        .toScalar()
+                        .toBigInt();
+                }
+                return Field(curSum);
+            });
+
             fundingAction.push(
                 new FundingAction({
                     campaignId: fundingInput[i].campaignId,
                     R,
                     M,
+                    fundAmount: totalMinaInvest,
                 })
             );
         }
@@ -930,14 +948,6 @@ async function main() {
                     fundingActionStates[index + 1 + i]
                 )
             );
-
-            // update storage:
-            fundingReduceStorage.updateLeaf(
-                fundingReduceStorage.calculateIndex(
-                    fundingActionStates[index + 1 + i]
-                ),
-                fundingReduceStorage.calculateLeaf(ActionStatus.ROLL_UPED)
-            );
         }
 
         tx = await Mina.transaction(
@@ -958,6 +968,11 @@ async function main() {
                         )
                     ),
                     requestIdStorage.getLevel1Witness(
+                        requestIdStorage.calculateLevel1Index(
+                            fundingAction[0].campaignId
+                        )
+                    ),
+                    totalFundStorage.getLevel1Witness(
                         requestIdStorage.calculateLevel1Index(
                             fundingAction[0].campaignId
                         )
@@ -1090,12 +1105,17 @@ async function main() {
                 Account(projects[i].publicKey).balance.get()
             );
             tx = await Mina.transaction(
-              { sender: projects[i].publicKey, fee },
-              () => {
-                treasuryContract.claimFund(claimFundInput[i]);
-              }
+                { sender: projects[i].publicKey, fee },
+                () => {
+                    treasuryContract.claimFund(claimFundInput[i]);
+                }
             );
-            await proveAndSend(tx, [projects[i]], Contract.TREASURY, 'claimFund');
+            await proveAndSend(
+                tx,
+                [projects[i]],
+                Contract.TREASURY,
+                'claimFund'
+            );
             let balanceAfter = Number(
                 Account(projects[i].publicKey).balance.get()
             );

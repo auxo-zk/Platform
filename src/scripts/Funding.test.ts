@@ -28,7 +28,11 @@ import {
     FundingInput,
     FundingAction,
 } from '../contracts/Funding.js';
-import { RequestIdStorage, ValueStorage } from '../contracts/FundingStorage.js';
+import {
+    RequestIdStorage,
+    TotalFundStorage,
+    ValueStorage,
+} from '../contracts/FundingStorage.js';
 import { Key, Config } from './helper/config.js';
 import {
     AddressStorage,
@@ -64,6 +68,7 @@ describe('Funding', () => {
     let sumRStorage = new ValueStorage();
     let sumMStorage = new ValueStorage();
     let requestIdStorage = new RequestIdStorage();
+    let totalFundStorage = new TotalFundStorage();
     let fundingAddressStorage = new AddressStorage();
     let fundingAction: FundingAction[] = [];
     let fundingInput: FundingInput[];
@@ -233,11 +238,24 @@ describe('Funding', () => {
 
             let { R, M } = result!;
 
+            let dimension = fundingInput[i].secretVector.length;
+            let totalMinaInvest = Provable.witness(Field, () => {
+                let curSum = 0n;
+                for (let j = 0; j < dimension.toBigInt(); j++) {
+                    curSum += fundingInput[i].secretVector
+                        .get(Field(j))
+                        .toScalar()
+                        .toBigInt();
+                }
+                return Field(curSum);
+            });
+
             fundingAction.push(
                 new FundingAction({
                     campaignId: fundingInput[i].campaignId,
                     R,
                     M,
+                    fundAmount: totalMinaInvest,
                 })
             );
         }
@@ -315,14 +333,6 @@ describe('Funding', () => {
                     fundingActionStates[index + 1 + i]
                 )
             );
-
-            // update storage:
-            fundingReduceStorage.updateLeaf(
-                fundingReduceStorage.calculateIndex(
-                    fundingActionStates[index + 1 + i]
-                ),
-                fundingReduceStorage.calculateLeaf(ActionStatus.ROLL_UPED)
-            );
         }
 
         tx = await Mina.transaction(feePayerKey.publicKey, () => {
@@ -341,6 +351,11 @@ describe('Funding', () => {
                     )
                 ),
                 requestIdStorage.getLevel1Witness(
+                    requestIdStorage.calculateLevel1Index(
+                        fundingAction[0].campaignId
+                    )
+                ),
+                totalFundStorage.getLevel1Witness(
                     requestIdStorage.calculateLevel1Index(
                         fundingAction[0].campaignId
                     )

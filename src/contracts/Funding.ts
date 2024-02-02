@@ -37,6 +37,7 @@ import {
     EMPTY_LEVEL_1_TREE,
     ValueStorage,
     RequestIdStorage,
+    TotalFundStorage,
 } from './FundingStorage.js';
 
 const DefaultLevel1Root = EMPTY_LEVEL_1_TREE().getRoot();
@@ -53,6 +54,7 @@ export class RequestSent extends Struct({
     requestId: Field,
     sumR: DKG_Contracts.Request.RequestVector,
     sumM: DKG_Contracts.Request.RequestVector,
+    totalFundAmount: Field,
 }) {
     static fromFields(action: Field[]): RequestSent {
         return super.fromFields(action) as RequestSent;
@@ -77,6 +79,7 @@ export class FundingAction extends Struct({
     campaignId: Field,
     R: DKG_Contracts.Request.RequestVector,
     M: DKG_Contracts.Request.RequestVector,
+    fundAmount: Field,
 }) {
     hash(): Field {
         return Poseidon.hash(FundingAction.toFields(this));
@@ -171,9 +174,8 @@ export class RollupActionsOutput extends Struct({
     campaignId: Field,
     sum_R: DKG_Contracts.Request.RequestVector,
     sum_M: DKG_Contracts.Request.RequestVector,
-    // TODO: make that we can increase number of investor
+    totalFundAmount: Field,
     initialStatusRoot: Field,
-    finalStatusRoot: Field,
 }) {
     hash(): Field {
         return Poseidon.hash(RollupActionsOutput.toFields(this));
@@ -211,12 +213,7 @@ export const CreateRollupProof = ZkProgram({
                     Field(ActionStatus.REDUCED)
                 );
                 key.assertEquals(actionState);
-                root.assertEquals(preProof.publicOutput.finalStatusRoot);
-
-                // Update satus to ROLL_UPED
-                let [newRoot] = rollupStatusWitness.computeRootAndKey(
-                    Field(ActionStatus.ROLL_UPED)
-                );
+                root.assertEquals(preProof.publicOutput.initialStatusRoot);
 
                 let sum_R = preProof.publicOutput.sum_R;
                 let sum_M = preProof.publicOutput.sum_M;
@@ -232,12 +229,16 @@ export const CreateRollupProof = ZkProgram({
                     );
                 }
 
+                let newTotalFund = preProof.publicOutput.totalFundAmount.add(
+                    action.fundAmount
+                );
+
                 return new RollupActionsOutput({
                     campaignId: campaignId,
                     sum_R,
                     sum_M,
+                    totalFundAmount: newTotalFund,
                     initialStatusRoot: preProof.publicOutput.initialStatusRoot,
-                    finalStatusRoot: newRoot,
                 });
             },
         },
@@ -258,8 +259,8 @@ export const CreateRollupProof = ZkProgram({
                     sum_M: DKG_Contracts.Request.RequestVector.empty(
                         maxInvestorSize
                     ),
+                    totalFundAmount: Field(0),
                     initialStatusRoot,
-                    finalStatusRoot: initialStatusRoot,
                 });
             },
         },
@@ -273,6 +274,7 @@ export class FundingContract extends SmartContract {
     @state(Field) actionStatus = State<Field>();
     @state(Field) R_root = State<Field>(); // campaignId -> sum R
     @state(Field) M_root = State<Field>(); // campaignId -> sum M
+    @state(Field) totalFundAmount_root = State<Field>(); // campaignId -> total fubnd amount
     @state(Field) requestId_root = State<Field>(); // campaignId -> requestId
     @state(Field) zkApps = State<Field>();
 
@@ -288,6 +290,7 @@ export class FundingContract extends SmartContract {
         this.actionStatus.set(EMPTY_REDUCE_MT().getRoot());
         this.R_root.set(DefaultLevel1Root);
         this.M_root.set(DefaultLevel1Root);
+        this.totalFundAmount_root.set(DefaultLevel1Root);
         this.requestId_root.set(DefaultLevel1Root);
     }
 
@@ -387,6 +390,7 @@ export class FundingContract extends SmartContract {
                 campaignId: fundingInput.campaignId,
                 R,
                 M,
+                fundAmount: totalMinaInvest,
             })
         );
 
@@ -416,14 +420,16 @@ export class FundingContract extends SmartContract {
         this.emitEvent(EventEnum.ACTIONS_REDUCED, lastActionState);
     }
 
-    // TODO: adding N, T to check REQUEST_MAX_SIZE by interact with Committee contract
-    // TODO: checking Campaign contract config -> committeeId and keyId
+    // TODO: add time condition to check rollup
+    // TODO: adding N, T to check REQUEST_MAX_SIZE by interact with Committee contract (???)
+    // TODO: checking Campaign contract config -> committeeId and keyId is valid
     @method rollupRequest(
         proof: ProofRollupAction,
         committeeId: Field,
         keyId: Field,
         R_witness: Level1Witness,
         M_witness: Level1Witness,
+        totalFundAmount_witness: Level1Witness,
         requestId_witness: Level1Witness,
         requestZkAppRef: ZkAppRef
     ) {
@@ -440,26 +446,34 @@ export class FundingContract extends SmartContract {
         let R_root = this.R_root.getAndRequireEquals();
         let M_root = this.M_root.getAndRequireEquals();
         let requestId_root = this.requestId_root.getAndRequireEquals();
+        let totalFundAmount_root =
+            this.totalFundAmount_root.getAndRequireEquals();
         let actionStatus = this.actionStatus.getAndRequireEquals();
 
         actionStatus.assertEquals(proof.publicOutput.initialStatusRoot);
+
         let R_key = R_witness.calculateIndex();
         let old_R_root = R_witness.calculateRoot(Field(0));
         let M_key = M_witness.calculateIndex();
         let old_M_root = M_witness.calculateRoot(Field(0));
         let requestId_key = requestId_witness.calculateIndex();
         let old_requestId_root = requestId_witness.calculateRoot(Field(0));
+        let totalFundAmount_key = totalFundAmount_witness.calculateIndex();
+        let old_totalFundAmount_root = totalFundAmount_witness.calculateRoot(
+            Field(0)
+        );
 
         R_key.assertEquals(proof.publicOutput.campaignId);
         M_key.assertEquals(proof.publicOutput.campaignId);
         requestId_key.assertEquals(proof.publicOutput.campaignId);
+        totalFundAmount_key.assertEquals(proof.publicOutput.campaignId);
 
         R_root.assertEquals(old_R_root);
         M_root.assertEquals(old_M_root);
         requestId_root.assertEquals(old_requestId_root);
+        totalFundAmount_root.assertEquals(old_totalFundAmount_root);
 
         // TODO: check number of investor
-        // maybe add time in the future
         let new_R_root = R_witness.calculateRoot(
             ValueStorage.calculateLeaf(proof.publicOutput.sum_R)
         );
@@ -469,14 +483,17 @@ export class FundingContract extends SmartContract {
         let new_requestId_root = requestId_witness.calculateRoot(
             RequestIdStorage.calculateLeaf(requestId)
         );
+        let new_totalFundAmount_root = totalFundAmount_witness.calculateRoot(
+            TotalFundStorage.calculateLeaf(proof.publicOutput.totalFundAmount)
+        );
 
         // update on-chain state
         this.R_root.set(new_R_root);
         this.M_root.set(new_M_root);
         this.requestId_root.set(new_requestId_root);
-        this.actionStatus.set(proof.publicOutput.finalStatusRoot);
+        this.totalFundAmount_root.set(new_totalFundAmount_root);
 
-        // TODO: request to Request contract
+        // Request to Request contract
         // Verify zkApp references
         let zkApps = this.zkApps.getAndRequireEquals();
 
@@ -506,6 +523,7 @@ export class FundingContract extends SmartContract {
                 requestId,
                 sumR: proof.publicOutput.sum_R,
                 sumM: proof.publicOutput.sum_M,
+                totalFundAmount: proof.publicOutput.totalFundAmount,
             })
         );
     }

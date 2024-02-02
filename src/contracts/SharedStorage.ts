@@ -122,7 +122,6 @@ export function getZkAppRef(
 export const enum ActionStatus {
     NOT_EXISTED,
     REDUCED,
-    ROLL_UPED,
 }
 
 export class ReduceStorage {

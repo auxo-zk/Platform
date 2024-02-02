@@ -124,3 +124,23 @@ export class RequestIdStorage extends FundingStorage<RequestIdLeaf> {
         return RequestIdStorage.calculateLevel1Index(campaignId);
     }
 }
+
+export type TotalFundLeaf = Field;
+
+export class TotalFundStorage extends FundingStorage<RequestIdLeaf> {
+    static calculateLeaf(totalFundAmount: TotalFundLeaf): Field {
+        return totalFundAmount;
+    }
+
+    calculateLeaf(totalFundAmount: TotalFundLeaf): Field {
+        return TotalFundStorage.calculateLeaf(totalFundAmount);
+    }
+
+    static calculateLevel1Index(campaignId: Field): Field {
+        return campaignId;
+    }
+
+    calculateLevel1Index(campaignId: Field): Field {
+        return TotalFundStorage.calculateLevel1Index(campaignId);
+    }
+}
