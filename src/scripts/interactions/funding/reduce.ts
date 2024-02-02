@@ -55,6 +55,8 @@ import { prepare } from '../prepare.js';
 import {
     AddressStorage,
     getZkAppRef,
+    ReduceStorage,
+    ActionStatus,
 } from '../../../contracts/SharedStorage.js';
 import {
     FundingContract,
@@ -73,74 +75,77 @@ import { CustomScalarArray, ZkApp } from '@auxo-dev/dkg';
 async function main() {
     const { cache, feePayer, addressMerkleTree } = await prepare();
 
-    const campaignId = 1;
-    const projectId = 1;
-    const committeePublicKey = PublicKey.fromBase58(
-        'B62qph1Mj9atGbPUqDszvwFJ3LVGoXWkNjoDura5kjkK6Pw15UHHDZy'
-    );
-
     // Compile programs
-    // await compile(CreateReduceProof, cache);
-    // await compile(CreateRollupProof, cache);
-    // await compile(FundingContract, cache);
+    await compile(CreateReduceProof, cache);
+    await compile(CreateRollupProof, cache);
+    await compile(FundingContract, cache);
 
     const fundingAddress = process.env.BERKELEY_FUNDING_ADDRESS as string;
-    const participationAddress = process.env
-        .BERKELEY_PARTICIPATION_ADDRESS as string;
-    const treasuryAddress = process.env.BERKELEY_TREASURY_ADDRESS as string;
     const fundingContract = new FundingContract(
         PublicKey.fromBase58(fundingAddress)
     );
 
     // Do this and state value of contract is fetched in Mina
     await fetchZkAppState(fundingAddress);
-    await fetchZkAppState(participationAddress);
 
-    // Storage
-    let fundingAddressStorage = new AddressStorage(addressMerkleTree);
+    // Fetch storage
+    const actionStatus = (
+        await axios.get('https://api.auxo.fund/v0/funding/reduce')
+    ).data; // Nam viet them cai nay nha, chua co dau t viet tam mau~ thoi
 
-    // total fund 0.02 = 2e7
-    let secretVectors: CustomScalarArray[] = [
-        new CustomScalarArray([
-            CustomScalar.fromScalar(Scalar.from(1e7)),
-            CustomScalar.fromScalar(Scalar.from(0n)),
-            CustomScalar.fromScalar(Scalar.from(1e7)),
-            CustomScalar.fromScalar(Scalar.from(0n)),
-        ]),
-        new CustomScalarArray([
-            CustomScalar.fromScalar(Scalar.from(0n)),
-            CustomScalar.fromScalar(Scalar.from(0n)),
-            CustomScalar.fromScalar(Scalar.from(1e7)),
-            CustomScalar.fromScalar(Scalar.from(1e7)),
-        ]),
-    ];
+    // Build storage
+    let fundingReduceStorage = new ReduceStorage();
+    for (let key in actionStatus) {
+        fundingReduceStorage.updateLeaf(
+            Field(key),
+            Field(actionStatus[key]['leaf'])
+        );
+    }
 
-    let randomsVectors: CustomScalarArray[] = [
-        new CustomScalarArray([
-            CustomScalar.fromScalar(Scalar.from(100n)),
-            CustomScalar.fromScalar(Scalar.from(200n)),
-            CustomScalar.fromScalar(Scalar.from(300n)),
-            CustomScalar.fromScalar(Scalar.from(400n)),
-        ]),
-        new CustomScalarArray([
-            CustomScalar.fromScalar(Scalar.from(500n)),
-            CustomScalar.fromScalar(Scalar.from(600n)),
-            CustomScalar.fromScalar(Scalar.from(700n)),
-            CustomScalar.fromScalar(Scalar.from(800n)),
-        ]),
-    ];
+    let reduceFundingProof = await CreateReduceProof.firstStep(
+        fundingContract.actionState.get(),
+        fundingContract.actionStatus.get()
+    );
 
-    let input = new FundingInput({
-        campaignId: Field(campaignId),
-        // Publickey of a committee
-        committeePublicKey: committeePublicKey,
-        secretVector: secretVectors[0],
-        random: randomsVectors[0],
-        treasuryContract: fundingAddressStorage.getZkAppRef(
-            ZkAppEnum.TREASURY,
-            PublicKey.fromBase58(treasuryAddress)
-        ),
+    const lastReduceAction = fundingContract.actionState.get();
+    const rawAllActions = await fetchActions(fundingAddress);
+
+    const allActions: FundingAction[] = rawAllActions.map((e) => {
+        let action: Field[] = e.actions[0].map((e) => Field(e));
+        return FundingAction.fromFields(action);
     });
+
+    const rawReduceActions = await fetchActions(
+        fundingAddress,
+        lastReduceAction
+    );
+    const reduceAction: FundingAction[] = rawReduceActions.map((e) => {
+        let action: Field[] = e.actions[0].map((e) => Field(e));
+        return FundingAction.fromFields(action);
+    });
+
+    let index = rawAllActions.findIndex((obj) =>
+        Field(obj.hash).equals(lastReduceAction).toBoolean()
+    );
+
+    for (let i = 0; i < reduceAction.length; i++) {
+        console.log('Step', i);
+        reduceFundingProof = await CreateReduceProof.nextStep(
+            reduceFundingProof,
+            reduceAction[i],
+            fundingReduceStorage.getWitness(
+                Field(rawAllActions[index + 1 + i].hash)
+            )
+        );
+
+        // update storage:
+        fundingReduceStorage.updateLeaf(
+            fundingReduceStorage.calculateIndex(
+                Field(rawAllActions[index + 1 + i].hash)
+            ),
+            fundingReduceStorage.calculateLeaf(ActionStatus.REDUCED)
+        );
+    }
 
     let tx = await Mina.transaction(
         {
@@ -149,9 +154,10 @@ async function main() {
             nonce: feePayer.nonce++,
         },
         () => {
-            fundingContract.fund(input);
+            fundingContract.reduce(reduceFundingProof);
         }
     );
+
     await proveAndSend(tx, feePayer.key, 'funding', 'fund');
 }
 
