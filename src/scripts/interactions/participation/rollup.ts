@@ -193,7 +193,7 @@ async function main() {
                     projectId: action.projectId,
                 })
             ),
-            Field(i), // current couter of each campaign is 0
+            Field(i), // current campaign counter - number of participant
             counterStorage.getLevel1Witness(
                 counterStorage.calculateLevel1Index(action.campaignId)
             )

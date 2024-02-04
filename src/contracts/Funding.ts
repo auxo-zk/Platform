@@ -298,6 +298,7 @@ export class FundingContract extends SmartContract {
         R: DKG_Contracts.Request.RequestVector;
         M: DKG_Contracts.Request.RequestVector;
     } {
+        // TODO: change dimension to fixed size
         let dimension = fundingInput.secretVector.length;
         let R = new DKG_Contracts.Request.RequestVector();
         let M = new DKG_Contracts.Request.RequestVector();

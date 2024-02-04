@@ -90,8 +90,8 @@ async function main() {
 
     // Fetch storage
     const actionStatus = (
-        await axios.get('https://api.auxo.fund/v0/funding/reduce')
-    ).data; // Nam viet them cai nay nha, chua co dau t viet tam mau~ thoi
+        await axios.get('https://api.auxo.fund/v0/funding/reduce/leafs')
+    ).data; // Nam viet them cai nay nha, chua co dau t viet tam script mau~ thoi chu chua chay
 
     // Build storage
     let fundingReduceStorage = new ReduceStorage();
@@ -107,7 +107,7 @@ async function main() {
         fundingContract.actionStatus.get()
     );
 
-    const lastReduceAction = fundingContract.actionState.get();
+    const lastReduceActionState = fundingContract.actionState.get();
     const rawAllActions = await fetchActions(fundingAddress);
 
     const allActions: FundingAction[] = rawAllActions.map((e) => {
@@ -117,7 +117,7 @@ async function main() {
 
     const rawReduceActions = await fetchActions(
         fundingAddress,
-        lastReduceAction
+        lastReduceActionState
     );
     const reduceAction: FundingAction[] = rawReduceActions.map((e) => {
         let action: Field[] = e.actions[0].map((e) => Field(e));
@@ -125,7 +125,7 @@ async function main() {
     });
 
     let index = rawAllActions.findIndex((obj) =>
-        Field(obj.hash).equals(lastReduceAction).toBoolean()
+        Field(obj.hash).equals(lastReduceActionState).toBoolean()
     );
 
     for (let i = 0; i < reduceAction.length; i++) {
