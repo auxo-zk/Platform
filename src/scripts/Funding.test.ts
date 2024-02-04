@@ -53,7 +53,7 @@ import { CustomScalarArray, ZkApp } from '@auxo-dev/dkg';
 import { TreasuryContract, ClaimFund } from '../contracts/Treasury.js';
 
 describe('Funding', () => {
-    const doProofs = false;
+    const doProofs = true;
     const cache = Cache.FileSystem('./caches');
 
     let Local = Mina.LocalBlockchain({ proofsEnabled: doProofs });
@@ -171,6 +171,8 @@ describe('Funding', () => {
         await CreateRollupProof.compile();
         if (doProofs) {
             console.log('FundingContract.compile...');
+            await ZkApp.Request.CreateRequest.compile();
+            await ZkApp.Request.RequestContract.compile();
             await FundingContract.compile();
             await ClaimFund.compile();
             await TreasuryContract.compile();

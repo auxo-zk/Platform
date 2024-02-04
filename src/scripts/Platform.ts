@@ -17,6 +17,7 @@ import {
     MerkleMapWitness,
     Bool,
 } from 'o1js';
+import 'dotenv/config.js';
 import fs from 'fs/promises';
 import { Config, Key } from './helper/config.js';
 import {
@@ -127,10 +128,10 @@ async function main() {
     // Testworld + Berkeley
     feePayerKey = {
         privateKey: PrivateKey.fromBase58(
-            'EKEosAyM6Y6TnPVwUaWhE7iUS3v6mwVW7uDnWes7FkYVwQoUwyMR'
+            'EKF6Za8RjGyhLmWSHCqw5R5kEVK7ktTU9mVgWwZNEvFHjrJdjucz'
         ),
         publicKey: PublicKey.fromBase58(
-            'B62qmtfTkHLzmvoKYcTLPeqvuVatnB6wtnXsP6jrEi6i2eUEjcxWauH'
+            'B62qjpYQhA6Nsg2xo1FWSmy6yXkfL3S1oNxZ21awcFCKiRH6n9fWqPJ'
         ),
     };
 
@@ -138,8 +139,8 @@ async function main() {
 
     const fee = 0.101 * 1e9; // in nanomina (1 billion = 1.0 mina)
 
-    const MINAURL = 'https://proxy.berkeley.minaexplorer.com/graphql';
-    const ARCHIVEURL = 'https://archive.berkeley.minaexplorer.com';
+    const MINAURL = process.env.BERKELEY_MINA as string;
+    const ARCHIVEURL = process.env.BERKELEY_ARCHIVE as string;
 
     const network = Mina.Network({
         mina: MINAURL,
@@ -286,6 +287,7 @@ async function main() {
             profiler
         );
 
+        // Compile this only when interact with Funding contract only
         // await compile(ClaimFund, cache, logMemory, profiler);
         // await compile(TreasuryContract, cache, logMemory, profiler);
 
@@ -349,6 +351,7 @@ async function main() {
         );
         await tx.sign([feePayerKey.privateKey]).send();
 
+        // Do this only if we want to test
         // // Deploy RequestConctract
         // await deploy(
         //   contracts[Contract.REQUEST],
@@ -372,8 +375,8 @@ async function main() {
                 treasuryContract.zkApps.set(treasuryAddressStorage.root);
                 feePayerAccount.send({
                     to: contracts[Contract.TREASURY].contract,
-                    amount: 1 * 10 ** 9,
-                }); // Mina for investor to claim
+                    amount: 10 * 10 ** 9,
+                }); // 10 Mina for investor to claim
             }
         );
         await tx.prove();
