@@ -4,7 +4,7 @@ export * as ZkApp from './contracts/index.js';
 
 export {
     // Structs
-    CheckProjectOwerInput,
+    CheckProjectOwnerInput,
     CreateProjectInput,
     UpdateProjectInput,
     CreateProjectProofOutput,
@@ -23,7 +23,7 @@ export {
 
 export {
     // Structs
-    CheckCampaignOwerInput,
+    CheckCampaignOwnerInput,
     CreateCampaignInput,
     UpdateCampaignInput,
     CreateCampaignProofOutput,

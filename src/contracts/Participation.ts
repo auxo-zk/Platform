@@ -30,7 +30,7 @@ import {
     Level1Witness as projectLv1Witness,
     Level2Witness as projectLv2Witness,
 } from './ProjectStorage.js';
-import { ProjectContract, CheckProjectOwerInput } from './Project.js';
+import { ProjectContract, CheckProjectOwnerInput } from './Project.js';
 
 import { ZkAppRef } from './SharedStorage.js';
 
@@ -249,7 +249,7 @@ export class ParticipationContract extends SmartContract {
 
         // TODO: check latter
         // let isOwner = projectContract.checkProjectOwner(
-        //   new CheckProjectOwerInput({
+        //   new CheckProjectOwnerInput({
         //     owner: this.sender,
         //     projectId: input.projectId,
         //     memberLevel1Witness: input.memberLv1Witness,

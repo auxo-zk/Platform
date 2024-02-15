@@ -40,7 +40,7 @@ export class CampaignAction extends Struct({
     }
 }
 
-export class CheckCampaignOwerInput extends Struct({
+export class CheckCampaignOwnerInput extends Struct({
     owner: PublicKey,
     campaignId: Field,
     ownerWitness: Level1Witness,
@@ -136,7 +136,7 @@ export const CreateCampaign = ZkProgram({
 
                 let newCampaignId = preProof.publicOutput.finalNextCampaignId;
 
-                ////// caculate new ownerTreeRoot
+                ////// calculate new ownerTreeRoot
                 let preOwnerRoot = ownerWitness.calculateRoot(Field(0));
                 let ownerIndex = ownerWitness.calculateIndex();
                 ownerIndex.assertEquals(newCampaignId);
@@ -149,7 +149,7 @@ export const CreateCampaign = ZkProgram({
                     OwnerStorage.calculateLeaf(newAction.owner)
                 );
 
-                ////// caculate in infoTreeRoot
+                ////// calculate in infoTreeRoot
                 let preInfoRoot = infoWitess.calculateRoot(Field(0));
                 let infoIndex = infoWitess.calculateIndex();
                 infoIndex.assertEquals(newCampaignId);
@@ -162,7 +162,7 @@ export const CreateCampaign = ZkProgram({
                     InfoStorage.calculateLeaf(newAction.ipfsHash)
                 );
 
-                ////// caculate in infoTreeRoot
+                ////// calculate in infoTreeRoot
                 let preStatusRoot = statusWitess.calculateRoot(Field(0));
                 let statusIndex = statusWitess.calculateIndex();
                 statusIndex.assertEquals(newCampaignId);
@@ -175,7 +175,7 @@ export const CreateCampaign = ZkProgram({
                     newAction.campaignStatus
                 );
 
-                ////// caculate in configTreeRoot
+                ////// calculate in configTreeRoot
                 let preConfigRoot = configWitess.calculateRoot(Field(0));
                 let configIndex = configWitess.calculateIndex();
                 configIndex.assertEquals(newCampaignId);
@@ -314,7 +314,7 @@ export class CampaignContract extends SmartContract {
     }
 
     // TODO
-    @method checkCampaignOwner(input: CheckCampaignOwerInput): Bool {
+    @method checkCampaignOwner(input: CheckCampaignOwnerInput): Bool {
         let isOwner = Bool(true);
 
         return isOwner;

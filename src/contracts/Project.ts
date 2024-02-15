@@ -41,7 +41,7 @@ export class ProjectAction extends Struct({
     }
 }
 
-export class CheckProjectOwerInput extends Struct({
+export class CheckProjectOwnerInput extends Struct({
     owner: PublicKey,
     projectId: Field,
     memberLevel1Witness: Level1Witness,
@@ -149,7 +149,7 @@ export const CreateProject = ZkProgram({
                     preProof.publicOutput.finalNextProjectId
                 );
 
-                ////// caculate new memberTreeRoot
+                ////// calculate new memberTreeRoot
                 let newProjectIndex = memberWitness.calculateIndex();
                 let preMemberRoot = memberWitness.calculateRoot(Field(0));
                 newProjectId.assertEquals(newProjectIndex);
@@ -172,7 +172,7 @@ export const CreateProject = ZkProgram({
                     tree.getRoot()
                 );
 
-                ////// caculate new projectInfoTreeRoot
+                ////// calculate new projectInfoTreeRoot
                 let preProjectInfoRoot = projectInfoWitess.calculateRoot(
                     Field(0)
                 );
@@ -187,7 +187,7 @@ export const CreateProject = ZkProgram({
                     InfoStorage.calculateLeaf(newAction.ipfsHash)
                 );
 
-                ////// caculate new addressTreeRoot
+                ////// calculate new addressTreeRoot
                 let prePayeeTreeRoot = payeeWitness.calculateRoot(Field(0));
                 let addressIndex = payeeWitness.calculateIndex();
                 addressIndex.assertEquals(newProjectId);
@@ -356,7 +356,7 @@ export class ProjectContract extends SmartContract {
         );
     }
 
-    @method checkProjectOwner(input: CheckProjectOwerInput): Bool {
+    @method checkProjectOwner(input: CheckProjectOwnerInput): Bool {
         let isOwner = Bool(true);
 
         // check the right projectId

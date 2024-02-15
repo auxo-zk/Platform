@@ -352,7 +352,7 @@ async function main() {
         await tx.sign([feePayerKey.privateKey]).send();
 
         // Do this only if we want to test
-        // // Deploy RequestConctract
+        // // Deploy RequestContract
         // await deploy(
         //   contracts[Contract.REQUEST],
         //   [],
