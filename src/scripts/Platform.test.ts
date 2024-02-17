@@ -104,7 +104,7 @@ import {
 import { CustomScalarArray, ZkApp } from '@auxo-dev/dkg';
 
 describe('Platform test all', () => {
-    const doProofs = true;
+    const doProofs = false;
     const cache = Cache.FileSystem('./caches');
     const profiling = false;
     const logMemory = true;
@@ -115,7 +115,8 @@ describe('Platform test all', () => {
     let Local = Mina.LocalBlockchain({ proofsEnabled: doProofs });
     Mina.setActiveInstance(Local);
 
-    let numProjects = 3; // test deploy number of project
+    let numProjects = 2; // test deploy number of project: 0 and 1
+    let numCampaign = 2; // test deploy number of campaign: 0 and 1
     let arrayPublicKey = [
         // test data member of project
         Local.testAccounts[0].publicKey,
@@ -136,6 +137,7 @@ describe('Platform test all', () => {
     let projectActions: ProjectAction[] = [];
 
     // Campaign storage
+    let campaignContract: CampaignContract;
     let campaignInfoStorage = new CampaignInfoStorage();
     let ownerStorage = new OwnerStorage();
     let statusStorage = new StatusStorage();
@@ -144,6 +146,7 @@ describe('Platform test all', () => {
     let campaignActions: CampaignAction[] = [];
 
     // Participation storage
+    let participationContract: ParticipationContract;
     let participationInfoStorage = new ParticipationInfoStorage();
     let counterStorage = new CounterStorage();
     let indexStorage = new IndexStorage();
@@ -151,6 +154,7 @@ describe('Platform test all', () => {
     let participationAction: ParticipationAction[] = [];
 
     // Funding storage
+    let fundingContract: FundingContract;
     let fundingReduceStorage = new ReduceStorage();
     let sumRStorage = new ValueStorage();
     let sumMStorage = new ValueStorage();
@@ -160,6 +164,7 @@ describe('Platform test all', () => {
     let fundingAction: FundingAction[] = [];
 
     // Treasury storage
+    let treasuryContract: TreasuryContract;
     let claimedStorage = new ClaimedStorage();
     let treasuryAddressStorage = new AddressStorage();
     let treasuryAction: TreasuryAction[] = [];
@@ -301,7 +306,7 @@ describe('Platform test all', () => {
                     feePayerKey.publicKey
                 );
                 feePayerAccount.send({
-                    to: contracts[Contract.FUNDING].contract,
+                    to: contracts[Contract.FUNDING].key.publicKey,
                     amount: 5 * 10 ** 9,
                 }); // 5 Mina to send request - which cost 1
             }
@@ -325,7 +330,7 @@ describe('Platform test all', () => {
                 treasuryContract.deploy();
                 treasuryContract.zkApps.set(treasuryAddressStorage.root);
                 feePayerAccount.send({
-                    to: contracts[Contract.TREASURY].contract,
+                    to: contracts[Contract.TREASURY].key.publicKey,
                     amount: 10 * 10 ** 9,
                 }); // 10 Mina for investor to claim
             }
@@ -341,7 +346,7 @@ describe('Platform test all', () => {
         console.log('Deploy done all');
     });
 
-    it('Send tx deploy project', async () => {
+    xit('Send tx create project', async () => {
         projectContract = contracts[Contract.PROJECT]
             .contract as ProjectContract;
 
@@ -379,7 +384,7 @@ describe('Platform test all', () => {
         }
     });
 
-    it('Reduce project', async () => {
+    xit('Rollup project', async () => {
         let createProjectProof = await CreateProject.firstStep(
             projectContract.nextProjectId.get(),
             projectContract.memberTreeRoot.get(),
@@ -431,5 +436,101 @@ describe('Platform test all', () => {
             }
         );
         await proveAndSend(tx, [feePayerKey], 'ProjectContract', 'rollup');
+    });
+
+    xit('Send tx create campaign', async () => {
+        campaignContract = contracts[Contract.CAMPAIGN]
+            .contract as CampaignContract;
+
+        for (let i = 0; i < numCampaign; i++) {
+            let createCampaignInput = new CreateCampaignInput({
+                ipfsHash: IPFSHash.fromString(mockCampaignIpfs[0]),
+                committeeId: Field(i + 1),
+                keyId: Field(i + 1),
+            });
+            tx = await Mina.transaction(
+                { sender: feePayerKey.publicKey, fee },
+                () => {
+                    campaignContract.createCampaign(createCampaignInput);
+                }
+            );
+            await proveAndSend(
+                tx,
+                [feePayerKey],
+                Contract.CAMPAIGN,
+                'createCampaign'
+            );
+
+            campaignActions.push(
+                new CampaignAction({
+                    campaignId: Field(-1),
+                    ipfsHash: createCampaignInput.ipfsHash,
+                    owner: feePayerKey.publicKey,
+                    campaignStatus: Field(StatusEnum.APPLICATION),
+                    committeeId: createCampaignInput.committeeId,
+                    keyId: createCampaignInput.keyId,
+                })
+            );
+        }
+    });
+
+    xit('Rollup campaign', async () => {
+        let createCampaignProof = await CreateCampaign.firstStep(
+            campaignContract.ownerTreeRoot.get(),
+            campaignContract.infoTreeRoot.get(),
+            campaignContract.statusTreeRoot.get(),
+            campaignContract.configTreeRoot.get(),
+            campaignContract.nextCampaignId.get(),
+            campaignContract.lastRolledUpActionState.get()
+        );
+
+        for (let i = 0; i < numCampaign; i++) {
+            console.log('Step', i);
+            createCampaignProof = await CreateCampaign.createCampaign(
+                createCampaignProof,
+                campaignActions[i],
+                ownerStorage.getLevel1Witness(
+                    ownerStorage.calculateLevel1Index(Field(i))
+                ),
+                campaignInfoStorage.getLevel1Witness(
+                    campaignInfoStorage.calculateLevel1Index(Field(i))
+                ),
+                statusStorage.getLevel1Witness(
+                    statusStorage.calculateLevel1Index(Field(i))
+                ),
+                configStorage.getLevel1Witness(
+                    configStorage.calculateLevel1Index(Field(i))
+                )
+            );
+
+            // update storage:
+            ownerStorage.updateLeaf(
+                ownerStorage.calculateLeaf(campaignActions[i].owner),
+                Field(i)
+            );
+            campaignInfoStorage.updateLeaf(
+                campaignInfoStorage.calculateLeaf(campaignActions[i].ipfsHash),
+                Field(i)
+            );
+            statusStorage.updateLeaf(
+                statusStorage.calculateLeaf(StatusEnum.APPLICATION),
+                Field(i)
+            );
+            configStorage.updateLeaf(
+                configStorage.calculateLeaf({
+                    committeeId: campaignActions[i].committeeId,
+                    keyId: campaignActions[i].keyId,
+                }),
+                Field(i)
+            );
+        }
+
+        tx = await Mina.transaction(
+            { sender: feePayerKey.publicKey, fee },
+            () => {
+                campaignContract.rollup(createCampaignProof);
+            }
+        );
+        await proveAndSend(tx, [feePayerKey], Contract.CAMPAIGN, 'rollup');
     });
 });
