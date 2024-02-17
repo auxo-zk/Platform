@@ -581,23 +581,23 @@ async function main() {
 
             // update storage:
             ownerStorage.updateLeaf(
-                ownerStorage.calculateLeaf(campaignActions[i].owner),
-                Field(i)
+                Field(i),
+                ownerStorage.calculateLeaf(campaignActions[i].owner)
             );
             campaignInfoStorage.updateLeaf(
-                campaignInfoStorage.calculateLeaf(campaignActions[i].ipfsHash),
-                Field(i)
+                Field(i),
+                campaignInfoStorage.calculateLeaf(campaignActions[i].ipfsHash)
             );
             statusStorage.updateLeaf(
-                statusStorage.calculateLeaf(StatusEnum.APPLICATION),
-                Field(i)
+                Field(i),
+                statusStorage.calculateLeaf(StatusEnum.APPLICATION)
             );
             configStorage.updateLeaf(
+                Field(i),
                 configStorage.calculateLeaf({
                     committeeId: campaignActions[i].committeeId,
                     keyId: campaignActions[i].keyId,
-                }),
-                Field(i)
+                })
             );
         }
 

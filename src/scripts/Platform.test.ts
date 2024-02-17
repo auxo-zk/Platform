@@ -346,7 +346,7 @@ describe('Platform test all', () => {
         console.log('Deploy done all');
     });
 
-    xit('Send tx create project', async () => {
+    it('Send tx create project', async () => {
         projectContract = contracts[Contract.PROJECT]
             .contract as ProjectContract;
 
@@ -384,7 +384,7 @@ describe('Platform test all', () => {
         }
     });
 
-    xit('Rollup project', async () => {
+    it('Rollup project', async () => {
         let createProjectProof = await CreateProject.firstStep(
             projectContract.nextProjectId.get(),
             projectContract.memberTreeRoot.get(),
@@ -438,7 +438,7 @@ describe('Platform test all', () => {
         await proveAndSend(tx, [feePayerKey], 'ProjectContract', 'rollup');
     });
 
-    xit('Send tx create campaign', async () => {
+    it('Send tx create campaign', async () => {
         campaignContract = contracts[Contract.CAMPAIGN]
             .contract as CampaignContract;
 
@@ -474,7 +474,7 @@ describe('Platform test all', () => {
         }
     });
 
-    xit('Rollup campaign', async () => {
+    it('Rollup campaign', async () => {
         let createCampaignProof = await CreateCampaign.firstStep(
             campaignContract.ownerTreeRoot.get(),
             campaignContract.infoTreeRoot.get(),
@@ -505,23 +505,23 @@ describe('Platform test all', () => {
 
             // update storage:
             ownerStorage.updateLeaf(
-                ownerStorage.calculateLeaf(campaignActions[i].owner),
-                Field(i)
+                Field(i),
+                ownerStorage.calculateLeaf(campaignActions[i].owner)
             );
             campaignInfoStorage.updateLeaf(
-                campaignInfoStorage.calculateLeaf(campaignActions[i].ipfsHash),
-                Field(i)
+                Field(i),
+                campaignInfoStorage.calculateLeaf(campaignActions[i].ipfsHash)
             );
             statusStorage.updateLeaf(
-                statusStorage.calculateLeaf(StatusEnum.APPLICATION),
-                Field(i)
+                Field(i),
+                statusStorage.calculateLeaf(StatusEnum.APPLICATION)
             );
             configStorage.updateLeaf(
+                Field(i),
                 configStorage.calculateLeaf({
                     committeeId: campaignActions[i].committeeId,
                     keyId: campaignActions[i].keyId,
-                }),
-                Field(i)
+                })
             );
         }
 
@@ -532,5 +532,152 @@ describe('Platform test all', () => {
             }
         );
         await proveAndSend(tx, [feePayerKey], Contract.CAMPAIGN, 'rollup');
+    });
+
+    it('Join campaign', async () => {
+        participationContract = contracts[Contract.PARTICIPATION]
+            .contract as ParticipationContract;
+
+        Provable.log('Onchain: ', participationContract.indexTreeRoot.get());
+
+        let joinCampaignInput = [
+            new JoinCampaignInput({
+                campaignId: Field(0),
+                projectId: Field(0),
+                participationInfo: IPFSHash.fromString(
+                    mockParticipationIpfs[0]
+                ),
+                indexWitness: indexStorage.getWitness(
+                    indexStorage.calculateLevel1Index({
+                        campaignId: Field(0),
+                        projectId: Field(0),
+                    })
+                ),
+                memberLv1Witness: memberStorage.getLevel1Witness(Field(0)), // project Id
+                memberLv2Witness: new Level2Witness(
+                    EMPTY_LEVEL_2_TREE().getWitness(0n)
+                ), // temp value since contract hasn't check this
+                // memberLv2Witness: memberStorage.getLevel2Witness(Field(0), Field(0)), // Field 0 = owner
+                projectRef: participationAddressStorage.getZkAppRef(
+                    ZkAppEnum.PROJECT,
+                    contracts[Contract.PROJECT].contract.address
+                ),
+            }),
+            new JoinCampaignInput({
+                campaignId: Field(1),
+                projectId: Field(1),
+                participationInfo: IPFSHash.fromString(
+                    mockParticipationIpfs[0]
+                ),
+                indexWitness: indexStorage.getWitness(
+                    indexStorage.calculateLevel1Index({
+                        campaignId: Field(1),
+                        projectId: Field(1),
+                    })
+                ),
+                memberLv1Witness: memberStorage.getLevel1Witness(Field(1)), // project Id
+                memberLv2Witness: new Level2Witness(
+                    EMPTY_LEVEL_2_TREE().getWitness(0n)
+                ), // fake value since contract hasn't check this
+                // memberLv2Witness: memberStorage.getLevel2Witness(Field(1), Field(0)), // Field 0 = owner
+                projectRef: participationAddressStorage.getZkAppRef(
+                    ZkAppEnum.PROJECT,
+                    contracts[Contract.PROJECT].contract.address
+                ),
+            }),
+        ];
+
+        for (let i = 0; i < joinCampaignInput.length; i++) {
+            tx = await Mina.transaction(
+                { sender: feePayerKey.publicKey, fee },
+                () => {
+                    participationContract.joinCampaign(joinCampaignInput[i]);
+                }
+            );
+            await proveAndSend(
+                tx,
+                [feePayerKey],
+                Contract.PARTICIPATION,
+                'joinCampaign'
+            );
+
+            participationAction.push(
+                new ParticipationAction({
+                    campaignId: joinCampaignInput[i].campaignId,
+                    projectId: joinCampaignInput[i].projectId,
+                    participationInfo: joinCampaignInput[i].participationInfo,
+                    curApplicationInfoHash: Field(0),
+                })
+            );
+        }
+    });
+
+    it('Rollup Join campaign', async () => {
+        let joinCampaignProof = await JoinCampaign.firstStep(
+            participationContract.indexTreeRoot.get(),
+            participationContract.infoTreeRoot.get(),
+            participationContract.counterTreeRoot.get(),
+            participationContract.lastRolledUpActionState.get()
+        );
+
+        for (let i = 0; i < numCampaign; i++) {
+            console.log('Step', i);
+
+            joinCampaignProof = await JoinCampaign.joinCampaign(
+                joinCampaignProof,
+                participationAction[i],
+                indexStorage.getLevel1Witness(
+                    indexStorage.calculateLevel1Index({
+                        campaignId: participationAction[i].campaignId,
+                        projectId: participationAction[i].projectId,
+                    })
+                ),
+                participationInfoStorage.getLevel1Witness(
+                    participationInfoStorage.calculateLevel1Index({
+                        campaignId: participationAction[i].campaignId,
+                        projectId: participationAction[i].projectId,
+                    })
+                ),
+                Field(i), // current counter of each campaign is 0
+                counterStorage.getLevel1Witness(
+                    counterStorage.calculateLevel1Index(
+                        participationAction[i].campaignId
+                    )
+                )
+            );
+
+            // update storage:
+            indexStorage.updateLeaf(
+                indexStorage.calculateLeaf(Field(i + 1)), // index start from 1
+                indexStorage.calculateLevel1Index({
+                    campaignId: participationAction[i].campaignId,
+                    projectId: participationAction[i].projectId,
+                })
+            );
+
+            participationInfoStorage.updateLeaf(
+                participationInfoStorage.calculateLeaf(
+                    participationAction[i].participationInfo
+                ),
+                participationInfoStorage.calculateLevel1Index({
+                    campaignId: participationAction[i].campaignId,
+                    projectId: participationAction[i].projectId,
+                })
+            );
+            counterStorage.updateLeaf(
+                counterStorage.calculateLeaf(Field(i + 1)),
+                counterStorage.calculateLevel1Index(
+                    participationAction[i].campaignId
+                )
+            );
+        }
+
+        tx = await Mina.transaction(
+            { sender: feePayerKey.publicKey, fee },
+            () => {
+                participationContract.rollup(joinCampaignProof);
+            }
+        );
+        await proveAndSend(tx, [feePayerKey], Contract.PARTICIPATION, 'rollup');
     });
 });
