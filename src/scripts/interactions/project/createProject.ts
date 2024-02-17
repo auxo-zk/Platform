@@ -29,7 +29,6 @@ import {
     InfoStorage,
     MemberArray,
 } from '../../../contracts/ProjectStorage.js';
-import axios from 'axios';
 import { IPFSHash } from '@auxo-dev/auxo-libs';
 import { prepare } from '../prepare.js';
 
@@ -41,6 +40,7 @@ async function main() {
     await compile(ProjectContract, cache);
 
     const projectAddress = process.env.BERKELEY_PROJECT_ADDRESS as string;
+    console.log('Project address: ', projectAddress);
     const projectContract = new ProjectContract(
         PublicKey.fromBase58(projectAddress)
     );
@@ -49,7 +49,7 @@ async function main() {
     const rawState = (await fetchZkAppState(projectAddress)) || [];
 
     let arrayPublicKey = [
-        'B62qjvrida5Kr4rj7f4gDZyG77TdFMp2ntZ9uf5Xzb7iPodykUgwYqm',
+        'B62qjpYQhA6Nsg2xo1FWSmy6yXkfL3S1oNxZ21awcFCKiRH6n9fWqPJ',
         'B62qnhBkHqUeUTmYiAvvGdywce7j5PeTdU6t6mi7UAL8emD3mDPtQW2',
         'B62qnk1is4cK94PCX1QTwPM1SxfeCF9CcN6Nr7Eww3JLDgvxfWdhR5S',
         'B62qmtfTkHLzmvoKYcTLPeqvuVatnB6wtnXsP6jrEi6i2eUEjcxWauH',
@@ -62,7 +62,7 @@ async function main() {
             'QmNQLoDczHM3HXKodoYQnRszgd4JR4ZxzEKYe534eEBCc2'
         ),
         payeeAccount: PublicKey.fromBase58(
-            'B62qnk1is4cK94PCX1QTwPM1SxfeCF9CcN6Nr7Eww3JLDgvxfWdhR5S'
+            'B62qjpYQhA6Nsg2xo1FWSmy6yXkfL3S1oNxZ21awcFCKiRH6n9fWqPJ'
         ),
     });
 

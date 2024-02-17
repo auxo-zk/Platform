@@ -103,6 +103,8 @@ async function main() {
 
     const reduceActions = actions;
 
+    console.log('reduceActions: ', reduceActions);
+
     if (reduceActions.length == 0) return;
 
     console.log('CreateProject.firstStep...');

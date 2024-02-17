@@ -87,7 +87,7 @@ export class CheckIfNotClaimedInput extends Struct({
 
 export class ClaimFundProofOutput extends Struct({
     initialClaimedTreeRoot: Field,
-    initiallastRolledUpActionState: Field,
+    initialLastRolledUpActionState: Field,
     finalClaimedTreeRoot: Field,
     finalLastRolledUpActionState: Field,
 }) {
@@ -104,14 +104,14 @@ export const ClaimFund = ZkProgram({
             privateInputs: [Field, Field],
             method(
                 initialClaimedTreeRoot,
-                initiallastRolledUpActionState
+                initialLastRolledUpActionState
             ): ClaimFundProofOutput {
                 return new ClaimFundProofOutput({
                     initialClaimedTreeRoot,
-                    initiallastRolledUpActionState,
+                    initialLastRolledUpActionState,
                     finalClaimedTreeRoot: initialClaimedTreeRoot,
                     finalLastRolledUpActionState:
-                        initiallastRolledUpActionState,
+                        initialLastRolledUpActionState,
                 });
             },
         },
@@ -146,8 +146,8 @@ export const ClaimFund = ZkProgram({
                 return new ClaimFundProofOutput({
                     initialClaimedTreeRoot:
                         preProof.publicOutput.initialClaimedTreeRoot,
-                    initiallastRolledUpActionState:
-                        preProof.publicOutput.initiallastRolledUpActionState,
+                    initialLastRolledUpActionState:
+                        preProof.publicOutput.initialLastRolledUpActionState,
                     finalClaimedTreeRoot: newClaimedTreeRoot,
                     finalLastRolledUpActionState: updateOutOfSnark(
                         preProof.publicOutput.finalLastRolledUpActionState,
@@ -273,7 +273,7 @@ export class TreasuryContract extends SmartContract {
 
         claimedTreeRoot.assertEquals(proof.publicOutput.initialClaimedTreeRoot);
         lastRolledUpActionState.assertEquals(
-            proof.publicOutput.initiallastRolledUpActionState
+            proof.publicOutput.initialLastRolledUpActionState
         );
 
         let lastActionState = this.account.actionState.getAndRequireEquals();

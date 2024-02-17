@@ -19,7 +19,7 @@ import {
 } from 'o1js';
 import 'dotenv/config.js';
 import fs from 'fs/promises';
-import { Config, Key } from './helper/config.js';
+import { Config, Key, JSONKey } from './helper/config.js';
 import {
     AddressStorage,
     EMPTY_ADDRESS_MT,
@@ -125,13 +125,22 @@ async function main() {
         await fs.readFile('config.json', 'utf8')
     );
 
+    let feePayerAccount: JSONKey = JSON.parse(
+        await fs.readFile(configJson.deployAliases['acc1'].keyPath, 'utf8')
+    );
+
     // Testworld + Berkeley
+    // feePayerKey = {
+    //     privateKey: PrivateKey.fromBase58(feePayerAccount.privateKey),
+    //     publicKey: PublicKey.fromBase58(feePayerAccount.publicKey),
+    // };
+
     feePayerKey = {
         privateKey: PrivateKey.fromBase58(
-            'EKF6Za8RjGyhLmWSHCqw5R5kEVK7ktTU9mVgWwZNEvFHjrJdjucz'
+            'EKE7WQsZEKzsMRdEZh7FQC7AKzNdpioERMjfxks5Urfy4vScFzFP'
         ),
         publicKey: PublicKey.fromBase58(
-            'B62qjpYQhA6Nsg2xo1FWSmy6yXkfL3S1oNxZ21awcFCKiRH6n9fWqPJ'
+            'B62qj94pxHZ3gJ9WSU2eeYNVQSLNPZVM5YUUBH3GcFLA6Y25c7nb7sW'
         ),
     };
 
@@ -395,7 +404,7 @@ async function main() {
     if (isProject) {
         await fetchAllContract(contracts, [Contract.PROJECT]);
         console.log('Create projects...');
-        let numProjects = 5;
+        let numProjects = 1;
         let projectContract = contracts[Contract.PROJECT]
             .contract as ProjectContract;
         let arrayPublicKey = [
@@ -421,6 +430,7 @@ async function main() {
                     projectContract.createProject(createProjectInput);
                 }
             );
+
             await proveAndSend(
                 tx,
                 [feePayerKey],
