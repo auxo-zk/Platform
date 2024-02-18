@@ -731,29 +731,29 @@ async function main() {
 
             // update storage:
             indexStorage.updateLeaf(
-                indexStorage.calculateLeaf(Field(i + 1)), // index start from 1
                 indexStorage.calculateLevel1Index({
                     campaignId: participationAction[i].campaignId,
                     projectId: participationAction[i].projectId,
-                })
+                }),
+                indexStorage.calculateLeaf(Field(i + 1)) // index start from 1
             );
 
             Provable.log('index off aft: ', indexStorage.root);
 
             participationInfoStorage.updateLeaf(
-                participationInfoStorage.calculateLeaf(
-                    participationAction[i].participationInfo
-                ),
                 participationInfoStorage.calculateLevel1Index({
                     campaignId: participationAction[i].campaignId,
                     projectId: participationAction[i].projectId,
-                })
+                }),
+                participationInfoStorage.calculateLeaf(
+                    participationAction[i].participationInfo
+                )
             );
             counterStorage.updateLeaf(
-                counterStorage.calculateLeaf(Field(i + 1)),
                 counterStorage.calculateLevel1Index(
                     participationAction[i].campaignId
-                )
+                ),
+                counterStorage.calculateLeaf(Field(i + 1))
             );
         }
 

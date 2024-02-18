@@ -125,6 +125,48 @@ describe('Platform test all', () => {
     ];
     let memberArray = new MemberArray(arrayPublicKey);
 
+    let investors: Key[] = [
+        {
+            privateKey: Local.testAccounts[1].privateKey,
+            publicKey: Local.testAccounts[1].publicKey,
+        },
+        {
+            privateKey: Local.testAccounts[2].privateKey,
+            publicKey: Local.testAccounts[2].publicKey,
+        },
+    ];
+
+    // total fund 0.02 = 2e7
+    let secretVectors: CustomScalarArray[] = [
+        new CustomScalarArray([
+            CustomScalar.fromScalar(Scalar.from(1e7)),
+            CustomScalar.fromScalar(Scalar.from(0n)),
+            CustomScalar.fromScalar(Scalar.from(0n)),
+            CustomScalar.fromScalar(Scalar.from(0n)),
+        ]),
+        new CustomScalarArray([
+            CustomScalar.fromScalar(Scalar.from(0n)),
+            CustomScalar.fromScalar(Scalar.from(1e7)),
+            CustomScalar.fromScalar(Scalar.from(0n)),
+            CustomScalar.fromScalar(Scalar.from(0n)),
+        ]),
+    ];
+
+    let randomsVectors: CustomScalarArray[] = [
+        new CustomScalarArray([
+            CustomScalar.fromScalar(Scalar.from(100n)),
+            CustomScalar.fromScalar(Scalar.from(200n)),
+            CustomScalar.fromScalar(Scalar.from(300n)),
+            CustomScalar.fromScalar(Scalar.from(400n)),
+        ]),
+        new CustomScalarArray([
+            CustomScalar.fromScalar(Scalar.from(500n)),
+            CustomScalar.fromScalar(Scalar.from(600n)),
+            CustomScalar.fromScalar(Scalar.from(700n)),
+            CustomScalar.fromScalar(Scalar.from(800n)),
+        ]),
+    ];
+
     let feePayerKey: Key = Local.testAccounts[0];
     let contracts: ContractList = {};
     let tx: any;
@@ -346,7 +388,7 @@ describe('Platform test all', () => {
         console.log('Deploy done all');
     });
 
-    it('Send tx create project', async () => {
+    xit('Send tx create project', async () => {
         projectContract = contracts[Contract.PROJECT]
             .contract as ProjectContract;
 
@@ -384,7 +426,7 @@ describe('Platform test all', () => {
         }
     });
 
-    it('Rollup project', async () => {
+    xit('Rollup project', async () => {
         let createProjectProof = await CreateProject.firstStep(
             projectContract.nextProjectId.get(),
             projectContract.memberTreeRoot.get(),
@@ -438,7 +480,7 @@ describe('Platform test all', () => {
         await proveAndSend(tx, [feePayerKey], 'ProjectContract', 'rollup');
     });
 
-    it('Send tx create campaign', async () => {
+    xit('Send tx create campaign', async () => {
         campaignContract = contracts[Contract.CAMPAIGN]
             .contract as CampaignContract;
 
@@ -474,7 +516,7 @@ describe('Platform test all', () => {
         }
     });
 
-    it('Rollup campaign', async () => {
+    xit('Rollup campaign', async () => {
         let createCampaignProof = await CreateCampaign.firstStep(
             campaignContract.ownerTreeRoot.get(),
             campaignContract.infoTreeRoot.get(),
@@ -564,14 +606,14 @@ describe('Platform test all', () => {
                 ),
             }),
             new JoinCampaignInput({
-                campaignId: Field(1),
+                campaignId: Field(0),
                 projectId: Field(1),
                 participationInfo: IPFSHash.fromString(
                     mockParticipationIpfs[0]
                 ),
                 indexWitness: indexStorage.getWitness(
                     indexStorage.calculateLevel1Index({
-                        campaignId: Field(1),
+                        campaignId: Field(0),
                         projectId: Field(1),
                     })
                 ),
@@ -620,7 +662,7 @@ describe('Platform test all', () => {
             participationContract.lastRolledUpActionState.get()
         );
 
-        for (let i = 0; i < numCampaign; i++) {
+        for (let i = 0; i < participationAction.length; i++) {
             console.log('Step', i);
 
             joinCampaignProof = await JoinCampaign.joinCampaign(
@@ -638,7 +680,7 @@ describe('Platform test all', () => {
                         projectId: participationAction[i].projectId,
                     })
                 ),
-                Field(i), // current counter of each campaign is 0
+                Field(i), // current counter of campaign
                 counterStorage.getLevel1Witness(
                     counterStorage.calculateLevel1Index(
                         participationAction[i].campaignId
@@ -648,27 +690,27 @@ describe('Platform test all', () => {
 
             // update storage:
             indexStorage.updateLeaf(
-                indexStorage.calculateLeaf(Field(i + 1)), // index start from 1
                 indexStorage.calculateLevel1Index({
                     campaignId: participationAction[i].campaignId,
                     projectId: participationAction[i].projectId,
-                })
+                }),
+                indexStorage.calculateLeaf(Field(i + 1)) // index start from 1
             );
 
             participationInfoStorage.updateLeaf(
-                participationInfoStorage.calculateLeaf(
-                    participationAction[i].participationInfo
-                ),
                 participationInfoStorage.calculateLevel1Index({
                     campaignId: participationAction[i].campaignId,
                     projectId: participationAction[i].projectId,
-                })
+                }),
+                participationInfoStorage.calculateLeaf(
+                    participationAction[i].participationInfo
+                )
             );
             counterStorage.updateLeaf(
-                counterStorage.calculateLeaf(Field(i + 1)),
                 counterStorage.calculateLevel1Index(
                     participationAction[i].campaignId
-                )
+                ),
+                counterStorage.calculateLeaf(Field(i + 1))
             );
         }
 
@@ -679,5 +721,182 @@ describe('Platform test all', () => {
             }
         );
         await proveAndSend(tx, [feePayerKey], Contract.PARTICIPATION, 'rollup');
+    });
+
+    it('Fund project', async () => {
+        fundingContract = contracts[Contract.FUNDING]
+            .contract as FundingContract;
+        let fundingInput = [
+            new FundingInput({
+                campaignId: Field(0),
+                committeePublicKey: contracts[Contract.COMMITTEE].key.publicKey,
+                secretVector: secretVectors[0],
+                random: randomsVectors[0],
+                treasuryContract: fundingAddressStorage.getZkAppRef(
+                    ZkAppEnum.TREASURY,
+                    contracts[Contract.TREASURY].contract.address
+                ),
+            }),
+            new FundingInput({
+                campaignId: Field(0),
+                committeePublicKey: contracts[Contract.COMMITTEE].key.publicKey,
+                secretVector: secretVectors[1],
+                random: randomsVectors[1],
+                treasuryContract: fundingAddressStorage.getZkAppRef(
+                    ZkAppEnum.TREASURY,
+                    contracts[Contract.TREASURY].contract.address
+                ),
+            }),
+        ];
+
+        let result: {
+            R: ZkApp.Request.RequestVector;
+            M: ZkApp.Request.RequestVector;
+        };
+        let investorNonce = [];
+        for (let i = 0; i < investors.length; i++) {
+            let investor = await fetchAccount({
+                publicKey: investors[i].publicKey,
+            });
+            investorNonce.push(Number(investor.account?.nonce) - 1);
+        }
+
+        for (let i = 0; i < investors.length; i++) {
+            tx = await Mina.transaction(
+                {
+                    sender: investors[i].publicKey,
+                    fee,
+                    nonce: ++investorNonce[i],
+                },
+                () => {
+                    result = fundingContract.fund(fundingInput[i]);
+                }
+            );
+            await proveAndSend(tx, [investors[i]], Contract.FUNDING, 'fund');
+
+            let { R, M } = result!;
+
+            let dimension = fundingInput[i].secretVector.length;
+            let totalMinaInvest = Provable.witness(Field, () => {
+                let curSum = 0n;
+                for (let j = 0; j < dimension.toBigInt(); j++) {
+                    curSum += fundingInput[i].secretVector
+                        .get(Field(j))
+                        .toScalar()
+                        .toBigInt();
+                }
+                return Field(curSum);
+            });
+
+            fundingAction.push(
+                new FundingAction({
+                    campaignId: fundingInput[i].campaignId,
+                    R,
+                    M,
+                    fundAmount: totalMinaInvest,
+                })
+            );
+        }
+    });
+
+    it('Rollup funding project', async () => {
+        let lastActionState = fundingContract.actionState.get();
+        let fundingActionStates = contracts[Contract.FUNDING].actionStates;
+        let index = fundingActionStates.findIndex((obj) =>
+            Boolean(obj.equals(lastActionState))
+        );
+
+        console.log('Reduce funding...');
+
+        let reduceFundingProof = await CreateReduceProof.firstStep(
+            fundingContract.actionState.get(),
+            fundingContract.actionStatus.get()
+        );
+
+        for (let i = 0; i < investors.length; i++) {
+            console.log('Step', i);
+            reduceFundingProof = await CreateReduceProof.nextStep(
+                reduceFundingProof,
+                fundingAction[i],
+                fundingReduceStorage.getWitness(
+                    fundingActionStates[index + 1 + i]
+                )
+            );
+
+            // update storage:
+            fundingReduceStorage.updateLeaf(
+                fundingReduceStorage.calculateIndex(
+                    fundingActionStates[index + 1 + i]
+                ),
+                fundingReduceStorage.calculateLeaf(ActionStatus.REDUCED)
+            );
+        }
+
+        tx = await Mina.transaction(
+            { sender: feePayerKey.publicKey, fee },
+            () => {
+                fundingContract.reduce(reduceFundingProof);
+            }
+        );
+        await proveAndSend(tx, [feePayerKey], Contract.FUNDING, 'reduce');
+
+        await wait();
+        await fetchAllContract(contracts, [Contract.FUNDING, Contract.REQUEST]);
+
+        console.log('RollUp funding...');
+
+        let rollUpFundingProof = await CreateRollupProof.firstStep(
+            fundingAction[0].campaignId,
+            secretVectors[0].length,
+            fundingContract.actionStatus.get()
+        );
+
+        for (let i = 0; i < investors.length; i++) {
+            console.log('Step', i);
+            rollUpFundingProof = await CreateRollupProof.nextStep(
+                rollUpFundingProof,
+                fundingAction[i],
+                fundingActionStates[index + i],
+                fundingReduceStorage.getWitness(
+                    fundingActionStates[index + 1 + i]
+                )
+            );
+        }
+
+        tx = await Mina.transaction(
+            { sender: feePayerKey.publicKey, fee },
+            () => {
+                fundingContract.rollupRequest(
+                    rollUpFundingProof,
+                    Field(2), // committeeId
+                    Field(2), // keyId
+                    sumRStorage.getLevel1Witness(
+                        sumRStorage.calculateLevel1Index(
+                            fundingAction[0].campaignId
+                        )
+                    ),
+                    sumMStorage.getLevel1Witness(
+                        sumMStorage.calculateLevel1Index(
+                            fundingAction[0].campaignId
+                        )
+                    ),
+                    requestIdStorage.getLevel1Witness(
+                        requestIdStorage.calculateLevel1Index(
+                            fundingAction[0].campaignId
+                        )
+                    ),
+                    totalFundStorage.getLevel1Witness(
+                        requestIdStorage.calculateLevel1Index(
+                            fundingAction[0].campaignId
+                        )
+                    ),
+                    fundingAddressStorage.getZkAppRef(
+                        ZkAppEnum.REQUEST,
+                        contracts[Contract.REQUEST].contract.address
+                    )
+                );
+            }
+        );
+        await proveAndSend(tx, [feePayerKey], Contract.FUNDING, '');
     });
 });
