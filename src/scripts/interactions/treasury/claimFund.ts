@@ -157,7 +157,7 @@ async function main() {
         projectId: Field(projectId),
         requestId: Field(requestId),
         // address to recive fund
-        payeeAddress: PublicKey.fromBase58(''),
+        payeeAccount: PublicKey.fromBase58(''),
         M: sumM,
         D: sumD,
         DWitness: DStorage.getWitness(Field(requestId)),

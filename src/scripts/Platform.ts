@@ -1065,7 +1065,7 @@ async function main() {
                 campaignId: Field(1),
                 projectId: Field(1),
                 requestId: Field(6969),
-                payeeAddress: projects[0].publicKey,
+                payeeAccount: projects[0].publicKey,
                 M: sumM,
                 D: sumD,
                 DWitness: DStorage.getWitness(Field(6969)),
@@ -1091,13 +1091,16 @@ async function main() {
                 campaignId: Field(1),
                 projectId: Field(2),
                 requestId: Field(6969),
-                payeeAddress: projects[1].publicKey,
+                payeeAccount: projects[1].publicKey,
                 M: sumM,
                 D: sumD,
                 DWitness: DStorage.getWitness(Field(6969)),
                 investVector: investVectors,
                 participationIndexWitness: indexStorage.getLevel1Witness(
-                    Field(3)
+                    indexStorage.calculateLevel1Index({
+                        campaignId: Field(1),
+                        projectId: Field(2),
+                    })
                 ),
                 claimedIndex: claimedStorage.getLevel1Witness(
                     claimedStorage.calculateLevel1Index({

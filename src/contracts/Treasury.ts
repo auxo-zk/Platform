@@ -61,7 +61,7 @@ export class ClaimFundInput extends Struct({
     campaignId: Field,
     projectId: Field,
     requestId: Field, // TODO: Funding check requestId
-    payeeAddress: PublicKey, // TODO: Project check address
+    payeeAccount: PublicKey, // TODO: Project check address
     M: ZkApp.Request.RequestVector, // check Funding
     D: ZkApp.Request.RequestVector, // check at request
     DWitness: MerkleMapWitness, // TODO check request contract
@@ -259,7 +259,7 @@ export class TreasuryContract extends SmartContract {
         );
 
         // send invest amount
-        this.send({ to: input.payeeAddress, amount: UInt64.from(claimAmount) });
+        this.send({ to: input.payeeAccount, amount: UInt64.from(claimAmount) });
 
         this.reducer.dispatch(action);
     }
