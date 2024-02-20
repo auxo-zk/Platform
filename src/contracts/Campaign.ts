@@ -125,9 +125,9 @@ export const CreateCampaign = ZkProgram({
                 preProof: SelfProof<Void, CreateCampaignProofOutput>,
                 newAction: CampaignAction,
                 ownerWitness: Level1Witness,
-                infoWitess: Level1Witness,
-                statusWitess: Level1Witness,
-                configWitess: Level1Witness
+                infoWitness: Level1Witness,
+                statusWitness: Level1Witness,
+                configWitness: Level1Witness
             ): CreateCampaignProofOutput {
                 preProof.verify();
 
@@ -150,41 +150,41 @@ export const CreateCampaign = ZkProgram({
                 );
 
                 ////// calculate in infoTreeRoot
-                let preInfoRoot = infoWitess.calculateRoot(Field(0));
-                let infoIndex = infoWitess.calculateIndex();
+                let preInfoRoot = infoWitness.calculateRoot(Field(0));
+                let infoIndex = infoWitness.calculateIndex();
                 infoIndex.assertEquals(newCampaignId);
                 preInfoRoot.assertEquals(
                     preProof.publicOutput.finalInfoTreeRoot
                 );
 
                 // update infoTreeRoot
-                let newInfoTreeRoot = infoWitess.calculateRoot(
+                let newInfoTreeRoot = infoWitness.calculateRoot(
                     InfoStorage.calculateLeaf(newAction.ipfsHash)
                 );
 
                 ////// calculate in infoTreeRoot
-                let preStatusRoot = statusWitess.calculateRoot(Field(0));
-                let statusIndex = statusWitess.calculateIndex();
+                let preStatusRoot = statusWitness.calculateRoot(Field(0));
+                let statusIndex = statusWitness.calculateIndex();
                 statusIndex.assertEquals(newCampaignId);
                 preStatusRoot.assertEquals(
                     preProof.publicOutput.finalStatusTreeRoot
                 );
 
                 // update infoTreeRoot
-                let newStatusTreeRoot = statusWitess.calculateRoot(
+                let newStatusTreeRoot = statusWitness.calculateRoot(
                     newAction.campaignStatus
                 );
 
                 ////// calculate in configTreeRoot
-                let preConfigRoot = configWitess.calculateRoot(Field(0));
-                let configIndex = configWitess.calculateIndex();
+                let preConfigRoot = configWitness.calculateRoot(Field(0));
+                let configIndex = configWitness.calculateIndex();
                 configIndex.assertEquals(newCampaignId);
                 preConfigRoot.assertEquals(
                     preProof.publicOutput.finalConfigTreeRoot
                 );
 
                 // update infoTreeRoot
-                let newConfigTreeRoot = configWitess.calculateRoot(
+                let newConfigTreeRoot = configWitness.calculateRoot(
                     ConfigStorage.calculateLeaf({
                         committeeId: newAction.committeeId,
                         keyId: newAction.keyId,
@@ -313,9 +313,21 @@ export class CampaignContract extends SmartContract {
         );
     }
 
-    // TODO
-    @method checkCampaignOwner(input: CheckCampaignOwnerInput): Bool {
+    checkCampaignOwner(input: CheckCampaignOwnerInput): Bool {
         let isOwner = Bool(true);
+
+        // check the right campaignId
+        let campaignId = input.ownerWitness.calculateIndex();
+        isOwner = campaignId.equals(input.campaignId).and(isOwner);
+
+        // check the same on root
+        let calculatedRoot = input.ownerWitness.calculateRoot(
+            OwnerStorage.calculateLeaf(input.owner)
+        );
+
+        isOwner = calculatedRoot
+            .equals(this.ownerTreeRoot.getAndRequireEquals())
+            .and(isOwner);
 
         return isOwner;
     }

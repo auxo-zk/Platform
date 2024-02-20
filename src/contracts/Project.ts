@@ -268,7 +268,7 @@ export class ProjectContract extends SmartContract {
         let projectId = input.memberLevel1Witness.calculateIndex();
         projectId.assertEquals(input.projectId);
 
-        // check only project created can be updated
+        // check only project have been created can be updated
         projectId.assertLessThan(this.nextProjectId.getAndRequireEquals());
 
         // check the right owner index
@@ -356,7 +356,7 @@ export class ProjectContract extends SmartContract {
         );
     }
 
-    @method checkProjectOwner(input: CheckProjectOwnerInput): Bool {
+    checkProjectOwner(input: CheckProjectOwnerInput): Bool {
         let isOwner = Bool(true);
 
         // check the right projectId

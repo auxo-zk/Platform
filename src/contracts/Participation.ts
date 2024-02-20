@@ -142,7 +142,7 @@ export const JoinCampaign = ZkProgram({
             ): CreateParticipationProofOutput {
                 preProof.verify();
 
-                // caculated index in storage tree, called id
+                // calculated index in storage tree, called id
                 let id = IndexStorage.calculateLevel1Index({
                     campaignId: newAction.campaignId,
                     projectId: newAction.projectId,
@@ -205,9 +205,9 @@ export const JoinCampaign = ZkProgram({
 export class ParticipationProof extends ZkProgram.Proof(JoinCampaign) {}
 
 export class ParticipationContract extends SmartContract {
-    // campaignId -> projectId -> index. start from 1, if index = 0 means that project have not participate
+    // campaignId -> Id(campaignId + projectId) -> index. start from 1, if index = 0 means that project have not participate
     @state(Field) indexTreeRoot = State<Field>();
-    // campaignId -> projectId -> index
+    // campaignId -> Id(campaignId + projectId) -> info
     @state(Field) infoTreeRoot = State<Field>();
     // campaignId -> counter
     @state(Field) counterTreeRoot = State<Field>();
@@ -229,8 +229,6 @@ export class ParticipationContract extends SmartContract {
     }
 
     @method joinCampaign(input: JoinCampaignInput) {
-        // TODO: check campaign status
-
         // check owner
         let zkApps = this.zkApps.getAndRequireEquals();
 
@@ -247,19 +245,17 @@ export class ParticipationContract extends SmartContract {
 
         let projectContract = new ProjectContract(input.projectRef.address);
 
-        // TODO: check latter
-        // let isOwner = projectContract.checkProjectOwner(
-        //   new CheckProjectOwnerInput({
-        //     owner: this.sender,
-        //     projectId: input.projectId,
-        //     memberLevel1Witness: input.memberLv1Witness,
-        //     memberLevel2Witness: input.memberLv2Witness,
-        //   })
-        // );
-        // isOwner.assertEquals(Bool(true));
+        let isOwner = projectContract.checkProjectOwner(
+            new CheckProjectOwnerInput({
+                owner: this.sender,
+                projectId: input.projectId,
+                memberLevel1Witness: input.memberLv1Witness,
+                memberLevel2Witness: input.memberLv2Witness,
+            })
+        );
+        isOwner.assertEquals(Bool(true));
 
         // check if this is first time join campaign
-
         let notIn = this.checkParticipationIndex(
             new CheckParticipationIndexInput({
                 campaignId: input.campaignId,
@@ -282,7 +278,7 @@ export class ParticipationContract extends SmartContract {
             curApplicationInfoHash: Field(0),
         });
 
-        let chekcHash = newAction.hashPIDandCID();
+        let checkHash = newAction.hashPIDandCID();
 
         // TODO: not really able to do this, check again. If both of them send at the same block
         // checking if the request have the same id already exists within the accumulator
@@ -292,7 +288,7 @@ export class ParticipationContract extends SmartContract {
             }),
             Bool,
             (state: Bool, action: ParticipationAction) => {
-                return action.hashPIDandCID().equals(chekcHash).or(state);
+                return action.hashPIDandCID().equals(checkHash).or(state);
             },
             // initial state
             { state: Bool(false), actionState: lastRolledUpActionState }
@@ -335,7 +331,7 @@ export class ParticipationContract extends SmartContract {
         this.emitEvent(EventEnum.ACTIONS_REDUCED, lastActionState);
     }
 
-    @method checkParticipationIndex(input: CheckParticipationIndexInput): Bool {
+    checkParticipationIndex(input: CheckParticipationIndexInput): Bool {
         let isValid = Bool(true);
 
         let index = IndexStorage.calculateLevel1Index({

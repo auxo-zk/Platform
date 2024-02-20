@@ -1171,11 +1171,11 @@ async function main() {
 
             // update storage:
             claimedStorage.updateLeaf(
-                claimedStorage.calculateLeaf(Bool(true)),
                 claimedStorage.calculateLevel1Index({
                     campaignId: treasuryAction[i].campaignId,
                     projectId: treasuryAction[i].projectId,
-                })
+                }),
+                claimedStorage.calculateLeaf(Bool(true))
             );
         }
 

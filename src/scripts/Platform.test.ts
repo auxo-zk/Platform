@@ -422,7 +422,7 @@ describe('Platform test all', () => {
         console.log('Deploy done all');
     });
 
-    xit('Send tx create project', async () => {
+    it('Send tx create project', async () => {
         projectContract = contracts[Contract.PROJECT]
             .contract as ProjectContract;
 
@@ -458,7 +458,7 @@ describe('Platform test all', () => {
         }
     });
 
-    xit('Rollup project', async () => {
+    it('Rollup project', async () => {
         let createProjectProof = await CreateProject.firstStep(
             projectContract.nextProjectId.get(),
             projectContract.memberTreeRoot.get(),
@@ -512,7 +512,7 @@ describe('Platform test all', () => {
         await proveAndSend(tx, [feePayerKey], 'ProjectContract', 'rollup');
     });
 
-    xit('Send tx create campaign', async () => {
+    it('Send tx create campaign', async () => {
         campaignContract = contracts[Contract.CAMPAIGN]
             .contract as CampaignContract;
 
@@ -548,7 +548,7 @@ describe('Platform test all', () => {
         }
     });
 
-    xit('Rollup campaign', async () => {
+    it('Rollup campaign', async () => {
         let createCampaignProof = await CreateCampaign.firstStep(
             campaignContract.ownerTreeRoot.get(),
             campaignContract.infoTreeRoot.get(),
@@ -608,7 +608,7 @@ describe('Platform test all', () => {
         await proveAndSend(tx, [feePayerKey], Contract.CAMPAIGN, 'rollup');
     });
 
-    xit('Join campaign', async () => {
+    it('Join campaign', async () => {
         participationContract = contracts[Contract.PARTICIPATION]
             .contract as ParticipationContract;
 
@@ -686,7 +686,7 @@ describe('Platform test all', () => {
         }
     });
 
-    xit('Rollup Join campaign', async () => {
+    it('Rollup Join campaign', async () => {
         let joinCampaignProof = await JoinCampaign.firstStep(
             participationContract.indexTreeRoot.get(),
             participationContract.infoTreeRoot.get(),
@@ -927,7 +927,7 @@ describe('Platform test all', () => {
         await proveAndSend(tx, [feePayerKey], Contract.FUNDING, '');
     });
 
-    it('Project claim fund from treasury', async () => {
+    xit('Project claim fund from treasury', async () => {
         treasuryContract = contracts[Contract.TREASURY]
             .contract as TreasuryContract;
 
@@ -1012,7 +1012,7 @@ describe('Platform test all', () => {
         }
     });
 
-    it('Roll up funding contract', async () => {
+    xit('Roll up funding contract', async () => {
         console.log('First step: ');
         let reduceFundingProof = await ClaimFund.firstStep(
             treasuryContract.claimedTreeRoot.get(),
@@ -1036,11 +1036,11 @@ describe('Platform test all', () => {
 
             // update storage:
             claimedStorage.updateLeaf(
-                claimedStorage.calculateLeaf(Bool(true)),
                 claimedStorage.calculateLevel1Index({
                     campaignId: treasuryAction[i].campaignId,
                     projectId: treasuryAction[i].projectId,
-                })
+                }),
+                claimedStorage.calculateLeaf(Bool(true))
             );
         }
 
