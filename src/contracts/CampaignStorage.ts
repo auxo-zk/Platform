@@ -1,6 +1,14 @@
-import { Field, MerkleTree, MerkleWitness, Poseidon, PublicKey } from 'o1js';
+import {
+    Field,
+    Bool,
+    MerkleTree,
+    MerkleWitness,
+    Poseidon,
+    PublicKey,
+} from 'o1js';
 import { INSTANCE_LIMITS } from '../constants.js';
 import { IPFSHash } from '@auxo-dev/auxo-libs';
+import { BoolDynamicArray } from '@auxo-dev/auxo-libs';
 
 export const LEVEL_1_TREE_HEIGHT =
     Math.ceil(Math.log2(INSTANCE_LIMITS.CAMPAIGN)) + 1;
@@ -191,6 +199,30 @@ export function getStatusFromNumber(num: number): StatusEnum {
             return StatusEnum.ALLOCATED;
         case 4:
             return StatusEnum.ENDED;
+        default:
+            throw new Error('Invalid number');
+    }
+}
+
+export const enum ActionEnum {
+    CREATE_CAMPAIGN,
+    UPDATE_STATUS,
+    UPDATE_INFO,
+    UPDATE_OWNER,
+    UPDATE_CONFIG,
+    __LENGTH,
+}
+
+export function getActionFromNumber(num: number): ActionEnum {
+    switch (num) {
+        case 0:
+            return ActionEnum.CREATE_CAMPAIGN;
+        case 1:
+            return ActionEnum.UPDATE_STATUS;
+        case 2:
+            return ActionEnum.UPDATE_INFO;
+        case 3:
+            return ActionEnum.UPDATE_CONFIG;
         default:
             throw new Error('Invalid number');
     }

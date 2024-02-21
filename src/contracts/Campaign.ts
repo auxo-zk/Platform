@@ -20,6 +20,7 @@ import {
     EMPTY_LEVEL_1_TREE,
     Level1Witness,
     StatusEnum,
+    ActionEnum,
     ConfigStorage,
     OwnerStorage,
     InfoStorage,
@@ -28,6 +29,7 @@ import {
 const DefaultLevel1Root = EMPTY_LEVEL_1_TREE().getRoot();
 
 export class CampaignAction extends Struct({
+    actionType: Field,
     campaignId: Field,
     ipfsHash: IPFSHash,
     owner: PublicKey,
@@ -56,9 +58,34 @@ export class CreateCampaignInput extends Struct({
     }
 }
 
-export class UpdateCampaignInput extends Struct({}) {
-    static fromFields(fields: Field[]): UpdateCampaignInput {
-        return super.fromFields(fields) as UpdateCampaignInput;
+export class UpdateCampaignInfo extends Struct({
+    campaignId: Field,
+    ipfsHash: IPFSHash,
+    ownerWitness: Level1Witness,
+}) {
+    static fromFields(fields: Field[]): UpdateCampaignInfo {
+        return super.fromFields(fields) as UpdateCampaignInfo;
+    }
+}
+
+export class UpdateCampaignStatus extends Struct({
+    campaignId: Field,
+    campaignStatus: Field,
+    ownerWitness: Level1Witness,
+}) {
+    static fromFields(fields: Field[]): UpdateCampaignStatus {
+        return super.fromFields(fields) as UpdateCampaignStatus;
+    }
+}
+
+export class UpdateCampaignConfig extends Struct({
+    campaignId: Field,
+    committeeId: Field,
+    keyId: Field,
+    ownerWitness: Level1Witness,
+}) {
+    static fromFields(fields: Field[]): UpdateCampaignConfig {
+        return super.fromFields(fields) as UpdateCampaignConfig;
     }
 }
 
@@ -132,7 +159,9 @@ export const CreateCampaign = ZkProgram({
                 preProof.verify();
 
                 // check if this action is create campaign
-                newAction.campaignId.assertEquals(Field(-1));
+                newAction.actionType.assertEquals(
+                    Field(ActionEnum.CREATE_CAMPAIGN)
+                );
 
                 let newCampaignId = preProof.publicOutput.finalNextCampaignId;
 
@@ -162,7 +191,7 @@ export const CreateCampaign = ZkProgram({
                     InfoStorage.calculateLeaf(newAction.ipfsHash)
                 );
 
-                ////// calculate in infoTreeRoot
+                ////// calculate in statusTreeRoot
                 let preStatusRoot = statusWitness.calculateRoot(Field(0));
                 let statusIndex = statusWitness.calculateIndex();
                 statusIndex.assertEquals(newCampaignId);
@@ -170,7 +199,7 @@ export const CreateCampaign = ZkProgram({
                     preProof.publicOutput.finalStatusTreeRoot
                 );
 
-                // update infoTreeRoot
+                // update statusTreeRoot
                 let newStatusTreeRoot = statusWitness.calculateRoot(
                     newAction.campaignStatus
                 );
@@ -183,7 +212,7 @@ export const CreateCampaign = ZkProgram({
                     preProof.publicOutput.finalConfigTreeRoot
                 );
 
-                // update infoTreeRoot
+                // update configTreeRoot
                 let newConfigTreeRoot = configWitness.calculateRoot(
                     ConfigStorage.calculateLeaf({
                         committeeId: newAction.committeeId,
@@ -210,6 +239,208 @@ export const CreateCampaign = ZkProgram({
                     finalConfigTreeRoot: newConfigTreeRoot,
                     finalNextCampaignId:
                         preProof.publicOutput.finalNextCampaignId.add(Field(1)),
+                    finalLastRolledUpActionState: updateOutOfSnark(
+                        preProof.publicOutput.finalLastRolledUpActionState,
+                        [CampaignAction.toFields(newAction)]
+                    ),
+                });
+            },
+        },
+        updateCampaignStatus: {
+            privateInputs: [
+                SelfProof<Void, CreateCampaignProofOutput>,
+                CampaignAction,
+                Field,
+                Level1Witness,
+            ],
+            method(
+                preProof: SelfProof<Void, CreateCampaignProofOutput>,
+                newAction: CampaignAction,
+                currentStatus: Field,
+                statusWitness: Level1Witness
+            ): CreateCampaignProofOutput {
+                preProof.verify();
+
+                // check if this action is create campaign
+                newAction.actionType.assertEquals(
+                    Field(ActionEnum.UPDATE_STATUS)
+                );
+
+                let campaignId = newAction.campaignId;
+
+                ////// calculate in statusTreeRoot
+                let preStatusRoot = statusWitness.calculateRoot(currentStatus);
+                let statusIndex = statusWitness.calculateIndex();
+                statusIndex.assertEquals(campaignId);
+                preStatusRoot.assertEquals(
+                    preProof.publicOutput.finalStatusTreeRoot
+                );
+
+                // update statusTreeRoot
+                let newStatusTreeRoot = statusWitness.calculateRoot(
+                    newAction.campaignStatus
+                );
+
+                return new CreateCampaignProofOutput({
+                    initialOwnerTreeRoot:
+                        preProof.publicOutput.initialOwnerTreeRoot,
+                    initialInfoTreeRoot:
+                        preProof.publicOutput.initialInfoTreeRoot,
+                    initialStatusTreeRoot:
+                        preProof.publicOutput.initialStatusTreeRoot,
+                    initialConfigTreeRoot:
+                        preProof.publicOutput.initialConfigTreeRoot,
+                    initialNextCampaignId:
+                        preProof.publicOutput.initialNextCampaignId,
+                    initialLastRolledUpACtionState:
+                        preProof.publicOutput.initialLastRolledUpACtionState,
+                    finalOwnerTreeRoot:
+                        preProof.publicOutput.finalOwnerTreeRoot,
+                    finalInfoTreeRoot: preProof.publicOutput.finalInfoTreeRoot,
+                    finalStatusTreeRoot: newStatusTreeRoot,
+                    finalConfigTreeRoot:
+                        preProof.publicOutput.finalConfigTreeRoot,
+                    finalNextCampaignId:
+                        preProof.publicOutput.finalNextCampaignId,
+                    finalLastRolledUpActionState: updateOutOfSnark(
+                        preProof.publicOutput.finalLastRolledUpActionState,
+                        [CampaignAction.toFields(newAction)]
+                    ),
+                });
+            },
+        },
+        updateCampaignInfo: {
+            privateInputs: [
+                SelfProof<Void, CreateCampaignProofOutput>,
+                CampaignAction,
+                IPFSHash,
+                Level1Witness,
+            ],
+            method(
+                preProof: SelfProof<Void, CreateCampaignProofOutput>,
+                newAction: CampaignAction,
+                currentInfo: IPFSHash,
+                infoWitness: Level1Witness
+            ): CreateCampaignProofOutput {
+                preProof.verify();
+
+                // check if this action is create campaign
+                newAction.actionType.assertEquals(
+                    Field(ActionEnum.UPDATE_INFO)
+                );
+
+                let campaignId = newAction.campaignId;
+
+                ////// calculate in infoTreeRoot
+                let preInfoRoot = infoWitness.calculateRoot(
+                    InfoStorage.calculateLeaf(currentInfo)
+                );
+                let infoIndex = infoWitness.calculateIndex();
+                infoIndex.assertEquals(campaignId);
+                preInfoRoot.assertEquals(
+                    preProof.publicOutput.finalInfoTreeRoot
+                );
+
+                // update infoTreeRoot
+                let newInfoTreeRoot = infoWitness.calculateRoot(
+                    InfoStorage.calculateLeaf(newAction.ipfsHash)
+                );
+
+                return new CreateCampaignProofOutput({
+                    initialOwnerTreeRoot:
+                        preProof.publicOutput.initialOwnerTreeRoot,
+                    initialInfoTreeRoot:
+                        preProof.publicOutput.initialInfoTreeRoot,
+                    initialStatusTreeRoot:
+                        preProof.publicOutput.initialStatusTreeRoot,
+                    initialConfigTreeRoot:
+                        preProof.publicOutput.initialConfigTreeRoot,
+                    initialNextCampaignId:
+                        preProof.publicOutput.initialNextCampaignId,
+                    initialLastRolledUpACtionState:
+                        preProof.publicOutput.initialLastRolledUpACtionState,
+                    finalOwnerTreeRoot:
+                        preProof.publicOutput.finalOwnerTreeRoot,
+                    finalInfoTreeRoot: newInfoTreeRoot,
+                    finalStatusTreeRoot:
+                        preProof.publicOutput.finalStatusTreeRoot,
+                    finalConfigTreeRoot:
+                        preProof.publicOutput.finalConfigTreeRoot,
+                    finalNextCampaignId:
+                        preProof.publicOutput.finalNextCampaignId,
+                    finalLastRolledUpActionState: updateOutOfSnark(
+                        preProof.publicOutput.finalLastRolledUpActionState,
+                        [CampaignAction.toFields(newAction)]
+                    ),
+                });
+            },
+        },
+        updateCampaignConfig: {
+            privateInputs: [
+                SelfProof<Void, CreateCampaignProofOutput>,
+                CampaignAction,
+                Field,
+                Field,
+                Level1Witness,
+            ],
+            method(
+                preProof: SelfProof<Void, CreateCampaignProofOutput>,
+                newAction: CampaignAction,
+                currentCommitteeId: Field,
+                currentKeyId: Field,
+                configWitness: Level1Witness
+            ): CreateCampaignProofOutput {
+                preProof.verify();
+
+                // check if this action is create campaign
+                newAction.actionType.assertEquals(
+                    Field(ActionEnum.UPDATE_INFO)
+                );
+
+                let campaignId = newAction.campaignId;
+
+                ////// calculate in configTreeRoot
+                let preConfigRoot = configWitness.calculateRoot(
+                    ConfigStorage.calculateLeaf({
+                        committeeId: currentCommitteeId,
+                        keyId: currentKeyId,
+                    })
+                );
+                let configIndex = configWitness.calculateIndex();
+                configIndex.assertEquals(campaignId);
+                preConfigRoot.assertEquals(
+                    preProof.publicOutput.finalInfoTreeRoot
+                );
+
+                // update configTreeRoot
+                let newConfigTreeRoot = configWitness.calculateRoot(
+                    ConfigStorage.calculateLeaf({
+                        committeeId: newAction.committeeId,
+                        keyId: newAction.keyId,
+                    })
+                );
+
+                return new CreateCampaignProofOutput({
+                    initialOwnerTreeRoot:
+                        preProof.publicOutput.initialOwnerTreeRoot,
+                    initialInfoTreeRoot:
+                        preProof.publicOutput.initialInfoTreeRoot,
+                    initialStatusTreeRoot:
+                        preProof.publicOutput.initialStatusTreeRoot,
+                    initialConfigTreeRoot:
+                        preProof.publicOutput.initialConfigTreeRoot,
+                    initialNextCampaignId:
+                        preProof.publicOutput.initialNextCampaignId,
+                    initialLastRolledUpACtionState:
+                        preProof.publicOutput.initialLastRolledUpACtionState,
+                    finalOwnerTreeRoot:
+                        preProof.publicOutput.finalOwnerTreeRoot,
+                    finalInfoTreeRoot: preProof.publicOutput.finalInfoTreeRoot,
+                    finalStatusTreeRoot:
+                        preProof.publicOutput.finalStatusTreeRoot,
+                    finalConfigTreeRoot: newConfigTreeRoot,
+                    finalNextCampaignId:
+                        preProof.publicOutput.finalNextCampaignId,
                     finalLastRolledUpActionState: updateOutOfSnark(
                         preProof.publicOutput.finalLastRolledUpActionState,
                         [CampaignAction.toFields(newAction)]
@@ -259,6 +490,7 @@ export class CampaignContract extends SmartContract {
     @method createCampaign(input: CreateCampaignInput) {
         this.reducer.dispatch(
             new CampaignAction({
+                actionType: Field(ActionEnum.CREATE_CAMPAIGN),
                 campaignId: Field(-1),
                 ipfsHash: input.ipfsHash,
                 owner: this.sender,
@@ -269,9 +501,158 @@ export class CampaignContract extends SmartContract {
         );
     }
 
-    // TODO
-    // eslint-disable-next-line @typescript-eslint/no-empty-function
-    @method updateCampaignInfo(input: UpdateCampaignInput) {}
+    @method updateCampaignInfo(input: UpdateCampaignInfo) {
+        // check the right campaignId
+        let campaignId = input.ownerWitness.calculateIndex();
+
+        // TODO: double check if this.sender can be manipulated
+        let isOwner = this.checkCampaignOwner(
+            new CheckCampaignOwnerInput({
+                owner: this.sender,
+                campaignId: input.campaignId,
+                ownerWitness: input.ownerWitness,
+            })
+        );
+
+        isOwner.assertEquals(Bool(true));
+
+        // check only project have been created can be updated
+        campaignId.assertLessThan(this.nextCampaignId.getAndRequireEquals());
+
+        let lastRolledUpActionState =
+            this.lastRolledUpActionState.getAndRequireEquals();
+
+        // TODO: not really able to do this, check again. If both of them send at the same block
+        // checking if the request have the same id already exists within the accumulator
+        let { state: exists } = this.reducer.reduce(
+            this.reducer.getActions({
+                fromActionState: lastRolledUpActionState,
+            }),
+            Bool,
+            (state: Bool, action: CampaignAction) => {
+                return action.campaignId.equals(campaignId).or(state);
+            },
+            // initial state
+            { state: Bool(false), actionState: lastRolledUpActionState }
+        );
+
+        // if exists then don't dispatch any more
+        exists.assertEquals(Bool(false));
+
+        this.reducer.dispatch(
+            new CampaignAction({
+                actionType: Field(ActionEnum.UPDATE_INFO),
+                campaignId: input.campaignId,
+                ipfsHash: input.ipfsHash,
+                owner: this.sender, // not matter
+                campaignStatus: Field(-1), // not matter
+                committeeId: Field(-1), // not matter
+                keyId: Field(-1), // not matter
+            })
+        );
+    }
+
+    @method updateCampaignStatus(input: UpdateCampaignStatus) {
+        // check the right campaignId
+        let campaignId = input.ownerWitness.calculateIndex();
+
+        // TODO: double check if this.sender can be manipulated
+        let isOwner = this.checkCampaignOwner(
+            new CheckCampaignOwnerInput({
+                owner: this.sender,
+                campaignId: input.campaignId,
+                ownerWitness: input.ownerWitness,
+            })
+        );
+
+        isOwner.assertEquals(Bool(true));
+
+        // check only project have been created can be updated
+        campaignId.assertLessThan(this.nextCampaignId.getAndRequireEquals());
+
+        let lastRolledUpActionState =
+            this.lastRolledUpActionState.getAndRequireEquals();
+
+        // TODO: not really able to do this, check again. If both of them send at the same block
+        // checking if the request have the same id already exists within the accumulator
+        let { state: exists } = this.reducer.reduce(
+            this.reducer.getActions({
+                fromActionState: lastRolledUpActionState,
+            }),
+            Bool,
+            (state: Bool, action: CampaignAction) => {
+                return action.campaignId.equals(campaignId).or(state);
+            },
+            // initial state
+            { state: Bool(false), actionState: lastRolledUpActionState }
+        );
+
+        // if exists then don't dispatch any more
+        exists.assertEquals(Bool(false));
+
+        this.reducer.dispatch(
+            new CampaignAction({
+                actionType: Field(ActionEnum.UPDATE_INFO),
+                campaignId: Field(-1), // not matter
+                ipfsHash: IPFSHash.fromString(''), // not matter
+                owner: this.sender, // not matter
+                campaignStatus: input.campaignStatus,
+                committeeId: Field(-1), // not matter
+                keyId: Field(-1), // not matter
+            })
+        );
+    }
+
+    @method updateCampaignConfig(input: UpdateCampaignConfig) {
+        // check the right campaignId
+        let campaignId = input.ownerWitness.calculateIndex();
+
+        // TODO: double check if this.sender can be manipulated
+        let isOwner = this.checkCampaignOwner(
+            new CheckCampaignOwnerInput({
+                owner: this.sender,
+                campaignId: input.campaignId,
+                ownerWitness: input.ownerWitness,
+            })
+        );
+
+        isOwner.assertEquals(Bool(true));
+
+        // check only project have been created can be updated
+        campaignId.assertLessThan(this.nextCampaignId.getAndRequireEquals());
+
+        let lastRolledUpActionState =
+            this.lastRolledUpActionState.getAndRequireEquals();
+
+        // TODO: not really able to do this, check again. If both of them send at the same block
+        // checking if the request have the same id already exists within the accumulator
+        let { state: exists } = this.reducer.reduce(
+            this.reducer.getActions({
+                fromActionState: lastRolledUpActionState,
+            }),
+            Bool,
+            (state: Bool, action: CampaignAction) => {
+                return action.campaignId.equals(campaignId).or(state);
+            },
+            // initial state
+            { state: Bool(false), actionState: lastRolledUpActionState }
+        );
+
+        // if exists then don't dispatch any more
+        exists.assertEquals(Bool(false));
+
+        this.reducer.dispatch(
+            new CampaignAction({
+                actionType: Field(ActionEnum.UPDATE_INFO),
+                campaignId: Field(-1), // not matter
+                ipfsHash: IPFSHash.fromString(''), // not matter
+                owner: this.sender, // not matter
+                campaignStatus: Field(-1), // not matter
+                committeeId: input.committeeId,
+                keyId: input.keyId,
+            })
+        );
+    }
 
     @method rollup(proof: CampaignProof) {
         proof.verify();

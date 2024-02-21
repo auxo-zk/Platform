@@ -21,6 +21,7 @@ import {
     OwnerStorage,
     StatusEnum,
     StatusStorage,
+    ActionEnum,
 } from '../contracts/CampaignStorage.js';
 import {
     AddressStorage,
@@ -145,6 +146,7 @@ describe('Campaign', () => {
 
         actions.push(
             new CampaignAction({
+                actionType: Field(ActionEnum.CREATE_CAMPAIGN),
                 campaignId: Field(-1),
                 ipfsHash: createCampaignInput.ipfsHash,
                 owner: feePayerKey.publicKey,

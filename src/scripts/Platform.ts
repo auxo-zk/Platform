@@ -57,6 +57,7 @@ import {
     StatusStorage,
     ConfigStorage,
     StatusEnum,
+    ActionEnum,
 } from '../contracts/CampaignStorage.js';
 import mockCampaignIpfs from './mock/campaigns.js';
 import {
@@ -536,6 +537,7 @@ async function main() {
 
             campaignActions.push(
                 new CampaignAction({
+                    actionType: Field(ActionEnum.CREATE_CAMPAIGN),
                     campaignId: Field(-1),
                     ipfsHash: createCampaignInput.ipfsHash,
                     owner: feePayerKey.publicKey,

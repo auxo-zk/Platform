@@ -25,7 +25,9 @@ export {
     // Structs
     CheckCampaignOwnerInput,
     CreateCampaignInput,
-    UpdateCampaignInput,
+    UpdateCampaignInfo,
+    UpdateCampaignStatus,
+    UpdateCampaignConfig,
     CreateCampaignProofOutput,
 
     // Zk Programs & Proofs
