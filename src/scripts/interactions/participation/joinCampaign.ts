@@ -69,6 +69,7 @@ async function main() {
     await compile(ParticipationContract, cache);
 
     const projectAddress = process.env.BERKELEY_PROJECT_ADDRESS as string;
+    const campaignAddress = process.env.BERKELEY_CAMPAIGN_ADDRESS as string;
     const participationAddress = process.env
         .BERKELEY_PARTICIPATION_ADDRESS as string;
     const zkContract = new ParticipationContract(
@@ -81,6 +82,8 @@ async function main() {
 
     // Project storage
     let memberStorage = new MemberStorage();
+    // Campaign storage
+    let statusStorage = new StatusStorage();
     // Participation storage
     let indexStorage = new IndexStorage();
     let participationAddressStorage = new AddressStorage(addressMerkleTree);
@@ -134,9 +137,16 @@ async function main() {
             Field(projectId),
             Field(0)
         ),
+        campaignStatusWitness: statusStorage.getLevel1Witness(
+            statusStorage.calculateLevel1Index(Field(campaignId))
+        ),
         projectRef: participationAddressStorage.getZkAppRef(
             ZkAppEnum.PROJECT,
             PublicKey.fromBase58(projectAddress)
+        ),
+        campaignRef: participationAddressStorage.getZkAppRef(
+            ZkAppEnum.CAMPAIGN,
+            PublicKey.fromBase58(campaignAddress)
         ),
     });
 

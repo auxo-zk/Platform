@@ -48,6 +48,12 @@ export class CheckCampaignOwnerInput extends Struct({
     ownerWitness: Level1Witness,
 }) {}
 
+export class CheckCampaignStatusInput extends Struct({
+    campaignId: Field,
+    currentStatus: Field,
+    statusWitness: Level1Witness,
+}) {}
+
 export class CreateCampaignInput extends Struct({
     ipfsHash: IPFSHash,
     committeeId: Field,
@@ -711,5 +717,24 @@ export class CampaignContract extends SmartContract {
             .and(isOwner);
 
         return isOwner;
+    }
+
+    checkCampaignStatus(input: CheckCampaignStatusInput): Bool {
+        let isCorrect = Bool(true);
+
+        // check the right campaignId
+        let campaignId = input.statusWitness.calculateIndex();
+        isCorrect = campaignId.equals(input.campaignId).and(isCorrect);
+
+        // check the same on root
+        let calculatedRoot = input.statusWitness.calculateRoot(
+            input.currentStatus
+        );
+
+        isCorrect = calculatedRoot
+            .equals(this.statusTreeRoot.getAndRequireEquals())
+            .and(isCorrect);
+
+        return isCorrect;
     }
 }

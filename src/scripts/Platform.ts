@@ -641,9 +641,16 @@ async function main() {
                     EMPTY_LEVEL_2_TREE().getWitness(0n)
                 ), // temp value since contract hasn't check this
                 // memberLv2Witness: memberStorage.getLevel2Witness(Field(1), Field(0)), // Field 0 = owner
+                campaignStatusWitness: statusStorage.getLevel1Witness(
+                    statusStorage.calculateLevel1Index(Field(1))
+                ),
                 projectRef: participationAddressStorage.getZkAppRef(
                     ZkAppEnum.PROJECT,
                     contracts[Contract.PROJECT].contract.address
+                ),
+                campaignRef: participationAddressStorage.getZkAppRef(
+                    ZkAppEnum.CAMPAIGN,
+                    contracts[Contract.CAMPAIGN].contract.address
                 ),
             }),
             new JoinCampaignInput({
@@ -663,9 +670,16 @@ async function main() {
                     EMPTY_LEVEL_2_TREE().getWitness(0n)
                 ), // fake value since contract hasn't check this
                 // memberLv2Witness: memberStorage.getLevel2Witness(Field(2), Field(0)), // Field 0 = owner
+                campaignStatusWitness: statusStorage.getLevel1Witness(
+                    statusStorage.calculateLevel1Index(Field(1))
+                ),
                 projectRef: participationAddressStorage.getZkAppRef(
                     ZkAppEnum.PROJECT,
                     contracts[Contract.PROJECT].contract.address
+                ),
+                campaignRef: participationAddressStorage.getZkAppRef(
+                    ZkAppEnum.CAMPAIGN,
+                    contracts[Contract.CAMPAIGN].contract.address
                 ),
             }),
         ];

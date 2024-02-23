@@ -8,8 +8,6 @@ import {
 } from 'o1js';
 import { INSTANCE_LIMITS } from '../constants.js';
 import { IPFSHash } from '@auxo-dev/auxo-libs';
-import { BoolDynamicArray } from '@auxo-dev/auxo-libs';
-
 export const LEVEL_1_TREE_HEIGHT =
     Math.ceil(Math.log2(INSTANCE_LIMITS.CAMPAIGN)) + 1;
 

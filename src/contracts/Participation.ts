@@ -35,6 +35,11 @@ import { ProjectContract, CheckProjectOwnerInput } from './Project.js';
 import { ZkAppRef } from './SharedStorage.js';
 
 import { ZkAppEnum } from '../constants.js';
+import { CampaignContract, CheckCampaignStatusInput } from './Campaign.js';
+import {
+    StatusEnum,
+    Level1Witness as campaignLv1Witness,
+} from './CampaignStorage.js';
 
 const DefaultLevel1Root = EMPTY_LEVEL_1_TREE().getRoot();
 const DefaultLevel1CombinedRoot = EMPTY_LEVEL_1_COMBINED_TREE().getRoot();
@@ -65,7 +70,9 @@ export class JoinCampaignInput extends Struct({
     indexWitness: indexAndInfoWitness,
     memberLv1Witness: projectLv1Witness,
     memberLv2Witness: projectLv2Witness,
+    campaignStatusWitness: campaignLv1Witness,
     projectRef: ZkAppRef,
+    campaignRef: ZkAppRef,
 }) {
     static fromFields(fields: Field[]): JoinCampaignInput {
         return super.fromFields(fields) as JoinCampaignInput;
@@ -229,7 +236,6 @@ export class ParticipationContract extends SmartContract {
     }
 
     @method joinCampaign(input: JoinCampaignInput) {
-        // check owner
         let zkApps = this.zkApps.getAndRequireEquals();
 
         // check project contract
@@ -238,13 +244,23 @@ export class ParticipationContract extends SmartContract {
                 Poseidon.hash(input.projectRef.address.toFields())
             )
         );
-
         Field(ZkAppEnum.PROJECT).assertEquals(
             input.projectRef.witness.calculateIndex()
         );
-
         let projectContract = new ProjectContract(input.projectRef.address);
 
+        // check campaign contract
+        zkApps.assertEquals(
+            input.campaignRef.witness.calculateRoot(
+                Poseidon.hash(input.campaignRef.address.toFields())
+            )
+        );
+        Field(ZkAppEnum.CAMPAIGN).assertEquals(
+            input.campaignRef.witness.calculateIndex()
+        );
+        let campaignContract = new CampaignContract(input.campaignRef.address);
+
+        // check owner
         let isOwner = projectContract.checkProjectOwner(
             new CheckProjectOwnerInput({
                 owner: this.sender,
@@ -254,6 +270,16 @@ export class ParticipationContract extends SmartContract {
             })
         );
         isOwner.assertEquals(Bool(true));
+
+        // check if campaign is on APPLICATION status
+        let isAbleToJoin = campaignContract.checkCampaignStatus(
+            new CheckCampaignStatusInput({
+                campaignId: input.campaignId,
+                currentStatus: Field(StatusEnum.APPLICATION),
+                statusWitness: input.campaignStatusWitness,
+            })
+        );
+        isAbleToJoin.assertEquals(Bool(true));
 
         // check if this is first time join campaign
         let notIn = this.checkParticipationIndex(
