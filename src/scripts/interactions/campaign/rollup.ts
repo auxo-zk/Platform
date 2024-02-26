@@ -51,7 +51,6 @@ import { AddressStorage } from '../../../contracts/SharedStorage.js';
 import axios from 'axios';
 import { IPFSHash } from '@auxo-dev/auxo-libs';
 import { prepare } from '../prepare.js';
-import { Prover } from 'o1js/dist/node/lib/proof_system.js';
 
 // Da test reduce 1 action, 2 action co the sai :v
 async function main() {

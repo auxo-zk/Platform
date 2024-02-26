@@ -472,6 +472,10 @@ export class CampaignContract extends SmartContract {
     @state(Field) statusTreeRoot = State<Field>();
     // hash(committeeId, keyId)
     @state(Field) configTreeRoot = State<Field>();
+    // store hash application timeLine
+    @state(Field) applicationTimLine = State<Field>();
+    // store hash funding timeLine
+    @state(Field) fundingTimLine = State<Field>();
     // MT of other zkApp address
     @state(Field) zkApps = State<Field>();
     // next campaign Id

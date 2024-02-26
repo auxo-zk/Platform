@@ -5,6 +5,7 @@ import {
     MerkleWitness,
     Poseidon,
     PublicKey,
+    Struct,
 } from 'o1js';
 import { INSTANCE_LIMITS } from '../constants.js';
 import { IPFSHash } from '@auxo-dev/auxo-libs';
@@ -223,5 +224,14 @@ export function getActionFromNumber(num: number): ActionEnum {
             return ActionEnum.UPDATE_CONFIG;
         default:
             throw new Error('Invalid number');
+    }
+}
+
+export class TimeLine extends Struct({
+    startTime: Field,
+    endTime: Field,
+}) {
+    static fromFields(fields: Field[]): TimeLine {
+        return super.fromFields(fields) as TimeLine;
     }
 }

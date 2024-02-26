@@ -104,12 +104,17 @@ import {
 } from '../libs/utils.js';
 import { CustomScalarArray, ZkApp } from '@auxo-dev/dkg';
 
-const isDeploy = true;
-const isProject = false;
-const isCampaign = false;
-const isParticipation = false;
-const isFunding = false;
-const isTreasury = false;
+const isDeploy_Project = true;
+const isDeploy_Campaign = false;
+const isDeploy_Participation = false;
+const isDeploy_Funding = false;
+const isDeploy_Treasury = false;
+
+const is_Project = false;
+const is_Campaign = false;
+const is_Participation = false;
+const is_Funding = false;
+const is_Treasury = false;
 
 async function main() {
     console.time('runTime');
@@ -131,19 +136,19 @@ async function main() {
     );
 
     // Testworld + Berkeley
-    // feePayerKey = {
-    //     privateKey: PrivateKey.fromBase58(feePayerAccount.privateKey),
-    //     publicKey: PublicKey.fromBase58(feePayerAccount.publicKey),
-    // };
-
     feePayerKey = {
-        privateKey: PrivateKey.fromBase58(
-            'EKE7WQsZEKzsMRdEZh7FQC7AKzNdpioERMjfxks5Urfy4vScFzFP'
-        ),
-        publicKey: PublicKey.fromBase58(
-            'B62qj94pxHZ3gJ9WSU2eeYNVQSLNPZVM5YUUBH3GcFLA6Y25c7nb7sW'
-        ),
+        privateKey: PrivateKey.fromBase58(feePayerAccount.privateKey),
+        publicKey: PublicKey.fromBase58(feePayerAccount.publicKey),
     };
+
+    // feePayerKey = {
+    //     privateKey: PrivateKey.fromBase58(
+    //         'EKE7WQsZEKzsMRdEZh7FQC7AKzNdpioERMjfxks5Urfy4vScFzFP'
+    //     ),
+    //     publicKey: PublicKey.fromBase58(
+    //         'B62qj94pxHZ3gJ9WSU2eeYNVQSLNPZVM5YUUBH3GcFLA6Y25c7nb7sW'
+    //     ),
+    // };
 
     console.log('Deployer Public Key: ', feePayerKey.publicKey.toBase58());
 
@@ -268,27 +273,27 @@ async function main() {
             })
     );
 
-    if (isDeploy || isProject) {
+    if (isDeploy_Project || is_Project) {
         await compile(CreateProject, cache, logMemory, profiler);
         await compile(ProjectContract, cache, logMemory, profiler);
     }
 
-    if (isDeploy || isCampaign) {
+    if (isDeploy_Campaign || is_Campaign) {
         await compile(CreateCampaign, cache, logMemory, profiler);
         await compile(CampaignContract, cache, logMemory, profiler);
     }
 
-    if (isDeploy || isParticipation) {
+    if (isDeploy_Participation || is_Participation) {
         await compile(JoinCampaign, cache, logMemory, profiler);
         await compile(ParticipationContract, cache, logMemory, profiler);
     }
 
-    if (isDeploy || isTreasury) {
+    if (isDeploy_Treasury || is_Treasury) {
         await compile(ClaimFund, cache, logMemory, profiler);
         await compile(TreasuryContract, cache, logMemory, profiler);
     }
 
-    if (isDeploy || isFunding) {
+    if (isDeploy_Funding || is_Funding) {
         await compile(ZkApp.Request.CreateRequest, cache, logMemory, profiler);
         await compile(
             ZkApp.Request.RequestContract,
@@ -308,7 +313,7 @@ async function main() {
 
     let tx;
 
-    if (isDeploy) {
+    if (isDeploy_Project) {
         console.log('Deploying');
         // Deploy ProjectContract
         await deploy(
@@ -318,7 +323,9 @@ async function main() {
             fee,
             ++feePayerNonce
         );
+    }
 
+    if (isDeploy_Campaign) {
         // Deploy CampaignContract
         await deploy(
             contracts[Contract.CAMPAIGN],
@@ -327,7 +334,9 @@ async function main() {
             fee,
             ++feePayerNonce
         );
+    }
 
+    if (isDeploy_Participation) {
         // Deploy ParticipationContract
         await deploy(
             contracts[Contract.PARTICIPATION],
@@ -336,7 +345,9 @@ async function main() {
             fee,
             ++feePayerNonce
         );
+    }
 
+    if (isDeploy_Funding) {
         // Deploy FundingContract
         await deploy(
             contracts[Contract.FUNDING],
@@ -360,17 +371,19 @@ async function main() {
             }
         );
         await tx.sign([feePayerKey.privateKey]).send();
+    }
 
-        // Do this only if we want to test
-        // // Deploy RequestContract
-        // await deploy(
-        //   contracts[Contract.REQUEST],
-        //   [],
-        //   feePayerKey,
-        //   fee,
-        //   ++feePayerNonce
-        // );
+    // Do this only if we want to test
+    // // Deploy RequestContract
+    // await deploy(
+    //   contracts[Contract.REQUEST],
+    //   [],
+    //   feePayerKey,
+    //   fee,
+    //   ++feePayerNonce
+    // );
 
+    if (isDeploy_Treasury) {
         // Deploy TreasuryContract
         let treasuryContract = contracts[Contract.TREASURY]
             .contract as TreasuryContract;
@@ -402,7 +415,7 @@ async function main() {
         await wait();
     }
 
-    if (isProject) {
+    if (is_Project) {
         await fetchAllContract(contracts, [Contract.PROJECT]);
         console.log('Create projects...');
         let numProjects = 1;
@@ -506,10 +519,10 @@ async function main() {
         );
         await proveAndSend(tx, [feePayerKey], 'ProjectContract', 'rollup');
 
-        if (isCampaign) await wait();
+        if (is_Campaign) await wait();
     }
 
-    if (isCampaign) {
+    if (is_Campaign) {
         await fetchAllContract(contracts, [Contract.CAMPAIGN]);
         console.log('Create campaign...');
         let numCampaign = 3;
@@ -611,10 +624,10 @@ async function main() {
         );
         await proveAndSend(tx, [feePayerKey], Contract.CAMPAIGN, 'rollup');
 
-        if (isParticipation) await wait();
+        if (is_Participation) await wait();
     }
 
-    if (isParticipation) {
+    if (is_Participation) {
         await fetchAllContract(contracts, [Contract.PARTICIPATION]);
         console.log('Join campaign...');
         let numCampaign = 2;
@@ -781,10 +794,10 @@ async function main() {
         );
         await proveAndSend(tx, [feePayerKey], Contract.PARTICIPATION, 'rollup');
 
-        if (isFunding) await wait();
+        if (is_Funding) await wait();
     }
 
-    if (isFunding) {
+    if (is_Funding) {
         await fetchAllContract(contracts, [Contract.FUNDING]);
 
         let acc1: { privateKey: string; publicKey: string } = JSON.parse(
@@ -1015,10 +1028,10 @@ async function main() {
         );
         await proveAndSend(tx, [feePayerKey], Contract.FUNDING, '');
 
-        if (isTreasury) await wait();
+        if (is_Treasury) await wait();
     }
 
-    if (isTreasury) {
+    if (is_Treasury) {
         let treasuryContract = contracts[Contract.TREASURY]
             .contract as TreasuryContract;
 

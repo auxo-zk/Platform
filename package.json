@@ -66,9 +66,9 @@
     },
     "dependencies": {
         "@auxo-dev/auxo-libs": "0.3.6",
-        "@auxo-dev/dkg": "0.2.19",
+        "@auxo-dev/dkg": "0.2.20",
         "axios": "^1.6.7",
         "dotenv": "^16.3.1",
-        "o1js": "0.16.0"
+        "o1js": "0.16.2"
     }
 }
