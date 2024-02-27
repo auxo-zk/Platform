@@ -85,12 +85,16 @@ async function main() {
     // await compile(FundingContract, cache);
 
     const fundingAddress = process.env.BERKELEY_FUNDING_ADDRESS as string;
+    const campaignAddress = process.env.BERKELEY_CAMPAIGN_ADDRESS as string;
     const participationAddress = process.env
         .BERKELEY_PARTICIPATION_ADDRESS as string;
     const treasuryAddress = process.env.BERKELEY_TREASURY_ADDRESS as string;
     const fundingContract = new FundingContract(
         PublicKey.fromBase58(fundingAddress)
     );
+
+    // Campaign storage
+    let statusStorage = new StatusStorage();
 
     // Do this and state value of contract is fetched in Mina
     await fetchZkAppState(fundingAddress);
@@ -136,9 +140,16 @@ async function main() {
         committeePublicKey: committeePublicKey,
         secretVector: secretVectors[0],
         random: randomsVectors[0],
+        campaignStatusWitness: statusStorage.getLevel1Witness(
+            statusStorage.calculateLevel1Index(Field(campaignId))
+        ),
         treasuryContract: fundingAddressStorage.getZkAppRef(
             ZkAppEnum.TREASURY,
             PublicKey.fromBase58(treasuryAddress)
+        ),
+        campaignRef: fundingAddressStorage.getZkAppRef(
+            ZkAppEnum.CAMPAIGN,
+            PublicKey.fromBase58(campaignAddress)
         ),
     });
 

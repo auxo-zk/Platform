@@ -40,6 +40,13 @@ import {
     TotalFundStorage,
 } from './FundingStorage.js';
 
+import { CampaignContract, CheckCampaignStatusInput } from './Campaign.js';
+
+import {
+    StatusEnum,
+    Level1Witness as campaignLv1Witness,
+} from './CampaignStorage.js';
+
 const DefaultLevel1Root = EMPTY_LEVEL_1_TREE().getRoot();
 
 export enum EventEnum {
@@ -72,7 +79,9 @@ export class FundingInput extends Struct({
     secretVector: CustomScalarArray,
     random: CustomScalarArray,
     // settingMerkleMapWitness: MerkleMapWitness,
+    campaignStatusWitness: campaignLv1Witness,
     treasuryContract: ZkAppRef,
+    campaignRef: ZkAppRef,
 }) {}
 
 export class FundingAction extends Struct({
@@ -360,11 +369,11 @@ export class FundingContract extends SmartContract {
             );
             M.push(M_i);
         }
-        let dercementAmount = Field(DKG_Constants.REQUEST_MAX_SIZE).sub(
+        let decrementLength = Field(DKG_Constants.REQUEST_MAX_SIZE).sub(
             dimension
         );
-        R.decrementLength(dercementAmount);
-        M.decrementLength(dercementAmount);
+        R.decrementLength(decrementLength);
+        M.decrementLength(decrementLength);
 
         // Verify zkApp references
         let zkApps = this.zkApps.getAndRequireEquals();
@@ -378,6 +387,29 @@ export class FundingContract extends SmartContract {
         Field(ZkAppEnum.TREASURY).assertEquals(
             fundingInput.treasuryContract.witness.calculateIndex()
         );
+
+        // check campaign contract
+        zkApps.assertEquals(
+            fundingInput.campaignRef.witness.calculateRoot(
+                Poseidon.hash(fundingInput.campaignRef.address.toFields())
+            )
+        );
+        Field(ZkAppEnum.CAMPAIGN).assertEquals(
+            fundingInput.campaignRef.witness.calculateIndex()
+        );
+        let campaignContract = new CampaignContract(
+            fundingInput.campaignRef.address
+        );
+
+        // check if campaign is on APPLICATION status
+        let isAbleToJoin = campaignContract.checkCampaignStatus(
+            new CheckCampaignStatusInput({
+                campaignId: fundingInput.campaignId,
+                currentStatus: Field(StatusEnum.FUNDING),
+                statusWitness: fundingInput.campaignStatusWitness,
+            })
+        );
+        isAbleToJoin.assertEquals(Bool(true));
 
         let investor = AccountUpdate.createSigned(this.sender);
         // Send invest Mina to treasury contract

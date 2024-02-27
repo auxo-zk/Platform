@@ -51,6 +51,7 @@ import {
 import { CustomScalar } from '@auxo-dev/auxo-libs';
 import { CustomScalarArray, ZkApp } from '@auxo-dev/dkg';
 import { TreasuryContract, ClaimFund } from '../contracts/Treasury.js';
+import { StatusStorage } from '../contracts/CampaignStorage.js';
 
 describe('Funding', () => {
     const doProofs = true;
@@ -63,6 +64,9 @@ describe('Funding', () => {
     let contracts: ContractList = {};
     let tx: any;
     let fundingContract: FundingContract;
+    let campaignContract: FundingContract;
+    let statusStorage = new StatusStorage();
+
     // Funding storage
     let fundingReduceStorage = new ReduceStorage();
     let sumRStorage = new ValueStorage();
@@ -203,9 +207,16 @@ describe('Funding', () => {
                 committeePublicKey: contracts[Contract.COMMITTEE].key.publicKey,
                 secretVector: secretVectors[0],
                 random: randomsVectors[0],
+                campaignStatusWitness: statusStorage.getLevel1Witness(
+                    statusStorage.calculateLevel1Index(Field(Field(1)))
+                ),
                 treasuryContract: fundingAddressStorage.getZkAppRef(
                     ZkAppEnum.TREASURY,
                     contracts[Contract.TREASURY].contract.address
+                ),
+                campaignRef: fundingAddressStorage.getZkAppRef(
+                    ZkAppEnum.CAMPAIGN,
+                    contracts[Contract.CAMPAIGN].contract.address
                 ),
             }),
             new FundingInput({
@@ -213,9 +224,16 @@ describe('Funding', () => {
                 committeePublicKey: contracts[Contract.COMMITTEE].key.publicKey,
                 secretVector: secretVectors[1],
                 random: randomsVectors[1],
+                campaignStatusWitness: statusStorage.getLevel1Witness(
+                    statusStorage.calculateLevel1Index(Field(Field(1)))
+                ),
                 treasuryContract: fundingAddressStorage.getZkAppRef(
                     ZkAppEnum.TREASURY,
                     contracts[Contract.TREASURY].contract.address
+                ),
+                campaignRef: fundingAddressStorage.getZkAppRef(
+                    ZkAppEnum.CAMPAIGN,
+                    contracts[Contract.CAMPAIGN].contract.address
                 ),
             }),
         ];

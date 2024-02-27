@@ -473,9 +473,9 @@ export class CampaignContract extends SmartContract {
     // hash(committeeId, keyId)
     @state(Field) configTreeRoot = State<Field>();
     // store hash application timeLine
-    @state(Field) applicationTimLine = State<Field>();
+    @state(Field) applicationTimeLine = State<Field>();
     // store hash funding timeLine
-    @state(Field) fundingTimLine = State<Field>();
+    // @state(Field) fundingTimeLine = State<Field>();
     // MT of other zkApp address
     @state(Field) zkApps = State<Field>();
     // next campaign Id
@@ -494,6 +494,8 @@ export class CampaignContract extends SmartContract {
         this.infoTreeRoot.set(DefaultLevel1Root);
         this.statusTreeRoot.set(DefaultLevel1Root);
         this.configTreeRoot.set(DefaultLevel1Root);
+        this.applicationTimeLine.set(DefaultLevel1Root);
+        // this.fundingTimeLine.set(DefaultLevel1Root);
         this.lastRolledUpActionState.set(Reducer.initialActionState);
     }
 

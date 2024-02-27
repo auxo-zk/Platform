@@ -860,9 +860,16 @@ async function main() {
                 committeePublicKey: contracts[Contract.COMMITTEE].key.publicKey,
                 secretVector: secretVectors[0],
                 random: randomsVectors[0],
+                campaignStatusWitness: statusStorage.getLevel1Witness(
+                    statusStorage.calculateLevel1Index(Field(1))
+                ),
                 treasuryContract: fundingAddressStorage.getZkAppRef(
                     ZkAppEnum.TREASURY,
                     contracts[Contract.TREASURY].contract.address
+                ),
+                campaignRef: fundingAddressStorage.getZkAppRef(
+                    ZkAppEnum.CAMPAIGN,
+                    contracts[Contract.CAMPAIGN].contract.address
                 ),
             }),
             new FundingInput({
@@ -870,9 +877,16 @@ async function main() {
                 committeePublicKey: contracts[Contract.COMMITTEE].key.publicKey,
                 secretVector: secretVectors[1],
                 random: randomsVectors[1],
+                campaignStatusWitness: statusStorage.getLevel1Witness(
+                    statusStorage.calculateLevel1Index(Field(1))
+                ),
                 treasuryContract: fundingAddressStorage.getZkAppRef(
                     ZkAppEnum.TREASURY,
                     contracts[Contract.TREASURY].contract.address
+                ),
+                campaignRef: fundingAddressStorage.getZkAppRef(
+                    ZkAppEnum.CAMPAIGN,
+                    contracts[Contract.CAMPAIGN].contract.address
                 ),
             }),
         ];

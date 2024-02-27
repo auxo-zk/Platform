@@ -234,4 +234,30 @@ export class TimeLine extends Struct({
     static fromFields(fields: Field[]): TimeLine {
         return super.fromFields(fields) as TimeLine;
     }
+
+    // TODO: check security of the hashes
+    // If hash(0xabc,0xdef) == hash(0xa,0xbcdef)
+    hash(): Field {
+        return Poseidon.hash(TimeLine.toFields(this));
+    }
+}
+
+export type TimeLineLeaf = TimeLine;
+
+export class TimeLineStorage extends CampaignStorage<TimeLineLeaf> {
+    static calculateLeaf(timeLine: TimeLineLeaf): Field {
+        return timeLine.hash();
+    }
+
+    calculateLeaf(timeLine: TimeLineLeaf): Field {
+        return TimeLineStorage.calculateLeaf(timeLine);
+    }
+
+    static calculateLevel1Index(campaignId: Field): Field {
+        return campaignId;
+    }
+
+    calculateLevel1Index(campaignId: Field): Field {
+        return TimeLineStorage.calculateLevel1Index(campaignId);
+    }
 }
