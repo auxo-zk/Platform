@@ -60,6 +60,7 @@ import {
     Level1CWitness as IndexWitness,
     IndexStorage,
 } from '../contracts/ParticipationStorage.js';
+import { StatusStorage } from '../contracts/CampaignStorage.js';
 
 describe('Funding', () => {
     const doProofs = true;
@@ -75,6 +76,7 @@ describe('Funding', () => {
     let claimedStorage = new ClaimedStorage();
     let participantIndexStorage = new IndexStorage();
     let allAddressStorage = new AddressStorage();
+    let statusStorage = new StatusStorage();
 
     let treasuryAction: TreasuryAction[] = [];
     let claimFundInput: ClaimFundInput[];
@@ -236,9 +238,16 @@ describe('Funding', () => {
                         projectId: Field(1),
                     })
                 ),
+                campaignStatusWitness: statusStorage.getLevel1Witness(
+                    statusStorage.calculateLevel1Index(Field(1))
+                ),
                 participationRef: allAddressStorage.getZkAppRef(
                     ZkAppEnum.PARTICIPATION,
                     contracts[Contract.PARTICIPATION].contract.address
+                ),
+                campaignRef: allAddressStorage.getZkAppRef(
+                    ZkAppEnum.CAMPAIGN,
+                    contracts[Contract.CAMPAIGN].contract.address
                 ),
             }),
             new ClaimFundInput({
@@ -263,9 +272,16 @@ describe('Funding', () => {
                         projectId: Field(2),
                     })
                 ),
+                campaignStatusWitness: statusStorage.getLevel1Witness(
+                    statusStorage.calculateLevel1Index(Field(1))
+                ),
                 participationRef: allAddressStorage.getZkAppRef(
                     ZkAppEnum.PARTICIPATION,
                     contracts[Contract.PARTICIPATION].contract.address
+                ),
+                campaignRef: allAddressStorage.getZkAppRef(
+                    ZkAppEnum.CAMPAIGN,
+                    contracts[Contract.CAMPAIGN].contract.address
                 ),
             }),
         ];

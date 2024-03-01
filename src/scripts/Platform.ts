@@ -1125,9 +1125,16 @@ async function main() {
                         projectId: Field(1),
                     })
                 ),
+                campaignStatusWitness: statusStorage.getLevel1Witness(
+                    statusStorage.calculateLevel1Index(Field(1))
+                ),
                 participationRef: treasuryAddressStorage.getZkAppRef(
                     ZkAppEnum.PARTICIPATION,
                     contracts[Contract.PARTICIPATION].contract.address
+                ),
+                campaignRef: treasuryAddressStorage.getZkAppRef(
+                    ZkAppEnum.CAMPAIGN,
+                    contracts[Contract.CAMPAIGN].contract.address
                 ),
             }),
             new ClaimFundInput({
@@ -1151,9 +1158,16 @@ async function main() {
                         projectId: Field(2),
                     })
                 ),
+                campaignStatusWitness: statusStorage.getLevel1Witness(
+                    statusStorage.calculateLevel1Index(Field(1))
+                ),
                 participationRef: treasuryAddressStorage.getZkAppRef(
                     ZkAppEnum.PARTICIPATION,
                     contracts[Contract.PARTICIPATION].contract.address
+                ),
+                campaignRef: treasuryAddressStorage.getZkAppRef(
+                    ZkAppEnum.CAMPAIGN,
+                    contracts[Contract.CAMPAIGN].contract.address
                 ),
             }),
         ];

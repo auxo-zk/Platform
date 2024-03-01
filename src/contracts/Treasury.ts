@@ -24,8 +24,6 @@ import { FieldDynamicArray } from '@auxo-dev/auxo-libs';
 
 import { ZkAppRef } from './SharedStorage.js';
 
-import { Storage } from '@auxo-dev/dkg';
-
 import {
     EMPTY_LEVEL_1_TREE,
     Level1CWitness,
@@ -36,7 +34,15 @@ import { ZkApp } from '@auxo-dev/dkg';
 
 import { INSTANCE_LIMITS, ZkAppEnum } from '../constants.js';
 
+import { ParticipationContract } from './Participation.js';
+
 import { Level1CWitness as IndexWitness } from './ParticipationStorage.js';
+
+import { CampaignContract, CheckCampaignStatusInput } from './Campaign.js';
+import {
+    StatusEnum,
+    Level1Witness as campaignLv1Witness,
+} from './CampaignStorage.js';
 
 const DefaultLevel1Root = EMPTY_LEVEL_1_TREE().getRoot();
 
@@ -68,6 +74,8 @@ export class ClaimFundInput extends Struct({
     investVector: InvestVector,
     participationIndexWitness: IndexWitness,
     claimedIndex: Level1CWitness,
+    campaignStatusWitness: campaignLv1Witness,
+    campaignRef: ZkAppRef,
     participationRef: ZkAppRef,
 }) {
     static fromFields(fields: Field[]): ClaimFundInput {
@@ -227,7 +235,7 @@ export class TreasuryContract extends SmartContract {
         }
 
         let zkApps = this.zkApps.getAndRequireEquals();
-        // Verify zkApp references
+        // Verify participation contract
         zkApps.assertEquals(
             input.participationRef.witness.calculateRoot(
                 Poseidon.hash(input.participationRef.address.toFields())
@@ -236,11 +244,32 @@ export class TreasuryContract extends SmartContract {
         Field(ZkAppEnum.PARTICIPATION).assertEquals(
             input.participationRef.witness.calculateIndex()
         );
-
         // TODO: check this latter
-        // const participationContract = new ParticipationContract(
-        //   input.participationRef.address
-        // );
+        let participationContract = new ParticipationContract(
+            input.participationRef.address
+        );
+
+        // check campaign contract
+        zkApps.assertEquals(
+            input.campaignRef.witness.calculateRoot(
+                Poseidon.hash(input.campaignRef.address.toFields())
+            )
+        );
+        Field(ZkAppEnum.CAMPAIGN).assertEquals(
+            input.campaignRef.witness.calculateIndex()
+        );
+
+        let campaignContract = new CampaignContract(input.campaignRef.address);
+
+        // check if campaign is on ALLOCATED status
+        let isAbleToJoin = campaignContract.checkCampaignStatus(
+            new CheckCampaignStatusInput({
+                campaignId: input.campaignId,
+                currentStatus: Field(StatusEnum.ALLOCATED),
+                statusWitness: input.campaignStatusWitness,
+            })
+        );
+        isAbleToJoin.assertEquals(Bool(true));
 
         let participationIndex =
             input.participationIndexWitness.calculateIndex();

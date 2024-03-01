@@ -105,6 +105,9 @@ async function main() {
     await fetchZkAppState(participationAddress);
 
     // Build storage
+    // Campaign storage
+    let statusStorage = new StatusStorage();
+
     // Participation storage
     let indexStorage = new IndexStorage();
 
@@ -174,12 +177,23 @@ async function main() {
                 projectId: Field(projectId),
             })
         ),
+        campaignStatusWitness: statusStorage.getLevel1Witness(
+            statusStorage.calculateLevel1Index(Field(1))
+        ),
         participationRef: getZkAppRef(
             treasuryAddressStorage.addressMap,
             ZkAppEnum.PARTICIPATION,
             // Participation address
             PublicKey.fromBase58(
                 'B62qorbP6mCWU6crpr6MfYBfCfXctwn9qj2KZAHcTDS9Yz4VynB3zih'
+            )
+        ),
+        campaignRef: getZkAppRef(
+            treasuryAddressStorage.addressMap,
+            ZkAppEnum.CAMPAIGN,
+            // Campaign address
+            PublicKey.fromBase58(
+                'B62qnE8zc7UkBuiHRoH6BEjEX8KiDjwHawMsxQVc7LSwEKZN2QmvTE2'
             )
         ),
     });

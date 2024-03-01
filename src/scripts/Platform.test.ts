@@ -983,9 +983,16 @@ describe('Platform test all', () => {
                         projectId: Field(0),
                     })
                 ),
+                campaignStatusWitness: statusStorage.getLevel1Witness(
+                    statusStorage.calculateLevel1Index(Field(0))
+                ),
                 participationRef: treasuryAddressStorage.getZkAppRef(
                     ZkAppEnum.PARTICIPATION,
                     contracts[Contract.PARTICIPATION].contract.address
+                ),
+                campaignRef: treasuryAddressStorage.getZkAppRef(
+                    ZkAppEnum.CAMPAIGN,
+                    contracts[Contract.CAMPAIGN].contract.address
                 ),
             }),
             new ClaimFundInput({
@@ -1009,9 +1016,16 @@ describe('Platform test all', () => {
                         projectId: Field(1),
                     })
                 ),
+                campaignStatusWitness: statusStorage.getLevel1Witness(
+                    statusStorage.calculateLevel1Index(Field(0))
+                ),
                 participationRef: treasuryAddressStorage.getZkAppRef(
                     ZkAppEnum.PARTICIPATION,
                     contracts[Contract.PARTICIPATION].contract.address
+                ),
+                campaignRef: treasuryAddressStorage.getZkAppRef(
+                    ZkAppEnum.CAMPAIGN,
+                    contracts[Contract.CAMPAIGN].contract.address
                 ),
             }),
         ];
