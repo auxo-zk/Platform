@@ -1,6 +1,8 @@
-import { Field, MerkleTree, MerkleWitness, Poseidon } from 'o1js';
-import { INSTANCE_LIMITS } from '../constants.js';
+import { Field, MerkleTree, MerkleWitness, Poseidon, UInt64 } from 'o1js';
+import { INSTANCE_LIMITS } from '../Constants.js';
 import { ZkApp } from '@auxo-dev/dkg';
+import { GroupDynamicArray, ScalarDynamicArray } from '@auxo-dev/auxo-libs';
+import { Constants as DkgConstants } from '@auxo-dev/dkg';
 
 export const LEVEL_1_TREE_HEIGHT =
     Math.ceil(Math.log2(INSTANCE_LIMITS.CAMPAIGN)) + 1;
@@ -9,6 +11,7 @@ export class Level1MT extends MerkleTree {}
 export class Level1Witness extends MerkleWitness(LEVEL_1_TREE_HEIGHT) {}
 
 export const EMPTY_LEVEL_1_TREE = () => new Level1MT(LEVEL_1_TREE_HEIGHT);
+export const DefaultLevel1Root = EMPTY_LEVEL_1_TREE().getRoot();
 
 export abstract class FundingStorage<RawLeaf> {
     private _level1: Level1MT;
@@ -143,4 +146,25 @@ export class TotalFundStorage extends FundingStorage<RequestIdLeaf> {
     calculateLevel1Index(campaignId: Field): Field {
         return TotalFundStorage.calculateLevel1Index(campaignId);
     }
+}
+
+export class ScalarVector extends ScalarDynamicArray(
+    DkgConstants.REQUEST_MAX_SIZE
+) {}
+
+export class GroupVector extends GroupDynamicArray(
+    DkgConstants.REQUEST_MAX_SIZE
+) {}
+
+export function getCommitment(
+    nullifier: Field,
+    projectId: Field,
+    amount: UInt64
+): Field {
+    return Poseidon.hash(
+        nullifier
+            .toFields()
+            .concat(projectId.toFields())
+            .concat(amount.toFields())
+    );
 }

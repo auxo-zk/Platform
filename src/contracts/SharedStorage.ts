@@ -8,7 +8,7 @@ import {
     PublicKey,
     Struct,
 } from 'o1js';
-import { ADDRESS_MAX_SIZE } from '../constants.js';
+import { ADDRESS_MAX_SIZE } from '../Constants.js';
 
 export const ADDRESS_TREE_HEIGHT = Math.ceil(Math.log2(ADDRESS_MAX_SIZE)) + 1;
 export class AddressMT extends MerkleTree {}

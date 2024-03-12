@@ -6,8 +6,8 @@ import {
     PublicKey,
     Struct,
 } from 'o1js';
-import { PROJECT_MEMBER_MAX_SIZE, INSTANCE_LIMITS } from '../constants.js';
-import { IPFSHash, PublicKeyDynamicArray } from '@auxo-dev/auxo-libs';
+import { PROJECT_MEMBER_MAX_SIZE, INSTANCE_LIMITS } from '../Constants.js';
+import { IpfsHash, PublicKeyDynamicArray } from '@auxo-dev/auxo-libs';
 
 export const LEVEL_1_TREE_HEIGHT =
     Math.ceil(Math.log2(INSTANCE_LIMITS.PROJECT)) + 1;
@@ -21,6 +21,9 @@ export class Level2Witness extends MerkleWitness(LEVEL_2_TREE_HEIGHT) {}
 
 export const EMPTY_LEVEL_1_TREE = () => new Level1MT(LEVEL_1_TREE_HEIGHT);
 export const EMPTY_LEVEL_2_TREE = () => new Level2MT(LEVEL_2_TREE_HEIGHT);
+
+export const DefaultLevel1Root = EMPTY_LEVEL_1_TREE().getRoot();
+export const DefaultLevel2Root = EMPTY_LEVEL_2_TREE().getRoot();
 
 export class FullMTWitness extends Struct({
     level1: Level1Witness,
@@ -224,15 +227,15 @@ export class MemberStorage extends ProjectStorage<MemberLeaf> {
     }
 }
 
-export type InfoLeaf = IPFSHash;
+export type PayeeAccountLeaf = PublicKey;
 
-export class InfoStorage extends ProjectStorage<InfoLeaf> {
-    static calculateLeaf(ipfsHash: InfoLeaf): Field {
-        return Poseidon.hash(ipfsHash.toFields());
+export class PayeeAccountStorage extends ProjectStorage<PayeeAccountLeaf> {
+    static calculateLeaf(address: PayeeAccountLeaf): Field {
+        return Poseidon.hash(address.toFields());
     }
 
-    calculateLeaf(ipfsHash: InfoLeaf): Field {
-        return InfoStorage.calculateLeaf(ipfsHash);
+    calculateLeaf(address: PayeeAccountLeaf): Field {
+        return PayeeAccountStorage.calculateLeaf(address);
     }
 
     static calculateLevel1Index(projectId: Field): Field {
@@ -240,7 +243,7 @@ export class InfoStorage extends ProjectStorage<InfoLeaf> {
     }
 
     calculateLevel1Index(projectId: Field): Field {
-        return InfoStorage.calculateLevel1Index(projectId);
+        return PayeeAccountStorage.calculateLevel1Index(projectId);
     }
 
     getWitness(level1Index: Field): Level1Witness {
@@ -253,21 +256,21 @@ export class InfoStorage extends ProjectStorage<InfoLeaf> {
 
     updateRawLeaf(
         { level1Index }: { level1Index: Field },
-        rawLeaf: InfoLeaf
+        rawLeaf: PayeeAccountLeaf
     ): void {
         super.updateRawLeaf({ level1Index }, rawLeaf);
     }
 }
 
-export type AddressLeaf = PublicKey;
+export type IpfsHashLeaf = IpfsHash;
 
-export class AddressStorage extends ProjectStorage<AddressLeaf> {
-    static calculateLeaf(address: AddressLeaf): Field {
-        return Poseidon.hash(address.toFields());
+export class IpfsHashStorage extends ProjectStorage<IpfsHashLeaf> {
+    static calculateLeaf(ipfsHash: IpfsHashLeaf): Field {
+        return Poseidon.hash(ipfsHash.toFields());
     }
 
-    calculateLeaf(address: AddressLeaf): Field {
-        return AddressStorage.calculateLeaf(address);
+    calculateLeaf(ipfsHash: IpfsHashLeaf): Field {
+        return IpfsHashStorage.calculateLeaf(ipfsHash);
     }
 
     static calculateLevel1Index(projectId: Field): Field {
@@ -275,7 +278,7 @@ export class AddressStorage extends ProjectStorage<AddressLeaf> {
     }
 
     calculateLevel1Index(projectId: Field): Field {
-        return AddressStorage.calculateLevel1Index(projectId);
+        return IpfsHashStorage.calculateLevel1Index(projectId);
     }
 
     getWitness(level1Index: Field): Level1Witness {
@@ -288,7 +291,7 @@ export class AddressStorage extends ProjectStorage<AddressLeaf> {
 
     updateRawLeaf(
         { level1Index }: { level1Index: Field },
-        rawLeaf: AddressLeaf
+        rawLeaf: IpfsHashLeaf
     ): void {
         super.updateRawLeaf({ level1Index }, rawLeaf);
     }
@@ -298,3 +301,8 @@ export class AddressStorage extends ProjectStorage<AddressLeaf> {
 export class MemberArray extends PublicKeyDynamicArray(
     PROJECT_MEMBER_MAX_SIZE
 ) {}
+
+export enum ProjectActionEnum {
+    CREATE_PROJECT,
+    UPDATE_PROJECT,
+}

@@ -6,9 +6,11 @@ import {
     Poseidon,
     PublicKey,
     Struct,
+    UInt64,
+    Provable,
 } from 'o1js';
-import { INSTANCE_LIMITS } from '../constants.js';
-import { IPFSHash } from '@auxo-dev/auxo-libs';
+import { INSTANCE_LIMITS } from '../Constants.js';
+import { IpfsHash } from '@auxo-dev/auxo-libs';
 export const LEVEL_1_TREE_HEIGHT =
     Math.ceil(Math.log2(INSTANCE_LIMITS.CAMPAIGN)) + 1;
 
@@ -17,6 +19,7 @@ export class Level1Witness extends MerkleWitness(LEVEL_1_TREE_HEIGHT) {}
 
 export const EMPTY_LEVEL_1_TREE = () => new Level1MT(LEVEL_1_TREE_HEIGHT);
 
+export const DefaultLevel1Root = EMPTY_LEVEL_1_TREE().getRoot();
 // Storage
 export abstract class CampaignStorage<RawLeaf> {
     private _level1: Level1MT;
@@ -93,15 +96,15 @@ export abstract class CampaignStorage<RawLeaf> {
     }
 }
 
-export type InfoLeaf = IPFSHash;
+export type IpfsHashLeaf = IpfsHash;
 
-export class InfoStorage extends CampaignStorage<InfoLeaf> {
-    static calculateLeaf(ipfsHash: InfoLeaf): Field {
+export class IpfsHashStorage extends CampaignStorage<IpfsHashLeaf> {
+    static calculateLeaf(ipfsHash: IpfsHashLeaf): Field {
         return Poseidon.hash(ipfsHash.toFields());
     }
 
-    calculateLeaf(ipfsHash: InfoLeaf): Field {
-        return InfoStorage.calculateLeaf(ipfsHash);
+    calculateLeaf(ipfsHash: IpfsHashLeaf): Field {
+        return IpfsHashStorage.calculateLeaf(ipfsHash);
     }
 
     static calculateLevel1Index(campaignId: Field): Field {
@@ -109,7 +112,7 @@ export class InfoStorage extends CampaignStorage<InfoLeaf> {
     }
 
     calculateLevel1Index(campaignId: Field): Field {
-        return InfoStorage.calculateLevel1Index(campaignId);
+        return IpfsHashStorage.calculateLevel1Index(campaignId);
     }
 }
 
@@ -153,26 +156,26 @@ export class StatusStorage extends CampaignStorage<StatusLeaf> {
     }
 }
 
-export type ConfigLeaf = {
+export type KeyLeaf = {
     committeeId: Field;
     keyId: Field;
 };
 
-export class ConfigStorage extends CampaignStorage<ConfigLeaf> {
-    static calculateLeaf(rawLeaf: ConfigLeaf): Field {
+export class KeyStorage extends CampaignStorage<KeyLeaf> {
+    static calculateLeaf(rawLeaf: KeyLeaf): Field {
         return Poseidon.hash([rawLeaf.committeeId, rawLeaf.keyId]);
     }
 
-    calculateLeaf(rawLeaf: ConfigLeaf): Field {
-        return ConfigStorage.calculateLeaf(rawLeaf);
+    calculateLeaf(rawLeaf: KeyLeaf): Field {
+        return KeyStorage.calculateLeaf(rawLeaf);
     }
 
-    static calculateLevel1Index(projectId: Field): Field {
-        return projectId;
+    static calculateLevel1Index(campaignId: Field): Field {
+        return campaignId;
     }
 
-    calculateLevel1Index(projectId: Field): Field {
-        return ConfigStorage.calculateLevel1Index(projectId);
+    calculateLevel1Index(campaignId: Field): Field {
+        return KeyStorage.calculateLevel1Index(campaignId);
     }
 }
 
@@ -184,6 +187,21 @@ export const enum StatusEnum {
     ALLOCATED,
     ENDED, // check this again
     __LENGTH,
+}
+
+export enum CampaignTimelineStateEnum {
+    PREPARATION,
+    PARTICIPATION,
+    FUNDING,
+    REQUESTING,
+    ENDED,
+}
+
+export enum CampaignStateEnum {
+    NOT_CREATED,
+    CREATED,
+    COMPLETED,
+    ABORTED,
 }
 
 export function getStatusFromNumber(num: number): StatusEnum {
@@ -201,6 +219,11 @@ export function getStatusFromNumber(num: number): StatusEnum {
         default:
             throw new Error('Invalid number');
     }
+}
+
+export enum CampaignActionEnum {
+    CREATE_CAMPAIGN,
+    END_CAMPAIGN,
 }
 
 export const enum ActionEnum {
@@ -227,30 +250,39 @@ export function getActionFromNumber(num: number): ActionEnum {
     }
 }
 
-export class TimeLine extends Struct({
-    startTime: Field,
-    endTime: Field,
+export class Timeline extends Struct({
+    start: UInt64,
+    startParticipation: UInt64,
+    startFunding: UInt64,
+    startRequest: UInt64,
+    end: UInt64,
 }) {
-    static fromFields(fields: Field[]): TimeLine {
-        return super.fromFields(fields) as TimeLine;
+    isValid(): Bool {
+        return Provable.if(
+            this.start
+                .lessThan(this.startParticipation)
+                .and(this.startParticipation.lessThan(this.startFunding))
+                .and(this.startFunding.lessThan(this.startRequest))
+                .and(this.startRequest.lessThan(this.end)),
+            Bool(true),
+            Bool(false)
+        );
     }
 
-    // TODO: check security of the hashes
-    // If hash(0xabc,0xdef) == hash(0xa,0xbcdef)
     hash(): Field {
-        return Poseidon.hash(TimeLine.toFields(this));
+        return Poseidon.hash(Timeline.toFields(this));
     }
 }
 
-export type TimeLineLeaf = TimeLine;
+export type TimelineLeaf = Timeline;
 
-export class TimeLineStorage extends CampaignStorage<TimeLineLeaf> {
-    static calculateLeaf(timeLine: TimeLineLeaf): Field {
-        return timeLine.hash();
+export class TimelineStorage extends CampaignStorage<TimelineLeaf> {
+    static calculateLeaf(timeline: TimelineLeaf): Field {
+        return timeline.hash();
     }
 
-    calculateLeaf(timeLine: TimeLineLeaf): Field {
-        return TimeLineStorage.calculateLeaf(timeLine);
+    calculateLeaf(timeline: TimelineLeaf): Field {
+        return TimelineStorage.calculateLeaf(timeline);
     }
 
     static calculateLevel1Index(campaignId: Field): Field {
@@ -258,6 +290,6 @@ export class TimeLineStorage extends CampaignStorage<TimeLineLeaf> {
     }
 
     calculateLevel1Index(campaignId: Field): Field {
-        return TimeLineStorage.calculateLevel1Index(campaignId);
+        return TimelineStorage.calculateLevel1Index(campaignId);
     }
 }

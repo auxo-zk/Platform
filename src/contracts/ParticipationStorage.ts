@@ -1,6 +1,6 @@
 import { Field, MerkleTree, MerkleWitness, Poseidon } from 'o1js';
-import { INSTANCE_LIMITS } from '../constants.js';
-import { IPFSHash } from '@auxo-dev/auxo-libs';
+import { INSTANCE_LIMITS } from '../Constants.js';
+import { IpfsHash } from '@auxo-dev/auxo-libs';
 
 export const LEVEL_1_COMBINED_TREE_HEIGHT =
     Math.ceil(Math.log2(INSTANCE_LIMITS.CAMPAIGN * INSTANCE_LIMITS.PROJECT)) +
@@ -21,6 +21,10 @@ export const EMPTY_LEVEL_1_COMBINED_TREE = () =>
     new Level1CMT(LEVEL_1_COMBINED_TREE_HEIGHT);
 
 export const EMPTY_LEVEL_1_TREE = () => new Level1MT(LEVEL_1_TREE_HEIGHT);
+
+export const DefaultLevel1Root = EMPTY_LEVEL_1_TREE().getRoot();
+export const DefaultLevel1CombinedRoot =
+    EMPTY_LEVEL_1_COMBINED_TREE().getRoot();
 
 export abstract class ParticipationCStorage<RawLeaf> {
     private _level1: Level1CMT;
@@ -171,15 +175,15 @@ export abstract class ParticipationStorage<RawLeaf> {
     }
 }
 
-export type IndexLeaf = Field;
+export type ProjectIndexLeaf = Field;
 
-export class IndexStorage extends ParticipationCStorage<IndexLeaf> {
-    static calculateLeaf(index: IndexLeaf): Field {
+export class ProjectIndexStorage extends ParticipationCStorage<ProjectIndexLeaf> {
+    static calculateLeaf(index: ProjectIndexLeaf): Field {
         return index;
     }
 
-    calculateLeaf(index: IndexLeaf): Field {
-        return IndexStorage.calculateLeaf(index);
+    calculateLeaf(index: ProjectIndexLeaf): Field {
+        return ProjectIndexStorage.calculateLeaf(index);
     }
 
     static calculateLevel1Index({
@@ -199,19 +203,19 @@ export class IndexStorage extends ParticipationCStorage<IndexLeaf> {
         campaignId: Field;
         projectId: Field;
     }): Field {
-        return IndexStorage.calculateLevel1Index({ campaignId, projectId });
+        return ProjectIndexStorage.calculateLevel1Index({ campaignId, projectId });
     }
 }
 
-export type InfoLeaf = IPFSHash;
+export type IpfsHashLeaf = IpfsHash;
 
-export class InfoStorage extends ParticipationCStorage<InfoLeaf> {
-    static calculateLeaf(ipfsHash: InfoLeaf): Field {
+export class IpfsHashStorage extends ParticipationCStorage<IpfsHashLeaf> {
+    static calculateLeaf(ipfsHash: IpfsHashLeaf): Field {
         return Poseidon.hash(ipfsHash.toFields());
     }
 
-    calculateLeaf(ipfsHash: InfoLeaf): Field {
-        return InfoStorage.calculateLeaf(ipfsHash);
+    calculateLeaf(ipfsHash: IpfsHashLeaf): Field {
+        return IpfsHashStorage.calculateLeaf(ipfsHash);
     }
 
     static calculateLevel1Index({
@@ -231,19 +235,19 @@ export class InfoStorage extends ParticipationCStorage<InfoLeaf> {
         campaignId: Field;
         projectId: Field;
     }): Field {
-        return InfoStorage.calculateLevel1Index({ campaignId, projectId });
+        return IpfsHashStorage.calculateLevel1Index({ campaignId, projectId });
     }
 }
 
-export type CounterLeaf = Field;
+export type ProjectCounterLeaf = Field;
 
-export class CounterStorage extends ParticipationStorage<CounterLeaf> {
-    static calculateLeaf(counter: CounterLeaf): Field {
+export class ProjectCounterStorage extends ParticipationStorage<ProjectCounterLeaf> {
+    static calculateLeaf(counter: ProjectCounterLeaf): Field {
         return counter;
     }
 
-    calculateLeaf(counter: CounterLeaf): Field {
-        return CounterStorage.calculateLeaf(counter);
+    calculateLeaf(counter: ProjectCounterLeaf): Field {
+        return ProjectCounterStorage.calculateLeaf(counter);
     }
 
     static calculateLevel1Index(campaignId: Field): Field {
@@ -251,6 +255,6 @@ export class CounterStorage extends ParticipationStorage<CounterLeaf> {
     }
 
     calculateLevel1Index(campaignId: Field): Field {
-        return CounterStorage.calculateLevel1Index(campaignId);
+        return ProjectCounterStorage.calculateLevel1Index(campaignId);
     }
 }

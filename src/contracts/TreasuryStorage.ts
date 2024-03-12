@@ -1,5 +1,5 @@
 import { Bool, Field, MerkleTree, MerkleWitness } from 'o1js';
-import { INSTANCE_LIMITS } from '../constants.js';
+import { INSTANCE_LIMITS } from '../Constants.js';
 
 export const LEVEL_1_COMBINED_TREE_HEIGHT =
     Math.ceil(Math.log2(INSTANCE_LIMITS.CAMPAIGN * INSTANCE_LIMITS.PROJECT)) +
