@@ -1,10 +1,12 @@
 import { Constants } from '@auxo-dev/dkg';
-export const PROJECT_MEMBER_MAX_SIZE = 2 ** 3;
-export const ADDRESS_MAX_SIZE = 16;
 export const INSTANCE_LIMITS = {
-    PROJECT: 2 ** 5,
-    CAMPAIGN: 2 ** 5,
-    PARTICIPATION: Constants.REQUEST_MAX_SIZE,
+    PROJECT_TREE_SIZE: 2 ** 5,
+    PROJECT_MEMBER_TREE_SIZE: 2 ** 3,
+    ZKAPP_ADDRESS_TREE_SIZE: 2 ** 4,
+    CAMPAIGN_TREE_SIZE: 2 ** 5,
+    PARTICIPATION_INDEX_TREE_SIZE: 2 ** 5 * 2 ** 5,
+    PARTICIPATION_SLOT_TREE_SIZE: Constants.REQUEST_MAX_SIZE,
+    COMMITMENT_HASH_TREE_SIZE: 2 ** 8,
 };
 
 export const MINIMAL_MINA_UNIT = 100000000n;
