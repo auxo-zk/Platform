@@ -16,17 +16,15 @@ import {
 import { IpfsHash } from '@auxo-dev/auxo-libs';
 import {
     Level1Witness,
-    DefaultLevel1Root,
+    DefaultRootForCampaignTree,
     Timeline,
     CampaignTimelineStateEnum,
-    CampaignActionEnum,
     IpfsHashStorage,
     KeyStorage,
     TimelineStorage,
 } from './CampaignStorage.js';
 import { updateActionState } from '../libs/utils.js';
-import { ZkAppRef } from './SharedStorage.js';
-import { DkgContract } from '@auxo-dev/dkg';
+import { DefaultRootForZkAppTree } from './SharedStorage.js';
 
 export class CampaignAction extends Struct({
     campaignId: Field,
@@ -176,18 +174,17 @@ export class CampaignContract extends SmartContract {
     @state(Field) ipfsHashRoot = State<Field>();
     @state(Field) keyRoot = State<Field>();
     @state(Field) zkAppRoot = State<Field>();
-    @state(Field) rollupRoot = State<Field>();
     @state(Field) actionState = State<Field>();
 
     reducer = Reducer({ actionType: CampaignAction });
 
     init() {
         super.init();
-        this.zkAppRoot.set(DefaultLevel1Root);
-        this.ipfsHashRoot.set(DefaultLevel1Root);
-        this.keyRoot.set(DefaultLevel1Root);
-        this.timelineRoot.set(DefaultLevel1Root);
-        this.rollupRoot.set(DefaultLevel1Root);
+        this.nextCampaignId.set(Field(0));
+        this.timelineRoot.set(DefaultRootForCampaignTree);
+        this.ipfsHashRoot.set(DefaultRootForCampaignTree);
+        this.keyRoot.set(DefaultRootForCampaignTree);
+        this.zkAppRoot.set(DefaultRootForZkAppTree);
         this.actionState.set(Reducer.initialActionState);
     }
 
@@ -195,8 +192,8 @@ export class CampaignContract extends SmartContract {
         timeline: Timeline,
         ipfsHash: IpfsHash,
         committeeId: Field,
-        keyId: Field,
-        dkgContractRef: ZkAppRef
+        keyId: Field
+        // dkgContractRef: ZkAppRef
     ) {
         timeline.isValid().assertEquals(Bool(true));
         timeline.startParticipation.assertGreaterThan(

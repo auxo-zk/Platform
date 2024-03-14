@@ -16,10 +16,6 @@ export function updateActionState(state: Field, action: Field[][]) {
     return AccountUpdate.Actions.updateSequenceState(state, actionsHash);
 }
 
-export function updateOutOfSnark(state: Field, action: Field[][]) {
-    let actionsHash = AccountUpdate.Actions.hash(action);
-    return AccountUpdate.Actions.updateSequenceState(state, actionsHash);
-}
 
 const DEFAULT_WAIT_TIME = 10 * 60 * 1000; // 7m
 
