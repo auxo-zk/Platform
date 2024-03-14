@@ -2,8 +2,7 @@ import { Bool, Field, MerkleTree, MerkleWitness } from 'o1js';
 import { INSTANCE_LIMITS } from '../Constants.js';
 
 export const LEVEL_1_COMBINED_TREE_HEIGHT =
-    Math.ceil(Math.log2(INSTANCE_LIMITS.CAMPAIGN * INSTANCE_LIMITS.PROJECT)) +
-    1;
+    Math.ceil(Math.log2(INSTANCE_LIMITS.PARTICIPATION_INDEX_TREE_SIZE)) + 1;
 
 export class Level1CMT extends MerkleTree {}
 export class Level1CWitness extends MerkleWitness(
@@ -107,7 +106,9 @@ export class ClaimedStorage extends TreasuryCStorage<ClaimedLeaf> {
         campaignId: Field;
         projectId: Field;
     }): Field {
-        return campaignId.mul(Field(INSTANCE_LIMITS.PROJECT)).add(projectId);
+        return campaignId
+            .mul(Field(INSTANCE_LIMITS.PROJECT_TREE_SIZE))
+            .add(projectId);
     }
 
     calculateLevel1Index({

@@ -11,15 +11,18 @@ import {
 } from 'o1js';
 import { INSTANCE_LIMITS } from '../Constants.js';
 import { IpfsHash } from '@auxo-dev/auxo-libs';
-export const LEVEL_1_TREE_HEIGHT =
-    Math.ceil(Math.log2(INSTANCE_LIMITS.CAMPAIGN)) + 1;
+export const LEVEL_1_CAMPAIGN_TREE_HEIGHT =
+    Math.ceil(Math.log2(INSTANCE_LIMITS.CAMPAIGN_TREE_SIZE)) + 1;
 
 export class Level1MT extends MerkleTree {}
-export class Level1Witness extends MerkleWitness(LEVEL_1_TREE_HEIGHT) {}
+export class Level1Witness extends MerkleWitness(
+    LEVEL_1_CAMPAIGN_TREE_HEIGHT
+) {}
 
-export const EMPTY_LEVEL_1_TREE = () => new Level1MT(LEVEL_1_TREE_HEIGHT);
+export const EMPTY_LEVEL_1_CAMPAIGN_TREE = () =>
+    new Level1MT(LEVEL_1_CAMPAIGN_TREE_HEIGHT);
 
-export const DefaultLevel1Root = EMPTY_LEVEL_1_TREE().getRoot();
+export const DefaultRootForCampaignTree = EMPTY_LEVEL_1_CAMPAIGN_TREE().getRoot();
 // Storage
 export abstract class CampaignStorage<RawLeaf> {
     private _level1: Level1MT;
@@ -33,7 +36,7 @@ export abstract class CampaignStorage<RawLeaf> {
             leaf: RawLeaf | Field;
         }[]
     ) {
-        this._level1 = EMPTY_LEVEL_1_TREE();
+        this._level1 = EMPTY_LEVEL_1_CAMPAIGN_TREE();
         this._leafs = {};
         if (leafs) {
             for (let i = 0; i < leafs.length; i++) {
@@ -136,26 +139,6 @@ export class OwnerStorage extends CampaignStorage<OwnerLeaf> {
     }
 }
 
-export type StatusLeaf = StatusEnum;
-
-export class StatusStorage extends CampaignStorage<StatusLeaf> {
-    static calculateLeaf(status: StatusLeaf): Field {
-        return Field(status);
-    }
-
-    calculateLeaf(status: StatusLeaf): Field {
-        return StatusStorage.calculateLeaf(status);
-    }
-
-    static calculateLevel1Index(campaignId: Field): Field {
-        return campaignId;
-    }
-
-    calculateLevel1Index(campaignId: Field): Field {
-        return StatusStorage.calculateLevel1Index(campaignId);
-    }
-}
-
 export type KeyLeaf = {
     committeeId: Field;
     keyId: Field;
@@ -179,16 +162,6 @@ export class KeyStorage extends CampaignStorage<KeyLeaf> {
     }
 }
 
-// Type
-export const enum StatusEnum {
-    NOT_STARTED,
-    APPLICATION,
-    FUNDING,
-    ALLOCATED,
-    ENDED, // check this again
-    __LENGTH,
-}
-
 export enum CampaignTimelineStateEnum {
     PREPARATION,
     PARTICIPATION,
@@ -204,50 +177,9 @@ export enum CampaignStateEnum {
     ABORTED,
 }
 
-export function getStatusFromNumber(num: number): StatusEnum {
-    switch (num) {
-        case 0:
-            return StatusEnum.NOT_STARTED;
-        case 1:
-            return StatusEnum.APPLICATION;
-        case 2:
-            return StatusEnum.FUNDING;
-        case 3:
-            return StatusEnum.ALLOCATED;
-        case 4:
-            return StatusEnum.ENDED;
-        default:
-            throw new Error('Invalid number');
-    }
-}
-
 export enum CampaignActionEnum {
     CREATE_CAMPAIGN,
     END_CAMPAIGN,
-}
-
-export const enum ActionEnum {
-    CREATE_CAMPAIGN,
-    UPDATE_STATUS,
-    UPDATE_INFO,
-    UPDATE_OWNER,
-    UPDATE_CONFIG,
-    __LENGTH,
-}
-
-export function getActionFromNumber(num: number): ActionEnum {
-    switch (num) {
-        case 0:
-            return ActionEnum.CREATE_CAMPAIGN;
-        case 1:
-            return ActionEnum.UPDATE_STATUS;
-        case 2:
-            return ActionEnum.UPDATE_INFO;
-        case 3:
-            return ActionEnum.UPDATE_CONFIG;
-        default:
-            throw new Error('Invalid number');
-    }
 }
 
 export class Timeline extends Struct({

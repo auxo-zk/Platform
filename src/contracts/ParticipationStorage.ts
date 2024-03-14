@@ -2,31 +2,35 @@ import { Field, MerkleTree, MerkleWitness, Poseidon } from 'o1js';
 import { INSTANCE_LIMITS } from '../Constants.js';
 import { IpfsHash } from '@auxo-dev/auxo-libs';
 
-export const LEVEL_1_COMBINED_TREE_HEIGHT =
-    Math.ceil(Math.log2(INSTANCE_LIMITS.CAMPAIGN * INSTANCE_LIMITS.PROJECT)) +
-    1;
+export const LEVEL_1_PARTICIPATION_INDEX_TREE_HEIGHT =
+    Math.ceil(Math.log2(INSTANCE_LIMITS.PARTICIPATION_INDEX_TREE_SIZE)) + 1;
 
-export const LEVEL_1_TREE_HEIGHT =
-    Math.ceil(Math.log2(INSTANCE_LIMITS.CAMPAIGN)) + 1;
+export const LEVEL_1_CAMPAIGN_TREE_HEIGHT =
+    Math.ceil(Math.log2(INSTANCE_LIMITS.CAMPAIGN_TREE_SIZE)) + 1;
 
 export class Level1CMT extends MerkleTree {}
 export class Level1CWitness extends MerkleWitness(
-    LEVEL_1_COMBINED_TREE_HEIGHT
+    LEVEL_1_PARTICIPATION_INDEX_TREE_HEIGHT
 ) {}
 
 export class Level1MT extends MerkleTree {}
-export class Level1Witness extends MerkleWitness(LEVEL_1_TREE_HEIGHT) {}
+export class Level1Witness extends MerkleWitness(
+    LEVEL_1_CAMPAIGN_TREE_HEIGHT
+) {}
 
 export const EMPTY_LEVEL_1_COMBINED_TREE = () =>
-    new Level1CMT(LEVEL_1_COMBINED_TREE_HEIGHT);
+    new Level1CMT(LEVEL_1_PARTICIPATION_INDEX_TREE_HEIGHT);
 
-export const EMPTY_LEVEL_1_TREE = () => new Level1MT(LEVEL_1_TREE_HEIGHT);
+export const EMPTY_LEVEL_1_TREE = () =>
+    new Level1MT(LEVEL_1_CAMPAIGN_TREE_HEIGHT);
 
 export const DefaultLevel1Root = EMPTY_LEVEL_1_TREE().getRoot();
 export const DefaultLevel1CombinedRoot =
     EMPTY_LEVEL_1_COMBINED_TREE().getRoot();
+export const DefaultRootForParticipationIndexRoot =
+    EMPTY_LEVEL_1_COMBINED_TREE().getRoot();
 
-export abstract class ParticipationCStorage<RawLeaf> {
+export abstract class ParticipationIndexStorage<RawLeaf> {
     private _level1: Level1CMT;
     private _leafs: {
         [key: string]: { raw: RawLeaf | undefined; leaf: Field };
@@ -177,7 +181,7 @@ export abstract class ParticipationStorage<RawLeaf> {
 
 export type ProjectIndexLeaf = Field;
 
-export class ProjectIndexStorage extends ParticipationCStorage<ProjectIndexLeaf> {
+export class ProjectIndexStorage extends ParticipationIndexStorage<ProjectIndexLeaf> {
     static calculateLeaf(index: ProjectIndexLeaf): Field {
         return index;
     }
@@ -193,7 +197,7 @@ export class ProjectIndexStorage extends ParticipationCStorage<ProjectIndexLeaf>
         campaignId: Field;
         projectId: Field;
     }): Field {
-        return campaignId.mul(INSTANCE_LIMITS.PROJECT).add(projectId);
+        return campaignId.mul(INSTANCE_LIMITS.PROJECT_TREE_SIZE).add(projectId);
     }
 
     calculateLevel1Index({
@@ -203,13 +207,16 @@ export class ProjectIndexStorage extends ParticipationCStorage<ProjectIndexLeaf>
         campaignId: Field;
         projectId: Field;
     }): Field {
-        return ProjectIndexStorage.calculateLevel1Index({ campaignId, projectId });
+        return ProjectIndexStorage.calculateLevel1Index({
+            campaignId,
+            projectId,
+        });
     }
 }
 
 export type IpfsHashLeaf = IpfsHash;
 
-export class IpfsHashStorage extends ParticipationCStorage<IpfsHashLeaf> {
+export class IpfsHashStorage extends ParticipationIndexStorage<IpfsHashLeaf> {
     static calculateLeaf(ipfsHash: IpfsHashLeaf): Field {
         return Poseidon.hash(ipfsHash.toFields());
     }
@@ -225,7 +232,7 @@ export class IpfsHashStorage extends ParticipationCStorage<IpfsHashLeaf> {
         campaignId: Field;
         projectId: Field;
     }): Field {
-        return campaignId.mul(INSTANCE_LIMITS.PROJECT).add(projectId);
+        return campaignId.mul(INSTANCE_LIMITS.PROJECT_TREE_SIZE).add(projectId);
     }
 
     calculateLevel1Index({

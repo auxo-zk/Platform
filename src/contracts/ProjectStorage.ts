@@ -6,24 +6,29 @@ import {
     PublicKey,
     Struct,
 } from 'o1js';
-import { PROJECT_MEMBER_MAX_SIZE, INSTANCE_LIMITS } from '../Constants.js';
+import { INSTANCE_LIMITS } from '../Constants.js';
 import { IpfsHash, PublicKeyDynamicArray } from '@auxo-dev/auxo-libs';
 
-export const LEVEL_1_TREE_HEIGHT =
-    Math.ceil(Math.log2(INSTANCE_LIMITS.PROJECT)) + 1;
-export const LEVEL_2_TREE_HEIGHT =
-    Math.ceil(Math.log2(PROJECT_MEMBER_MAX_SIZE)) + 1;
+export const LEVEL_1_PROJECT_TREE_HEIGHT =
+    Math.ceil(Math.log2(INSTANCE_LIMITS.PROJECT_TREE_SIZE)) + 1;
+export const LEVEL_2_PROJECT_MEMBER_TREE_HEIGHT =
+    Math.ceil(Math.log2(INSTANCE_LIMITS.PROJECT_MEMBER_TREE_SIZE)) + 1;
 
 export class Level1MT extends MerkleTree {}
-export class Level1Witness extends MerkleWitness(LEVEL_1_TREE_HEIGHT) {}
+export class Level1Witness extends MerkleWitness(LEVEL_1_PROJECT_TREE_HEIGHT) {}
 export class Level2MT extends MerkleTree {}
-export class Level2Witness extends MerkleWitness(LEVEL_2_TREE_HEIGHT) {}
+export class Level2Witness extends MerkleWitness(
+    LEVEL_2_PROJECT_MEMBER_TREE_HEIGHT
+) {}
 
-export const EMPTY_LEVEL_1_TREE = () => new Level1MT(LEVEL_1_TREE_HEIGHT);
-export const EMPTY_LEVEL_2_TREE = () => new Level2MT(LEVEL_2_TREE_HEIGHT);
+export const EMPTY_LEVEL_1_PROJECT_TREE = () =>
+    new Level1MT(LEVEL_1_PROJECT_TREE_HEIGHT);
+export const EMPTY_LEVEL_2_PROJECT_MEMBER_TREE = () =>
+    new Level2MT(LEVEL_2_PROJECT_MEMBER_TREE_HEIGHT);
 
-export const DefaultLevel1Root = EMPTY_LEVEL_1_TREE().getRoot();
-export const DefaultLevel2Root = EMPTY_LEVEL_2_TREE().getRoot();
+export const DefaultRootForProjectTree = EMPTY_LEVEL_1_PROJECT_TREE().getRoot();
+export const DefaultRootForProjectMemberTree =
+    EMPTY_LEVEL_2_PROJECT_MEMBER_TREE().getRoot();
 
 export class FullMTWitness extends Struct({
     level1: Level1Witness,
@@ -45,7 +50,7 @@ export abstract class ProjectStorage<RawLeaf> {
             leaf: RawLeaf | Field;
         }[]
     ) {
-        this._level1 = EMPTY_LEVEL_1_TREE();
+        this._level1 = EMPTY_LEVEL_1_PROJECT_TREE();
         this._level2s = {};
         this._leafs = {};
         if (leafs) {
@@ -138,7 +143,8 @@ export abstract class ProjectStorage<RawLeaf> {
         if (level2Index) {
             leafId += '-' + level2Index.toString();
             let level2 = this._level2s[level1Index.toString()];
-            if (level2 === undefined) level2 = EMPTY_LEVEL_2_TREE();
+            if (level2 === undefined)
+                level2 = EMPTY_LEVEL_2_PROJECT_MEMBER_TREE();
 
             level2.setLeaf(level2Index.toBigInt(), leaf);
             this.updateInternal(level1Index, level2);
@@ -162,7 +168,8 @@ export abstract class ProjectStorage<RawLeaf> {
         if (level2Index) {
             leafId += '-' + level2Index.toString();
             let level2 = this._level2s[level1Index.toString()];
-            if (level2 === undefined) level2 = EMPTY_LEVEL_2_TREE();
+            if (level2 === undefined)
+                level2 = EMPTY_LEVEL_2_PROJECT_MEMBER_TREE();
 
             level2.setLeaf(level2Index.toBigInt(), leaf);
             this.updateInternal(level1Index, level2);
@@ -299,7 +306,7 @@ export class IpfsHashStorage extends ProjectStorage<IpfsHashLeaf> {
 
 // Type
 export class MemberArray extends PublicKeyDynamicArray(
-    PROJECT_MEMBER_MAX_SIZE
+    INSTANCE_LIMITS.PROJECT_MEMBER_TREE_SIZE
 ) {}
 
 export enum ProjectActionEnum {

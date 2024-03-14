@@ -8,21 +8,24 @@ import {
     PublicKey,
     Struct,
 } from 'o1js';
-import { ADDRESS_MAX_SIZE } from '../Constants.js';
+import { INSTANCE_LIMITS } from '../Constants.js';
 
-export const ADDRESS_TREE_HEIGHT = Math.ceil(Math.log2(ADDRESS_MAX_SIZE)) + 1;
+export const ZKAPP_ADDRESS_TREE_HEIGHT =
+    Math.ceil(Math.log2(INSTANCE_LIMITS.ZKAPP_ADDRESS_TREE_SIZE)) + 1;
 export class AddressMT extends MerkleTree {}
-export class AddressWitness extends MerkleWitness(ADDRESS_TREE_HEIGHT) {}
-export const EMPTY_ADDRESS_MT = () => new AddressMT(ADDRESS_TREE_HEIGHT);
+export class AddressWitness extends MerkleWitness(ZKAPP_ADDRESS_TREE_HEIGHT) {}
+export const EMPTY_ADDRESS_MT = () => new AddressMT(ZKAPP_ADDRESS_TREE_HEIGHT);
 export class ReduceWitness extends MerkleMapWitness {}
 export const EMPTY_REDUCE_MT = () => new MerkleMap();
+
+export const DefaultRootForZkAppTree = EMPTY_ADDRESS_MT().getRoot();
 
 export class ZkAppRef extends Struct({
     address: PublicKey,
     witness: AddressWitness,
 }) {}
 
-export class AddressStorage {
+export class ZkAppAddressStorage {
     private _addressMap: AddressMT;
     private _addresses: {
         [key: string]: { raw: PublicKey | undefined; leaf: Field };
@@ -34,7 +37,7 @@ export class AddressStorage {
         if (addresses) {
             for (let i = 0; i < addresses.length; i++) {
                 this.updateAddress(
-                    AddressStorage.calculateIndex(addresses[i].index),
+                    ZkAppAddressStorage.calculateIndex(addresses[i].index),
                     addresses[i].address
                 );
             }
@@ -60,7 +63,7 @@ export class AddressStorage {
     }
 
     calculateLeaf(address: PublicKey): Field {
-        return AddressStorage.calculateLeaf(address);
+        return ZkAppAddressStorage.calculateLeaf(address);
     }
 
     static calculateIndex(index: Field | number): Field {
@@ -68,7 +71,7 @@ export class AddressStorage {
     }
 
     calculateIndex(index: Field | number): Field {
-        return AddressStorage.calculateIndex(index);
+        return ZkAppAddressStorage.calculateIndex(index);
     }
 
     getWitness(index: Field): AddressWitness {
@@ -114,7 +117,7 @@ export function getZkAppRef(
     return new ZkAppRef({
         address: address,
         witness: new AddressWitness(
-            map.getWitness(AddressStorage.calculateIndex(index).toBigInt())
+            map.getWitness(ZkAppAddressStorage.calculateIndex(index).toBigInt())
         ),
     });
 }
