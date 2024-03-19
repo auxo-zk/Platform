@@ -354,35 +354,30 @@ export class FundingContract extends SmartContract {
         );
 
         const publicKey = key.toGroup();
-        const R = Provable.witness(GroupVector, () => {
-            const dimension = projectCounter.toBigInt();
-            const R = new GroupVector();
-            for (let i = 0; i < dimension; i++) {
-                // Calculate Ri = ri * G
-                R.values[i] = Group.generator.scale(
-                    randomVector.values[i].toScalar()
-                );
-            }
-            return R;
-        });
-        const M = Provable.witness(GroupVector, () => {
-            const dimension = projectCounter.toBigInt();
-            const M = new GroupVector();
-            for (let i = 0; i < dimension; i++) {
-                // ri * PK
-                const base = publicKey.scale(randomVector.values[i].toScalar());
-                // Calculate Mi = ri * PK + (oi x vi) * G
-                M.values[i] = Provable.if(
-                    projectIndex.sub(1).equals(i),
-                    // ri * PK + (oi x vi) * G
+        const R = new GroupVector();
+        const M = new GroupVector();
+
+        for (let i = 0; i < INSTANCE_LIMITS.PARTICIPATION_SLOT_TREE_SIZE; i++) {
+            //
+            const index = Field(i);
+            R.set(
+                index,
+                Group.generator.scale(randomVector.get(index).toScalar())
+            );
+            const base = publicKey.scale(randomVector.get(index).toScalar());
+            M.set(
+                index,
+                Provable.if(
+                    projectIndex.sub(1).equals(index),
                     base.add(
-                        Group.generator.scale(Scalar.from(amount.toBigInt()))
+                        Group.generator.scale(
+                            CustomScalar.fromUInt64(amount).toScalar()
+                        )
                     ),
-                    base.add(Group.generator.scale(0n))
-                );
-            }
-            return M;
-        });
+                    base.add(Group.generator)
+                )
+            );
+        }
 
         commitmentHash.assertEquals(
             getCommitmentHash(nullifier, projectId, amount)
