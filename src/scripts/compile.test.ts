@@ -12,7 +12,7 @@ import {
     RollupParticipation,
 } from '../contracts/Participation-clone';
 import { CampaignContract, RollupCampaign } from '../contracts/Campaign-clone';
-import { FundingContract } from '../contracts/Funding-clone';
+import { FundingContract, RollupFunding } from '../contracts/Funding-clone';
 
 let proofsEnabled = true;
 
@@ -27,7 +27,9 @@ describe('Test compile contract', () => {
 
     beforeAll(async () => {
         if (proofsEnabled) {
+            Provable.log(RollupFunding.analyzeMethods());
             Provable.log(FundingContract.analyzeMethods());
+            // Provable.log((await FundingContract.compile()).verificationKey);
             // Provable.log(ParticipationContract.analyzeMethods());
             // Provable.log(ParticipationContract.analyzeMethods());
         }

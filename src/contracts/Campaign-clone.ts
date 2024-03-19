@@ -22,9 +22,9 @@ import {
     IpfsHashStorage,
     KeyStorage,
     TimelineStorage,
-} from './CampaignStorage.js';
+} from '../storages/CampaignStorage.js';
 import { updateActionState } from '../libs/utils.js';
-import { DefaultRootForZkAppTree } from './SharedStorage.js';
+import { DefaultRootForZkAppTree } from '../storages/SharedStorage.js';
 
 export class CampaignAction extends Struct({
     campaignId: Field,

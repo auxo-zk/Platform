@@ -4,8 +4,10 @@ import {
     Cache,
     Field,
     Mina,
+    PublicKey,
     Reducer,
     SmartContract,
+    TokenId,
     fetchAccount,
 } from 'o1js';
 import { Key } from '../scripts/helper/config.js';
@@ -15,7 +17,6 @@ export function updateActionState(state: Field, action: Field[][]) {
     let actionsHash = AccountUpdate.Actions.hash(action);
     return AccountUpdate.Actions.updateSequenceState(state, actionsHash);
 }
-
 
 const DEFAULT_WAIT_TIME = 10 * 60 * 1000; // 7m
 
@@ -158,4 +159,26 @@ export function logMemUsage() {
         Math.floor(process.memoryUsage().rss / 1024 / 1024),
         'MB'
     );
+}
+
+export function buildAssertMessage(
+    circuit: string,
+    method: string,
+    errorEnum: string
+): string {
+    return `${circuit}::${method}: ${errorEnum}`;
+}
+
+export function requireSignature(address: PublicKey) {
+    AccountUpdate.createSigned(address);
+}
+
+export function requireCaller(address: PublicKey, contract: SmartContract) {
+    contract.self.body.mayUseToken = AccountUpdate.MayUseToken.ParentsOwnToken;
+    let update = AccountUpdate.create(
+        contract.address,
+        TokenId.derive(address)
+    );
+    update.body.mayUseToken = AccountUpdate.MayUseToken.InheritFromParent;
+    return update;
 }

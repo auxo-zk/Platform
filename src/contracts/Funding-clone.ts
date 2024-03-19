@@ -30,7 +30,7 @@ import {
     ZkAppRef,
     ZkAppAddressStorage,
     DefaultRootForZkAppTree,
-} from './SharedStorage.js';
+} from '../storages/SharedStorage.js';
 
 import {
     ScalarVector,
@@ -43,18 +43,18 @@ import {
     TotalRStorage,
     TotalMStorage,
     TotalAmountStorage,
-} from './FundingStorage.js';
+} from '../storages/FundingStorage.js';
 import {
     CampaignTimelineStateEnum,
     Timeline,
     Level1Witness as TimelineLevel1Witness,
     Level1Witness as KeyLevel1Witness,
     DefaultRootForCampaignTree,
-} from './CampaignStorage.js';
+} from '../storages/CampaignStorage.js';
 import {
     Level1CWitness as ProjectIndexLevel1Witness,
     Level1Witness as ProjectCounterLevel1Witness,
-} from './ParticipationStorage.js';
+} from '../storages/ParticipationStorage.js';
 import { CampaignContract } from './Campaign-clone.js';
 import { ParticipationContract } from './Participation-clone.js';
 import { updateActionState } from '../libs/utils.js';

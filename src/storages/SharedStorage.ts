@@ -8,7 +8,8 @@ import {
     PublicKey,
     Struct,
 } from 'o1js';
-import { INSTANCE_LIMITS } from '../Constants.js';
+import { ErrorEnum, INSTANCE_LIMITS, ZkAppEnum } from '../Constants.js';
+import { buildAssertMessage } from '../libs/utils.js';
 
 export const ZKAPP_ADDRESS_TREE_HEIGHT =
     Math.ceil(Math.log2(INSTANCE_LIMITS.ZKAPP_ADDRESS_TREE_SIZE)) + 1;
@@ -109,19 +110,6 @@ export class ZkAppAddressStorage {
     }
 }
 
-export function getZkAppRef(
-    map: AddressMT,
-    index: Field | number,
-    address: PublicKey
-) {
-    return new ZkAppRef({
-        address: address,
-        witness: new AddressWitness(
-            map.getWitness(ZkAppAddressStorage.calculateIndex(index).toBigInt())
-        ),
-    });
-}
-
 export const enum ActionStatus {
     NOT_EXISTED,
     REDUCED,
@@ -180,4 +168,39 @@ export class ReduceStorage {
         this._actionMap.set(index, leaf);
         this._actions[index.toString()] = leaf;
     }
+}
+
+export function getZkAppRef(
+    map: AddressMT,
+    index: ZkAppEnum | number,
+    address: PublicKey
+) {
+    return new ZkAppRef({
+        address: address,
+        witness: new AddressWitness(
+            map.getWitness(ZkAppAddressStorage.calculateIndex(index).toBigInt())
+        ),
+    });
+}
+
+/**
+ * Verify the address of a zkApp
+ * @param ref Reference to a zkApp
+ * @param key Index of its address in MT
+ */
+export function verifyZkApp(
+    programName: string,
+    ref: ZkAppRef,
+    root: Field,
+    key: Field
+) {
+    root.assertEquals(
+        ref.witness.calculateRoot(Poseidon.hash(ref.address.toFields())),
+        buildAssertMessage(programName, 'verifyZkApp', ErrorEnum.ZKAPP_ROOT)
+    );
+
+    key.assertEquals(
+        ref.witness.calculateIndex(),
+        buildAssertMessage(programName, 'verifyZkApp', ErrorEnum.ZKAPP_INDEX)
+    );
 }

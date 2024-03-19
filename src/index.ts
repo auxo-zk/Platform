@@ -1,103 +1,90 @@
-export * as Constants from './constants.js';
-export * as Storage from './contracts/storages.js';
-export * as ZkApp from './contracts/index.js';
+// export * as Constants from './Constants.js';
+// export * as Storage from './contracts/storages.js';
+// export * as ZkApp from './contracts/index.js';
 
-export {
-    // Structs
-    CheckProjectOwnerInput,
-    CreateProjectInput,
-    UpdateProjectInput,
-    CreateProjectProofOutput,
+// export {
+//     // Structs
+//     CheckProjectOwnerInput,
+//     CreateProjectInput,
+//     UpdateProjectInput,
+//     CreateProjectProofOutput,
 
-    // Zk Programs & Proofs
-    CreateProject,
-    ProjectProof,
+//     // Zk Programs & Proofs
+//     CreateProject,
+//     ProjectProof,
 
-    // Smart Contract
-    ProjectContract,
+//     // Smart Contract
+//     ProjectContract,
 
-    // Actions & Events
-    ProjectAction,
-    EventEnum as ProjectEvents,
-} from './contracts/Project.js';
+//     // Actions & Events
+//     ProjectAction,
+//     EventEnum as ProjectEvents,
+// } from './contracts/Project.js';
 
-export {
-    // Structs
-    CheckCampaignOwnerInput,
-    CreateCampaignInput,
-    UpdateCampaignInfo,
-    UpdateCampaignStatus,
-    UpdateCampaignConfig,
-    CreateCampaignProofOutput,
+// export {
+//     // Smart Contract
+//     CampaignContract,
 
-    // Zk Programs & Proofs
-    CreateCampaign,
-    CampaignProof,
+//     // Actions & Events
+//     CampaignAction,
+// } from './contracts/Campaign-clone.js';
 
-    // Smart Contract
-    CampaignContract,
+// export {
+//     // Structs
+//     JoinCampaignInput,
+//     CheckParticipationIndexInput,
+//     CreateParticipationProofOutput,
 
-    // Actions & Events
-    CampaignAction,
-    EventEnum as CampaignEvents,
-} from './contracts/Campaign.js';
+//     // Zk Programs & Proofs
+//     JoinCampaign,
+//     ParticipationProof,
 
-export {
-    // Structs
-    JoinCampaignInput,
-    CheckParticipationIndexInput,
-    CreateParticipationProofOutput,
+//     // Smart Contract
+//     ParticipationContract,
 
-    // Zk Programs & Proofs
-    JoinCampaign,
-    ParticipationProof,
+//     // Actions & Events
+//     ParticipationAction,
+//     EventEnum as ParticipationEvents,
+// } from './contracts/Participation.js';
 
-    // Smart Contract
-    ParticipationContract,
+// export {
+//     // Structs
+//     RequestSent,
+//     CustomScalarArray,
+//     FundingInput,
+//     CheckValueInput,
+//     ReduceOutput as ReduceFundingOutput,
+//     RollupActionsOutput as RollupParticipationActionsOutput,
 
-    // Actions & Events
-    ParticipationAction,
-    EventEnum as ParticipationEvents,
-} from './contracts/Participation.js';
+//     // Zk Programs & Proofs
+//     ReduceProof,
+//     CreateReduceProof,
+//     ProofRollupAction,
+//     CreateRollupProof,
 
-export {
-    // Structs
-    RequestSent,
-    CustomScalarArray,
-    FundingInput,
-    CheckValueInput,
-    ReduceOutput as ReduceFundingOutput,
-    RollupActionsOutput as RollupParticipationActionsOutput,
+//     // Smart Contract
+//     FundingContract,
 
-    // Zk Programs & Proofs
-    ReduceProof,
-    CreateReduceProof,
-    ProofRollupAction,
-    CreateRollupProof,
+//     // Actions & Events
+//     FundingAction,
+//     EventEnum as FundingEvents,
+// } from './contracts/Funding.js';
 
-    // Smart Contract
-    FundingContract,
+// export {
+//     // Structs
+//     InvestVector,
+//     ClaimFundInput,
+//     CheckIfNotClaimedInput,
+//     ClaimFundProofOutput,
 
-    // Actions & Events
-    FundingAction,
-    EventEnum as FundingEvents,
-} from './contracts/Funding.js';
+//     // Zk Programs & Proofs
+//     TreasuryProof,
+//     ClaimFund,
 
-export {
-    // Structs
-    InvestVector,
-    ClaimFundInput,
-    CheckIfNotClaimedInput,
-    ClaimFundProofOutput,
+//     // Smart Contract
+//     TreasuryContract,
 
-    // Zk Programs & Proofs
-    TreasuryProof,
-    ClaimFund,
-
-    // Smart Contract
-    TreasuryContract,
-
-    // Actions & Events
-    TreasuryAction,
-    EventEnum as TreasuryEvents,
-} from './contracts/Treasury.js';
+//     // Actions & Events
+//     TreasuryAction,
+//     EventEnum as TreasuryEvents,
+// } from './contracts/Treasury.js';

@@ -28,19 +28,19 @@ import {
     DefaultLevel1Root,
     DefaultLevel1CombinedRoot,
     IpfsHashStorage,
-} from './ParticipationStorage.js';
+} from '../storages/ParticipationStorage.js';
 import {
     DefaultRootForZkAppTree,
     ZkAppAddressStorage,
     ZkAppRef,
-} from './SharedStorage.js';
+} from '../storages/SharedStorage.js';
 import { INSTANCE_LIMITS, ZkAppEnum } from '../Constants.js';
 import { CampaignContract } from './Campaign-clone.js';
 import {
     Level1Witness as TimelineLevel1Witness,
     CampaignTimelineStateEnum,
     Timeline,
-} from './CampaignStorage.js';
+} from '../storages/CampaignStorage.js';
 import { ProjectContract } from './Project-clone.js';
 import {
     Level1Witness as MemberLevel1Witness,
