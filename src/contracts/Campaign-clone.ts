@@ -24,7 +24,13 @@ import {
     TimelineStorage,
 } from '../storages/CampaignStorage.js';
 import { updateActionState } from '../libs/utils.js';
-import { DefaultRootForZkAppTree } from '../storages/SharedStorage.js';
+import {
+    DefaultRootForZkAppTree,
+    verifyZkApp,
+    ZkAppRef,
+} from '../storages/SharedStorage.js';
+import { ZkAppEnum } from '../Constants.js';
+import { DkgContract, KeyStatus, KeyStatusInput } from '@auxo-dev/dkg';
 
 export class CampaignAction extends Struct({
     campaignId: Field,
@@ -192,15 +198,30 @@ export class CampaignContract extends SmartContract {
         timeline: Timeline,
         ipfsHash: IpfsHash,
         committeeId: Field,
-        keyId: Field
-        // dkgContractRef: ZkAppRef
+        keyId: Field,
+        dkgContractRef: ZkAppRef,
+        keyStatusWitness: Level1Witness
     ) {
         timeline.isValid().assertEquals(Bool(true));
         timeline.startParticipation.assertGreaterThan(
             this.network.timestamp.getAndRequireEquals()
         );
         // Should check the valid of key right here
-        // const dkgContract = new DKGContract(dkgContractRef.address);
+        verifyZkApp(
+            CampaignContract.name,
+            dkgContractRef,
+            this.zkAppRoot.getAndRequireEquals(),
+            Field(ZkAppEnum.DKG)
+        );
+        const dkgContract = new DkgContract(dkgContractRef.address);
+        dkgContract.verifyKeyStatus(
+            new KeyStatusInput({
+                committeeId: committeeId,
+                keyId: keyId,
+                status: Field(KeyStatus.ACTIVE),
+                witness: keyStatusWitness,
+            })
+        );
         // dkgContract
         this.reducer.dispatch(
             new CampaignAction({
