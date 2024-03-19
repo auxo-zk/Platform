@@ -29,7 +29,7 @@ import {
     Storage,
 } from '@auxo-dev/dkg';
 
-import { INSTANCE_LIMITS, ZkAppEnum } from '../Constants.js';
+import { INSTANCE_LIMITS, MINIMAL_MINA_UNIT, ZkAppEnum } from '../Constants.js';
 
 import {
     ZkAppRef,
@@ -347,10 +347,10 @@ export class FundingContract extends SmartContract {
             projectCounterWitness
         );
 
+        amount.mod(new UInt64(MINIMAL_MINA_UNIT)).assertEquals(new UInt64(0));
         const publicKey = key.toGroup();
         const R = new GroupVector();
         const M = new GroupVector();
-
         for (let i = 0; i < INSTANCE_LIMITS.PARTICIPATION_SLOT_TREE_SIZE; i++) {
             const index = Field(i);
             R.set(
