@@ -31,6 +31,7 @@ import {
 } from '../storages/ParticipationStorage.js';
 import {
     DefaultRootForZkAppTree,
+    verifyZkApp,
     ZkAppAddressStorage,
     ZkAppRef,
 } from '../storages/SharedStorage.js';
@@ -271,31 +272,20 @@ export class ParticipationContract extends SmartContract {
             );
 
         // Check that Campaign contract reference is valid
-        this.zkAppRoot
-            .getAndRequireEquals()
-            .assertEquals(
-                campaignContractRef.witness.calculateRoot(
-                    ZkAppAddressStorage.calculateLeaf(
-                        campaignContractRef.address
-                    )
-                )
-            );
-        campaignContractRef.witness
-            .calculateIndex()
-            .assertEquals(ZkAppEnum.CAMPAIGN);
+        const zkAppRoot = this.zkAppRoot.getAndRequireEquals();
+        verifyZkApp(
+            ParticipationContract.name,
+            campaignContractRef,
+            zkAppRoot,
+            Field(ZkAppEnum.CAMPAIGN)
+        );
         // Check that Project contract reference is valid
-        this.zkAppRoot
-            .getAndRequireEquals()
-            .assertEquals(
-                projectContractRef.witness.calculateRoot(
-                    ZkAppAddressStorage.calculateLeaf(
-                        projectContractRef.address
-                    )
-                )
-            );
-        projectContractRef.witness
-            .calculateIndex()
-            .assertEquals(ZkAppEnum.PROJECT);
+        verifyZkApp(
+            ParticipationContract.name,
+            projectContractRef,
+            zkAppRoot,
+            Field(ZkAppEnum.PROJECT)
+        );
         // Check valid timeline
         const campaignContract = new CampaignContract(
             campaignContractRef.address

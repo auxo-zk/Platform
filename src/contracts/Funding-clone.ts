@@ -30,6 +30,7 @@ import {
     ZkAppRef,
     ZkAppAddressStorage,
     DefaultRootForZkAppTree,
+    verifyZkApp,
 } from '../storages/SharedStorage.js';
 
 import {
@@ -277,42 +278,29 @@ export class FundingContract extends SmartContract {
         commitmentHash: Field,
         nullifier: Field
     ) {
+        const zkAppRoot = this.zkAppRoot.getAndRequireEquals();
         // Check Treasury contract
-        this.zkAppRoot
-            .getAndRequireEquals()
-            .assertEquals(
-                treasuryContractRef.witness.calculateRoot(
-                    ZkAppAddressStorage.calculateLeaf(
-                        treasuryContractRef.address
-                    )
-                )
-            );
-        treasuryContractRef.witness
-            .calculateIndex()
-            .assertEquals(ZkAppEnum.TREASURY);
+        verifyZkApp(
+            FundingContract.name,
+            treasuryContractRef,
+            zkAppRoot,
+            Field(ZkAppEnum.TREASURY)
+        );
         // Check Dkg contract
-        this.zkAppRoot
-            .getAndRequireEquals()
-            .assertEquals(
-                dkgContractRef.witness.calculateRoot(
-                    ZkAppAddressStorage.calculateLeaf(dkgContractRef.address)
-                )
-            );
-        dkgContractRef.witness.calculateIndex().assertEquals(ZkAppEnum.DKG);
+        verifyZkApp(
+            FundingContract.name,
+            dkgContractRef,
+            zkAppRoot,
+            Field(ZkAppEnum.DKG)
+        );
         // Should check valid of key right here
         // Check Campaign contract
-        this.zkAppRoot
-            .getAndRequireEquals()
-            .assertEquals(
-                campaignContractRef.witness.calculateRoot(
-                    ZkAppAddressStorage.calculateLeaf(
-                        campaignContractRef.address
-                    )
-                )
-            );
-        campaignContractRef.witness
-            .calculateIndex()
-            .assertEquals(ZkAppEnum.CAMPAIGN);
+        verifyZkApp(
+            FundingContract.name,
+            campaignContractRef,
+            zkAppRoot,
+            Field(ZkAppEnum.CAMPAIGN)
+        );
         const campaignContract = new CampaignContract(
             campaignContractRef.address
         );
@@ -323,18 +311,12 @@ export class FundingContract extends SmartContract {
             .isValidKey(campaignId, committeeId, keyId, keyWitness)
             .assertTrue();
         // Check Participation contract
-        this.zkAppRoot
-            .getAndRequireEquals()
-            .assertEquals(
-                participationContractRef.witness.calculateRoot(
-                    ZkAppAddressStorage.calculateLeaf(
-                        participationContractRef.address
-                    )
-                )
-            );
-        participationContractRef.witness
-            .calculateIndex()
-            .assertEquals(ZkAppEnum.PARTICIPATION);
+        verifyZkApp(
+            FundingContract.name,
+            participationContractRef,
+            zkAppRoot,
+            Field(ZkAppEnum.PARTICIPATION)
+        );
         const participationContract = new ParticipationContract(
             participationContractRef.address
         );
@@ -358,7 +340,6 @@ export class FundingContract extends SmartContract {
         const M = new GroupVector();
 
         for (let i = 0; i < INSTANCE_LIMITS.PARTICIPATION_SLOT_TREE_SIZE; i++) {
-            //
             const index = Field(i);
             R.set(
                 index,
