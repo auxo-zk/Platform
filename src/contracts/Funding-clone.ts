@@ -22,7 +22,12 @@ import {
 
 import { CustomScalar, ScalarDynamicArray } from '@auxo-dev/auxo-libs';
 
-import { ZkApp as DkgZkApp, Constants as DkgConstants } from '@auxo-dev/dkg';
+import {
+    ZkApp as DkgZkApp,
+    Constants as DkgConstants,
+    DkgContract,
+    Storage,
+} from '@auxo-dev/dkg';
 
 import { INSTANCE_LIMITS, ZkAppEnum } from '../Constants.js';
 
@@ -271,8 +276,9 @@ export class FundingContract extends SmartContract {
         projectCounterWitness: ProjectCounterLevel1Witness,
         committeeId: Field,
         keyId: Field,
-        keyWitness: KeyLevel1Witness,
+        keyWitnessForCampaign: KeyLevel1Witness,
         key: PublicKey,
+        keyWitnessForDkg: Storage.DKGStorage.Level1Witness,
         amount: UInt64,
         randomVector: ScalarVector,
         commitmentHash: Field,
@@ -293,7 +299,13 @@ export class FundingContract extends SmartContract {
             zkAppRoot,
             Field(ZkAppEnum.DKG)
         );
+        const dkgContract = new DkgContract(dkgContractRef.address);
         // Should check valid of key right here
+        dkgContract.verifyKey(
+            Storage.DKGStorage.calculateKeyIndex(committeeId, keyId),
+            key.toGroup(),
+            keyWitnessForDkg
+        );
         // Check Campaign contract
         verifyZkApp(
             FundingContract.name,
@@ -308,7 +320,7 @@ export class FundingContract extends SmartContract {
             .getCampaignTimelineState(campaignId, timeline, timelineWitness)
             .assertEquals(Field(CampaignTimelineStateEnum.FUNDING));
         campaignContract
-            .isValidKey(campaignId, committeeId, keyId, keyWitness)
+            .isValidKey(campaignId, committeeId, keyId, keyWitnessForCampaign)
             .assertTrue();
         // Check Participation contract
         verifyZkApp(

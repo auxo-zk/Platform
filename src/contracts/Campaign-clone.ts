@@ -30,7 +30,7 @@ import {
     ZkAppRef,
 } from '../storages/SharedStorage.js';
 import { ZkAppEnum } from '../Constants.js';
-import { DkgContract, KeyStatus, KeyStatusInput } from '@auxo-dev/dkg';
+import { DkgContract, KeyStatus, KeyStatusInput, Storage } from '@auxo-dev/dkg';
 
 export class CampaignAction extends Struct({
     campaignId: Field,
@@ -200,7 +200,7 @@ export class CampaignContract extends SmartContract {
         committeeId: Field,
         keyId: Field,
         dkgContractRef: ZkAppRef,
-        keyStatusWitness: Level1Witness
+        keyStatusWitness: Storage.DKGStorage.Level1Witness
     ) {
         timeline.isValid().assertEquals(Bool(true));
         timeline.startParticipation.assertGreaterThan(
