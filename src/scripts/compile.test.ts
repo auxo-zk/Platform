@@ -10,9 +10,9 @@ import {
 import {
     ParticipationContract,
     RollupParticipation,
-} from '../contracts/Participation-clone';
-import { CampaignContract, RollupCampaign } from '../contracts/Campaign-clone';
-import { FundingContract, RollupFunding } from '../contracts/Funding-clone';
+} from '../contracts/Participation';
+import { CampaignContract, RollupCampaign } from '../contracts/Campaign';
+import { FundingContract, RollupFunding } from '../contracts/Funding';
 
 let proofsEnabled = true;
 

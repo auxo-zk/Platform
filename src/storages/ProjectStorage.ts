@@ -304,7 +304,7 @@ export class IpfsHashStorage extends ProjectStorage<IpfsHashLeaf> {
     }
 }
 
-// Type
+
 export class MemberArray extends PublicKeyDynamicArray(
     INSTANCE_LIMITS.PROJECT_MEMBER_TREE_SIZE
 ) {}

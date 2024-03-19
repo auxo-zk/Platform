@@ -1,382 +1,424 @@
-// import {
-//     Field,
-//     SmartContract,
-//     state,
-//     State,
-//     method,
-//     Reducer,
-//     Struct,
-//     SelfProof,
-//     Poseidon,
-//     Provable,
-//     ZkProgram,
-//     PublicKey,
-//     Void,
-//     Bool,
-// } from 'o1js';
-// import { IpfsHash } from '@auxo-dev/auxo-libs';
-// import { updateOutOfSnark } from '../libs/utils.js';
-// import {
-//     EMPTY_LEVEL_1_TREE,
-//     EMPTY_LEVEL_1_COMBINED_TREE,
-//     Level1CWitness as indexAndInfoWitness,
-//     Level1Witness as counterWitness,
-//     IndexStorage,
-//     CounterStorage,
-//     InfoStorage,
-// } from './ParticipationStorage.js';
+import {
+    Field,
+    SmartContract,
+    state,
+    State,
+    method,
+    Reducer,
+    Struct,
+    SelfProof,
+    Poseidon,
+    Provable,
+    ZkProgram,
+    PublicKey,
+    Void,
+    Bool,
+    UInt64,
+    Undefined,
+} from 'o1js';
+import { IpfsHash, Utils } from '@auxo-dev/auxo-libs';
+import {
+    Level1Witness,
+    Level1CWitness,
+    ProjectIndexStorage,
+    DefaultLevel1Root,
+    DefaultLevel1CombinedRoot,
+    IpfsHashStorage,
+} from '../storages/ParticipationStorage.js';
+import {
+    DefaultRootForZkAppTree,
+    verifyZkApp,
+    ZkAppRef,
+} from '../storages/SharedStorage.js';
+import { INSTANCE_LIMITS, ZkAppEnum } from '../Constants.js';
+import { CampaignContract } from './Campaign.js';
+import {
+    Level1Witness as TimelineLevel1Witness,
+    CampaignTimelineStateEnum,
+    Timeline,
+} from '../storages/CampaignStorage.js';
+import { ProjectContract } from './Project.js';
+import {
+    Level1Witness as MemberLevel1Witness,
+    Level2Witness as MemberLevel2Witness,
+} from '../storages/ProjectStorage.js';
 
-// import {
-//     Level1Witness as projectLv1Witness,
-//     Level2Witness as projectLv2Witness,
-// } from './ProjectStorage.js';
-// import { ProjectContract, CheckProjectOwnerInput } from './Project.js';
+export {
+    ParticipationAction,
+    ParticipationContract,
+    RollupParticipation,
+    RollupParticipationOutput,
+    RollupParticipationProof,
+};
 
-// import { ZkAppRef } from './SharedStorage.js';
+class ParticipationAction extends Struct({
+    campaignId: Field,
+    projectId: Field,
+    ipfsHash: IpfsHash,
+    timestamp: UInt64,
+}) {
+    static fromFields(fields: Field[]): ParticipationAction {
+        return super.fromFields(fields) as ParticipationAction;
+    }
 
-// import { ZkAppEnum } from '../Constants.js';
-// import { CampaignContract, CheckCampaignStatusInput } from './Campaign.js';
-// import {
-//     StatusEnum,
-//     Level1Witness as campaignLv1Witness,
-// } from './CampaignStorage.js';
+    getUniqueId() {
+        return Poseidon.hash(
+            this.campaignId.toFields().concat(this.projectId.toFields())
+        );
+    }
+}
 
-// const DefaultLevel1Root = EMPTY_LEVEL_1_TREE().getRoot();
-// const DefaultLevel1CombinedRoot = EMPTY_LEVEL_1_COMBINED_TREE().getRoot();
+class RollupParticipationOutput extends Struct({
+    initialProjectIndexRoot: Field,
+    initialProjectCounterRoot: Field,
+    initialIpfsHashRoot: Field,
+    initialActionState: Field,
+    nextProjectIndexRoot: Field,
+    nextProjectCounterRoot: Field,
+    nextIpfsHashRoot: Field,
+    nextActionState: Field,
+}) {}
 
-// export enum EventEnum {
-//     ACTIONS_REDUCED = 'actions-reduced',
-// }
+const RollupParticipation = ZkProgram({
+    name: 'RollupParticipation',
+    publicOutput: RollupParticipationOutput,
+    methods: {
+        firstStep: {
+            privateInputs: [Field, Field, Field, Field],
+            method(
+                initialProjectIndexRoot: Field,
+                initialProjectCounterRoot: Field,
+                initialIpfsHashRoot: Field,
+                initialActionState: Field
+            ): RollupParticipationOutput {
+                return new RollupParticipationOutput({
+                    initialProjectIndexRoot: initialProjectIndexRoot,
+                    initialProjectCounterRoot: initialProjectCounterRoot,
+                    initialIpfsHashRoot: initialIpfsHashRoot,
+                    initialActionState: initialActionState,
+                    nextProjectIndexRoot: initialProjectCounterRoot,
+                    nextProjectCounterRoot: initialIpfsHashRoot,
+                    nextIpfsHashRoot: initialIpfsHashRoot,
+                    nextActionState: initialActionState,
+                });
+            },
+        },
+        nextStep: {
+            privateInputs: [
+                SelfProof<Void, RollupParticipationOutput>,
+                ParticipationAction,
+                Field,
+                Level1CWitness,
+                Level1Witness,
+                Level1CWitness,
+            ],
+            method(
+                earlierProof: SelfProof<Void, RollupParticipationOutput>,
+                participationAction: ParticipationAction,
+                projectCounter: Field,
+                projectIndexWitness: Level1CWitness,
+                projectCounterWitness: Level1Witness,
+                ipfsHashWitness: Level1CWitness
+            ) {
+                earlierProof.verify();
+                const campaignId = participationAction.campaignId;
+                const projectId = participationAction.projectId;
+                // Check project index
+                projectIndexWitness.calculateIndex().assertEquals(
+                    ProjectIndexStorage.calculateLevel1Index({
+                        campaignId,
+                        projectId,
+                    })
+                );
+                projectIndexWitness
+                    .calculateRoot(Field(0))
+                    .assertEquals(
+                        earlierProof.publicOutput.nextProjectIndexRoot
+                    );
 
-// export class ParticipationAction extends Struct({
-//     campaignId: Field,
-//     projectId: Field,
-//     participationInfo: IpfsHash,
-//     curApplicationInfoHash: Field,
-// }) {
-//     static fromFields(fields: Field[]): ParticipationAction {
-//         return super.fromFields(fields) as ParticipationAction;
-//     }
+                // Check project counter
+                projectCounterWitness.calculateIndex().assertEquals(campaignId);
+                projectCounterWitness
+                    .calculateRoot(projectCounter)
+                    .assertEquals(
+                        earlierProof.publicOutput.nextProjectCounterRoot
+                    );
+                // Check ipfs hash
+                ipfsHashWitness.calculateIndex().assertEquals(
+                    IpfsHashStorage.calculateLevel1Index({
+                        campaignId,
+                        projectId,
+                    })
+                );
+                ipfsHashWitness
+                    .calculateRoot(Field(0))
+                    .assertEquals(earlierProof.publicOutput.nextIpfsHashRoot);
 
-//     hashPIDandCID(): Field {
-//         return Poseidon.hash([this.campaignId, this.projectId]);
-//     }
-// }
+                const currentIndex = projectCounter.add(1);
+                const nextProjectIndexRoot =
+                    projectIndexWitness.calculateRoot(currentIndex);
+                const nextProjectCounterRoot =
+                    projectCounterWitness.calculateRoot(currentIndex);
+                const nextIpfsHashRoot = ipfsHashWitness.calculateRoot(
+                    IpfsHashStorage.calculateLeaf(participationAction.ipfsHash)
+                );
+                return new RollupParticipationOutput({
+                    initialProjectIndexRoot:
+                        earlierProof.publicOutput.initialProjectIndexRoot,
+                    initialProjectCounterRoot:
+                        earlierProof.publicOutput.initialProjectCounterRoot,
+                    initialIpfsHashRoot:
+                        earlierProof.publicOutput.initialIpfsHashRoot,
+                    initialActionState:
+                        earlierProof.publicOutput.initialActionState,
+                    nextProjectIndexRoot: nextProjectIndexRoot,
+                    nextProjectCounterRoot: nextProjectCounterRoot,
+                    nextIpfsHashRoot: nextIpfsHashRoot,
+                    nextActionState: Utils.updateActionState(
+                        earlierProof.publicOutput.nextActionState,
+                        [ParticipationAction.toFields(participationAction)]
+                    ),
+                });
+            },
+        },
+    },
+});
 
-// export class JoinCampaignInput extends Struct({
-//     campaignId: Field,
-//     projectId: Field,
-//     participationInfo: IpfsHash,
-//     indexWitness: indexAndInfoWitness,
-//     memberLv1Witness: projectLv1Witness,
-//     memberLv2Witness: projectLv2Witness,
-//     campaignStatusWitness: campaignLv1Witness,
-//     projectRef: ZkAppRef,
-//     campaignRef: ZkAppRef,
-// }) {
-//     static fromFields(fields: Field[]): JoinCampaignInput {
-//         return super.fromFields(fields) as JoinCampaignInput;
-//     }
-// }
+class RollupParticipationProof extends ZkProgram.Proof(RollupParticipation) {}
 
-// export class CheckParticipationIndexInput extends Struct({
-//     campaignId: Field,
-//     projectId: Field,
-//     participationIndex: Field,
-//     indexWitness: indexAndInfoWitness,
-// }) {
-//     static fromFields(fields: Field[]): CheckParticipationIndexInput {
-//         return super.fromFields(fields) as CheckParticipationIndexInput;
-//     }
-// }
+class ParticipationContract extends SmartContract {
+    @state(Field) projectIndexRoot = State<Field>();
+    @state(Field) projectCounterRoot = State<Field>();
+    @state(Field) ipfsHashRoot = State<Field>();
+    @state(Field) zkAppRoot = State<Field>();
+    @state(Field) actionState = State<Field>();
 
-// export class CreateParticipationProofOutput extends Struct({
-//     initialIndexTreeRoot: Field,
-//     initialInfoTreeRoot: Field,
-//     initialCounterTreeRoot: Field,
-//     initialLastRolledUpACtionState: Field,
-//     finalIndexTreeRoot: Field,
-//     finalInfoTreeRoot: Field,
-//     finalCounterTreeRoot: Field,
-//     finalLastRolledUpActionState: Field,
-// }) {
-//     hash(): Field {
-//         return Poseidon.hash(CreateParticipationProofOutput.toFields(this));
-//     }
-// }
+    reducer = Reducer({ actionType: ParticipationAction });
 
-// export const JoinCampaign = ZkProgram({
-//     name: 'join-campaign',
-//     publicOutput: CreateParticipationProofOutput,
-//     methods: {
-//         firstStep: {
-//             privateInputs: [Field, Field, Field, Field],
-//             method(
-//                 initialIndexTreeRoot: Field,
-//                 initialInfoTreeRoot: Field,
-//                 initialCounterTreeRoot: Field,
-//                 initialLastRolledUpACtionState: Field
-//             ): CreateParticipationProofOutput {
-//                 return new CreateParticipationProofOutput({
-//                     initialIndexTreeRoot,
-//                     initialInfoTreeRoot,
-//                     initialCounterTreeRoot,
-//                     initialLastRolledUpACtionState,
-//                     finalIndexTreeRoot: initialIndexTreeRoot,
-//                     finalInfoTreeRoot: initialInfoTreeRoot,
-//                     finalCounterTreeRoot: initialCounterTreeRoot,
-//                     finalLastRolledUpActionState:
-//                         initialLastRolledUpACtionState,
-//                 });
-//             },
-//         },
-//         joinCampaign: {
-//             privateInputs: [
-//                 SelfProof<Void, CreateParticipationProofOutput>,
-//                 ParticipationAction,
-//                 indexAndInfoWitness,
-//                 indexAndInfoWitness,
-//                 Field,
-//                 counterWitness,
-//             ],
-//             method(
-//                 preProof: SelfProof<Void, CreateParticipationProofOutput>,
-//                 newAction: ParticipationAction,
-//                 indexWitness: indexAndInfoWitness,
-//                 infoWitness: indexAndInfoWitness,
-//                 currentCounter: Field, // of each campaign
-//                 counterWitness: counterWitness
-//             ): CreateParticipationProofOutput {
-//                 preProof.verify();
+    init() {
+        this.projectIndexRoot.set(DefaultLevel1CombinedRoot);
+        this.projectCounterRoot.set(DefaultLevel1Root);
+        this.ipfsHashRoot.set(DefaultLevel1CombinedRoot);
+        this.zkAppRoot.set(DefaultRootForZkAppTree);
+        this.actionState.set(Reducer.initialActionState);
+    }
 
-//                 // calculated index in storage tree, called id
-//                 let id = IndexStorage.calculateLevel1Index({
-//                     campaignId: newAction.campaignId,
-//                     projectId: newAction.projectId,
-//                 });
+    @method participateCampaign(
+        campaignId: Field,
+        projectId: Field,
+        ipfsHash: IpfsHash,
+        campaignContractRef: ZkAppRef,
+        projectContractRef: ZkAppRef,
+        timeline: Timeline,
+        timelineWitness: TimelineLevel1Witness,
+        memberLevel1Witness: MemberLevel1Witness,
+        memberLevel2Witness: MemberLevel2Witness,
+        projectIndexWitness: Level1CWitness,
+        projectCounter: Field,
+        projectCounterWitness: Level1Witness
+    ) {
+        const participationAction = new ParticipationAction({
+            campaignId: campaignId,
+            projectId: projectId,
+            ipfsHash: ipfsHash,
+            timestamp: this.network.timestamp.getAndRequireEquals(),
+        });
+        // Check that not exist campaignId-projectId in reducer queue
+        const actionState = this.actionState.getAndRequireEquals();
+        const { state: existed } = this.reducer.reduce(
+            this.reducer.getActions({
+                fromActionState: actionState,
+            }),
+            Bool,
+            (state: Bool, action: ParticipationAction) => {
+                return action
+                    .getUniqueId()
+                    .equals(participationAction.getUniqueId())
+                    .or(state);
+            },
+            // initial state
+            { state: Bool(false), actionState: actionState }
+        );
+        existed.assertFalse();
+        // Check that project index not existed
+        this.isExistedProjectIndex(
+            campaignId,
+            projectId,
+            projectIndexWitness
+        ).assertFalse();
+        // Check that sum of participated project not exceed LIMIT of PARTICIPATION
+        this.projectCounterRoot
+            .getAndRequireEquals()
+            .assertEquals(projectCounterWitness.calculateRoot(projectCounter));
+        projectCounterWitness.calculateIndex().assertEquals(campaignId);
+        const { state: additionalCounter } = this.reducer.reduce(
+            this.reducer.getActions({
+                fromActionState: actionState,
+            }),
+            Field,
+            (state: Field, action: ParticipationAction) => {
+                return Provable.if(
+                    action.campaignId.equals(campaignId),
+                    state.add(1),
+                    state
+                );
+            },
+            // initial state
+            { state: Field(0), actionState: actionState }
+        );
+        projectCounter
+            .add(additionalCounter)
+            .assertLessThanOrEqual(
+                Field(INSTANCE_LIMITS.PARTICIPATION_SLOT_TREE_SIZE)
+            );
 
-//                 // update counter
-//                 let counterId = counterWitness.calculateIndex();
-//                 counterId.assertEquals(newAction.campaignId);
-//                 let curCounterTreeRoot =
-//                     counterWitness.calculateRoot(currentCounter);
-//                 curCounterTreeRoot.assertEquals(
-//                     preProof.publicOutput.finalCounterTreeRoot
-//                 );
-//                 let newCounter = currentCounter.add(Field(1));
-//                 let newCounterTreeRoot =
-//                     counterWitness.calculateRoot(newCounter);
+        // Check that Campaign contract reference is valid
+        const zkAppRoot = this.zkAppRoot.getAndRequireEquals();
+        verifyZkApp(
+            ParticipationContract.name,
+            campaignContractRef,
+            zkAppRoot,
+            Field(ZkAppEnum.CAMPAIGN)
+        );
+        // Check that Project contract reference is valid
+        verifyZkApp(
+            ParticipationContract.name,
+            projectContractRef,
+            zkAppRoot,
+            Field(ZkAppEnum.PROJECT)
+        );
+        // Check valid timeline
+        const campaignContract = new CampaignContract(
+            campaignContractRef.address
+        );
+        campaignContract
+            .getCampaignTimelineState(campaignId, timeline, timelineWitness)
+            .assertEquals(Field(CampaignTimelineStateEnum.PARTICIPATION));
+        // Check valid owner
+        const projectContract = new ProjectContract(projectContractRef.address);
+        projectContract
+            .isOwner(projectId, memberLevel1Witness, memberLevel2Witness)
+            .assertTrue();
+        // dispatch
+        this.reducer.dispatch(participationAction);
+    }
 
-//                 // update index
-//                 let indexId = indexWitness.calculateIndex();
-//                 indexId.assertEquals(id);
-//                 let curIndexTreeRoot = indexWitness.calculateRoot(Field(0));
-//                 curIndexTreeRoot.assertEquals(
-//                     preProof.publicOutput.finalIndexTreeRoot
-//                 );
-//                 let newIndexTreeRoot = indexWitness.calculateRoot(newCounter);
+    @method rollup(rollupParticipationProof: RollupParticipationProof) {
+        rollupParticipationProof.verify();
+        const projectIndexRoot = this.projectIndexRoot.getAndRequireEquals();
+        const projectCounterRoot =
+            this.projectCounterRoot.getAndRequireEquals();
+        const ipfsHashRoot = this.ipfsHashRoot.getAndRequireEquals();
+        const actionState = this.actionState.getAndRequireEquals();
 
-//                 // update info-ipfs hash
-//                 let infoId = infoWitness.calculateIndex();
-//                 infoId.assertEquals(id);
-//                 let curInfoTreeRoot = infoWitness.calculateRoot(Field(0));
-//                 curInfoTreeRoot.assertEquals(
-//                     preProof.publicOutput.finalInfoTreeRoot
-//                 );
-//                 let newInfoTreeRoot = infoWitness.calculateRoot(
-//                     InfoStorage.calculateLeaf(newAction.participationInfo)
-//                 );
+        projectIndexRoot.assertEquals(
+            rollupParticipationProof.publicOutput.initialProjectIndexRoot
+        );
+        projectCounterRoot.assertEquals(
+            rollupParticipationProof.publicOutput.initialProjectCounterRoot
+        );
+        ipfsHashRoot.assertEquals(
+            rollupParticipationProof.publicOutput.initialIpfsHashRoot
+        );
+        actionState.assertEquals(
+            rollupParticipationProof.publicOutput.initialActionState
+        );
+        this.account.actionState
+            .getAndRequireEquals()
+            .assertEquals(
+                rollupParticipationProof.publicOutput.nextActionState
+            );
+        this.projectIndexRoot.set(
+            rollupParticipationProof.publicOutput.nextProjectIndexRoot
+        );
+        this.projectCounterRoot.set(
+            rollupParticipationProof.publicOutput.nextProjectCounterRoot
+        );
+        this.ipfsHashRoot.set(
+            rollupParticipationProof.publicOutput.nextIpfsHashRoot
+        );
+        this.actionState.set(
+            rollupParticipationProof.publicOutput.nextActionState
+        );
+    }
 
-//                 return new CreateParticipationProofOutput({
-//                     initialIndexTreeRoot:
-//                         preProof.publicOutput.initialIndexTreeRoot,
-//                     initialInfoTreeRoot:
-//                         preProof.publicOutput.initialInfoTreeRoot,
-//                     initialCounterTreeRoot:
-//                         preProof.publicOutput.initialCounterTreeRoot,
-//                     initialLastRolledUpACtionState:
-//                         preProof.publicOutput.initialLastRolledUpACtionState,
-//                     finalIndexTreeRoot: newIndexTreeRoot,
-//                     finalCounterTreeRoot: newCounterTreeRoot,
-//                     finalInfoTreeRoot: newInfoTreeRoot,
-//                     finalLastRolledUpActionState: updateOutOfSnark(
-//                         preProof.publicOutput.finalLastRolledUpActionState,
-//                         [ParticipationAction.toFields(newAction)]
-//                     ),
-//                 });
-//             },
-//         },
-//     },
-// });
+    isExistedProjectIndex(
+        campaignId: Field,
+        projectId: Field,
+        projectIndexWitness: Level1CWitness
+    ): Bool {
+        projectIndexWitness.calculateIndex().assertEquals(
+            ProjectIndexStorage.calculateLevel1Index({
+                campaignId,
+                projectId,
+            })
+        );
+        const projectIndexRoot = this.projectIndexRoot.getAndRequireEquals();
+        return Provable.if(
+            projectIndexRoot.equals(
+                projectIndexWitness.calculateRoot(Field(0))
+            ),
+            Bool(false),
+            Bool(true)
+        );
+    }
 
-// export class ParticipationProof extends ZkProgram.Proof(JoinCampaign) {}
+    isValidProjectIndex(
+        campaignId: Field,
+        projectId: Field,
+        projectIndex: Field,
+        projectIndexWitness: Level1CWitness
+    ) {
+        projectIndexWitness.calculateIndex().assertEquals(
+            ProjectIndexStorage.calculateLevel1Index({
+                campaignId,
+                projectId,
+            })
+        );
+        const projectIndexRoot = this.projectIndexRoot.getAndRequireEquals();
+        return Provable.if(
+            projectIndexRoot.equals(
+                projectIndexWitness.calculateRoot(projectIndex)
+            ),
+            Bool(true),
+            Bool(false)
+        );
+    }
 
-// export class ParticipationContract extends SmartContract {
-//     // campaignId -> Id(campaignId + projectId) -> index. start from 1, if index = 0 means that project have not participate
-//     @state(Field) indexTreeRoot = State<Field>();
-//     // campaignId -> Id(campaignId + projectId) -> info
-//     @state(Field) infoTreeRoot = State<Field>();
-//     // campaignId -> counter
-//     @state(Field) counterTreeRoot = State<Field>();
-//     // MT of other zkApp address
-//     @state(Field) zkApps = State<Field>();
-//     @state(Field) lastRolledUpActionState = State<Field>();
+    isValidProjectCounter(
+        campaignId: Field,
+        projectCounter: Field,
+        projectCounterWitness: Level1Witness
+    ): Bool {
+        projectCounterWitness.calculateIndex().assertEquals(campaignId);
+        const projectCounterRoot =
+            this.projectCounterRoot.getAndRequireEquals();
+        return Provable.if(
+            projectCounterRoot.equals(
+                projectCounterWitness.calculateRoot(projectCounter)
+            ),
+            Bool(true),
+            Bool(false)
+        );
+    }
 
-//     reducer = Reducer({ actionType: ParticipationAction });
-//     events = {
-//         [EventEnum.ACTIONS_REDUCED]: Field,
-//     };
-
-//     init() {
-//         super.init();
-//         this.indexTreeRoot.set(DefaultLevel1CombinedRoot);
-//         this.infoTreeRoot.set(DefaultLevel1CombinedRoot);
-//         this.counterTreeRoot.set(DefaultLevel1Root);
-//         this.lastRolledUpActionState.set(Reducer.initialActionState);
-//     }
-
-//     @method joinCampaign(input: JoinCampaignInput) {
-//         let zkApps = this.zkApps.getAndRequireEquals();
-
-//         // check project contract
-//         zkApps.assertEquals(
-//             input.projectRef.witness.calculateRoot(
-//                 Poseidon.hash(input.projectRef.address.toFields())
-//             )
-//         );
-//         Field(ZkAppEnum.PROJECT).assertEquals(
-//             input.projectRef.witness.calculateIndex()
-//         );
-//         let projectContract = new ProjectContract(input.projectRef.address);
-
-//         // check campaign contract
-//         zkApps.assertEquals(
-//             input.campaignRef.witness.calculateRoot(
-//                 Poseidon.hash(input.campaignRef.address.toFields())
-//             )
-//         );
-//         Field(ZkAppEnum.CAMPAIGN).assertEquals(
-//             input.campaignRef.witness.calculateIndex()
-//         );
-//         let campaignContract = new CampaignContract(input.campaignRef.address);
-
-//         // check owner
-//         let isOwner = projectContract.checkProjectOwner(
-//             new CheckProjectOwnerInput({
-//                 owner: this.sender,
-//                 projectId: input.projectId,
-//                 memberLevel1Witness: input.memberLv1Witness,
-//                 memberLevel2Witness: input.memberLv2Witness,
-//             })
-//         );
-//         isOwner.assertEquals(Bool(true));
-
-//         // check if campaign is on APPLICATION status
-//         let isAbleToJoin = campaignContract.checkCampaignStatus(
-//             new CheckCampaignStatusInput({
-//                 campaignId: input.campaignId,
-//                 currentStatus: Field(StatusEnum.APPLICATION),
-//                 statusWitness: input.campaignStatusWitness,
-//             })
-//         );
-//         isAbleToJoin.assertEquals(Bool(true));
-
-//         // check if this is first time join campaign
-//         let notIn = this.checkParticipationIndex(
-//             new CheckParticipationIndexInput({
-//                 campaignId: input.campaignId,
-//                 projectId: input.projectId,
-//                 participationIndex: Field(0),
-//                 indexWitness: input.indexWitness,
-//             })
-//         );
-
-//         notIn.assertEquals(Bool(true));
-
-//         // each project can only participate campaign once
-//         let lastRolledUpActionState =
-//             this.lastRolledUpActionState.getAndRequireEquals();
-
-//         let newAction = new ParticipationAction({
-//             campaignId: input.campaignId,
-//             projectId: input.projectId,
-//             participationInfo: input.participationInfo,
-//             curApplicationInfoHash: Field(0),
-//         });
-
-//         let checkHash = newAction.hashPIDandCID();
-
-//         // TODO: not really able to do this, check again. If both of them send at the same block
-//         // checking if the request have the same id already exists within the accumulator
-//         let { state: exists } = this.reducer.reduce(
-//             this.reducer.getActions({
-//                 fromActionState: lastRolledUpActionState,
-//             }),
-//             Bool,
-//             (state: Bool, action: ParticipationAction) => {
-//                 return action.hashPIDandCID().equals(checkHash).or(state);
-//             },
-//             // initial state
-//             { state: Bool(false), actionState: lastRolledUpActionState }
-//         );
-
-//         // if exists then don't dispatch any more
-//         exists.assertEquals(Bool(false));
-
-//         this.reducer.dispatch(newAction);
-//     }
-
-//     @method rollup(proof: ParticipationProof) {
-//         proof.verify();
-//         let indexTreeRoot = this.indexTreeRoot.getAndRequireEquals();
-//         let infoTreeRoot = this.infoTreeRoot.getAndRequireEquals();
-//         let counterTreeRoot = this.counterTreeRoot.getAndRequireEquals();
-//         let lastRolledUpActionState =
-//             this.lastRolledUpActionState.getAndRequireEquals();
-
-//         indexTreeRoot.assertEquals(proof.publicOutput.initialIndexTreeRoot);
-//         infoTreeRoot.assertEquals(proof.publicOutput.initialInfoTreeRoot);
-//         counterTreeRoot.assertEquals(proof.publicOutput.initialCounterTreeRoot);
-//         lastRolledUpActionState.assertEquals(
-//             proof.publicOutput.initialLastRolledUpACtionState
-//         );
-
-//         let lastActionState = this.account.actionState.getAndRequireEquals();
-//         lastActionState.assertEquals(
-//             proof.publicOutput.finalLastRolledUpActionState
-//         );
-
-//         // update on-chain state
-//         this.indexTreeRoot.set(proof.publicOutput.finalIndexTreeRoot);
-//         this.infoTreeRoot.set(proof.publicOutput.finalInfoTreeRoot);
-//         this.counterTreeRoot.set(proof.publicOutput.finalCounterTreeRoot);
-//         this.lastRolledUpActionState.set(
-//             proof.publicOutput.finalLastRolledUpActionState
-//         );
-
-//         this.emitEvent(EventEnum.ACTIONS_REDUCED, lastActionState);
-//     }
-
-//     checkParticipationIndex(input: CheckParticipationIndexInput): Bool {
-//         let isValid = Bool(true);
-
-//         let index = IndexStorage.calculateLevel1Index({
-//             campaignId: input.campaignId,
-//             projectId: input.projectId,
-//         });
-
-//         // check the right projectId
-//         let calculateIndex = input.indexWitness.calculateIndex();
-//         isValid = index.equals(calculateIndex).and(isValid);
-
-//         // check the valid of the index
-//         let level1Root = input.indexWitness.calculateRoot(
-//             input.participationIndex
-//         );
-//         isValid = level1Root
-//             .equals(this.indexTreeRoot.getAndRequireEquals())
-//             .and(isValid);
-
-//         return isValid;
-//     }
-// }
+    hasValidActionStateForFunding(timeline: Timeline): Bool {
+        const actionState = this.actionState.getAndRequireEquals();
+        const actions = this.reducer.getActions({
+            fromActionState: actionState,
+        });
+        return this.reducer.reduce(
+            actions.slice(0, 1),
+            Bool,
+            (state: Bool, action: ParticipationAction) => {
+                return state.and(
+                    action.timestamp.greaterThan(timeline.startFunding)
+                );
+            },
+            {
+                state: Bool(true),
+                actionState: actionState,
+            }
+        ).state;
+    }
+}

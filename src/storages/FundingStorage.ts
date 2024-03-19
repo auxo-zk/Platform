@@ -1,8 +1,6 @@
 import { Field, MerkleTree, MerkleWitness, Poseidon, UInt64 } from 'o1js';
 import { INSTANCE_LIMITS } from '../Constants.js';
-import { ZkApp } from '@auxo-dev/dkg';
 import { GroupDynamicArray, ScalarDynamicArray } from '@auxo-dev/auxo-libs';
-import { Constants as DkgConstants } from '@auxo-dev/dkg';
 
 export const LEVEL_1_CAMPAIGN_TREE_HEIGHT =
     Math.ceil(Math.log2(INSTANCE_LIMITS.CAMPAIGN_TREE_SIZE)) + 1;

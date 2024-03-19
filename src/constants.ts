@@ -1,4 +1,5 @@
 import { Constants } from '@auxo-dev/dkg';
+
 export const INSTANCE_LIMITS = {
     PROJECT_TREE_SIZE: 2 ** 5,
     PROJECT_MEMBER_TREE_SIZE: 2 ** 3,
@@ -23,6 +24,7 @@ export enum ZkAppEnum {
     PARTICIPATION,
     FUNDING,
     TREASURY,
+    REQUESTER,
 }
 
 export enum ErrorEnum {

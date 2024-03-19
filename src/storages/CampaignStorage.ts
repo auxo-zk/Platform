@@ -11,6 +11,8 @@ import {
 } from 'o1js';
 import { INSTANCE_LIMITS } from '../Constants.js';
 import { IpfsHash } from '@auxo-dev/auxo-libs';
+import { Constants as DkgConstants } from '@auxo-dev/dkg';
+
 export const LEVEL_1_CAMPAIGN_TREE_HEIGHT =
     Math.ceil(Math.log2(INSTANCE_LIMITS.CAMPAIGN_TREE_SIZE)) + 1;
 
@@ -22,7 +24,8 @@ export class Level1Witness extends MerkleWitness(
 export const EMPTY_LEVEL_1_CAMPAIGN_TREE = () =>
     new Level1MT(LEVEL_1_CAMPAIGN_TREE_HEIGHT);
 
-export const DefaultRootForCampaignTree = EMPTY_LEVEL_1_CAMPAIGN_TREE().getRoot();
+export const DefaultRootForCampaignTree =
+    EMPTY_LEVEL_1_CAMPAIGN_TREE().getRoot();
 // Storage
 export abstract class CampaignStorage<RawLeaf> {
     private _level1: Level1MT;
@@ -195,7 +198,14 @@ export class Timeline extends Struct({
                 .lessThan(this.startParticipation)
                 .and(this.startParticipation.lessThan(this.startFunding))
                 .and(this.startFunding.lessThan(this.startRequest))
-                .and(this.startRequest.lessThan(this.end)),
+                .and(this.startRequest.lessThan(this.end))
+                .and(
+                    this.end
+                        .sub(this.startRequest)
+                        .greaterThanOrEqual(
+                            new UInt64(DkgConstants.REQUEST_MIN_PERIOD)
+                        )
+                ),
             Bool(true),
             Bool(false)
         );

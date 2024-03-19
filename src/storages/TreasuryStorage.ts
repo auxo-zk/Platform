@@ -1,126 +1,126 @@
-import { Bool, Field, MerkleTree, MerkleWitness } from 'o1js';
-import { INSTANCE_LIMITS } from '../Constants.js';
+// import { Bool, Field, MerkleTree, MerkleWitness } from 'o1js';
+// import { INSTANCE_LIMITS } from '../Constants.js';
 
-export const LEVEL_1_COMBINED_TREE_HEIGHT =
-    Math.ceil(Math.log2(INSTANCE_LIMITS.PARTICIPATION_INDEX_TREE_SIZE)) + 1;
+// export const LEVEL_1_COMBINED_TREE_HEIGHT =
+//     Math.ceil(Math.log2(INSTANCE_LIMITS.PARTICIPATION_INDEX_TREE_SIZE)) + 1;
 
-export class Level1CMT extends MerkleTree {}
-export class Level1CWitness extends MerkleWitness(
-    LEVEL_1_COMBINED_TREE_HEIGHT
-) {}
+// export class Level1CMT extends MerkleTree {}
+// export class Level1CWitness extends MerkleWitness(
+//     LEVEL_1_COMBINED_TREE_HEIGHT
+// ) {}
 
-export const EMPTY_LEVEL_1_TREE = () =>
-    new Level1CMT(LEVEL_1_COMBINED_TREE_HEIGHT);
+// export const EMPTY_LEVEL_1_TREE = () =>
+//     new Level1CMT(LEVEL_1_COMBINED_TREE_HEIGHT);
 
-// Storage
-export abstract class TreasuryCStorage<RawLeaf> {
-    private _level1: Level1CMT;
-    private _leafs: {
-        [key: string]: { raw: RawLeaf | undefined; leaf: Field };
-    };
+// // Storage
+// export abstract class TreasuryCStorage<RawLeaf> {
+//     private _level1: Level1CMT;
+//     private _leafs: {
+//         [key: string]: { raw: RawLeaf | undefined; leaf: Field };
+//     };
 
-    constructor(
-        leafs?: {
-            level1Index: Field;
-            leaf: RawLeaf | Field;
-        }[]
-    ) {
-        this._level1 = EMPTY_LEVEL_1_TREE();
-        this._leafs = {};
-        if (leafs) {
-            for (let i = 0; i < leafs.length; i++) {
-                if (leafs[i].leaf instanceof Field) {
-                    this.updateLeaf(
-                        leafs[i].level1Index,
-                        leafs[i].leaf as Field
-                    );
-                } else {
-                    this.updateRawLeaf(
-                        leafs[i].level1Index,
-                        leafs[i].leaf as RawLeaf
-                    );
-                }
-            }
-        }
-    }
+//     constructor(
+//         leafs?: {
+//             level1Index: Field;
+//             leaf: RawLeaf | Field;
+//         }[]
+//     ) {
+//         this._level1 = EMPTY_LEVEL_1_TREE();
+//         this._leafs = {};
+//         if (leafs) {
+//             for (let i = 0; i < leafs.length; i++) {
+//                 if (leafs[i].leaf instanceof Field) {
+//                     this.updateLeaf(
+//                         leafs[i].level1Index,
+//                         leafs[i].leaf as Field
+//                     );
+//                 } else {
+//                     this.updateRawLeaf(
+//                         leafs[i].level1Index,
+//                         leafs[i].leaf as RawLeaf
+//                     );
+//                 }
+//             }
+//         }
+//     }
 
-    get root(): Field {
-        return this._level1.getRoot();
-    }
+//     get root(): Field {
+//         return this._level1.getRoot();
+//     }
 
-    get level1(): Level1CMT {
-        return this._level1;
-    }
+//     get level1(): Level1CMT {
+//         return this._level1;
+//     }
 
-    get leafs(): { [key: string]: { raw: RawLeaf | undefined; leaf: Field } } {
-        return this._leafs;
-    }
+//     get leafs(): { [key: string]: { raw: RawLeaf | undefined; leaf: Field } } {
+//         return this._leafs;
+//     }
 
-    abstract calculateLeaf(rawLeaf: RawLeaf): Field;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    abstract calculateLevel1Index(args: any): Field;
+//     abstract calculateLeaf(rawLeaf: RawLeaf): Field;
+//     // eslint-disable-next-line @typescript-eslint/no-explicit-any
+//     abstract calculateLevel1Index(args: any): Field;
 
-    getLevel1Witness(level1Index: Field): Level1CWitness {
-        return new Level1CWitness(
-            this._level1.getWitness(level1Index.toBigInt())
-        );
-    }
+//     getLevel1Witness(level1Index: Field): Level1CWitness {
+//         return new Level1CWitness(
+//             this._level1.getWitness(level1Index.toBigInt())
+//         );
+//     }
 
-    getWitness(level1Index: Field): Level1CWitness {
-        return this.getLevel1Witness(level1Index);
-    }
+//     getWitness(level1Index: Field): Level1CWitness {
+//         return this.getLevel1Witness(level1Index);
+//     }
 
-    updateLeaf(level1Index: Field, leaf: Field): void {
-        this._level1.setLeaf(level1Index.toBigInt(), leaf);
-        this._leafs[level1Index.toString()] = {
-            raw: undefined,
-            leaf: leaf,
-        };
-    }
+//     updateLeaf(level1Index: Field, leaf: Field): void {
+//         this._level1.setLeaf(level1Index.toBigInt(), leaf);
+//         this._leafs[level1Index.toString()] = {
+//             raw: undefined,
+//             leaf: leaf,
+//         };
+//     }
 
-    updateRawLeaf(level1Index: Field, rawLeaf: RawLeaf): void {
-        let leaf = this.calculateLeaf(rawLeaf);
-        this._level1.setLeaf(level1Index.toBigInt(), leaf);
-        this._leafs[level1Index.toString()] = {
-            raw: rawLeaf,
-            leaf: leaf,
-        };
-    }
-}
+//     updateRawLeaf(level1Index: Field, rawLeaf: RawLeaf): void {
+//         let leaf = this.calculateLeaf(rawLeaf);
+//         this._level1.setLeaf(level1Index.toBigInt(), leaf);
+//         this._leafs[level1Index.toString()] = {
+//             raw: rawLeaf,
+//             leaf: leaf,
+//         };
+//     }
+// }
 
-export type ClaimedLeaf = Bool;
+// export type ClaimedLeaf = Bool;
 
-export class ClaimedStorage extends TreasuryCStorage<ClaimedLeaf> {
-    static calculateLeaf(state: ClaimedLeaf): Field {
-        return state.toField();
-    }
+// export class ClaimedStorage extends TreasuryCStorage<ClaimedLeaf> {
+//     static calculateLeaf(state: ClaimedLeaf): Field {
+//         return state.toField();
+//     }
 
-    calculateLeaf(state: ClaimedLeaf): Field {
-        return ClaimedStorage.calculateLeaf(state);
-    }
+//     calculateLeaf(state: ClaimedLeaf): Field {
+//         return ClaimedStorage.calculateLeaf(state);
+//     }
 
-    static calculateLevel1Index({
-        campaignId,
-        projectId,
-    }: {
-        campaignId: Field;
-        projectId: Field;
-    }): Field {
-        return campaignId
-            .mul(Field(INSTANCE_LIMITS.PROJECT_TREE_SIZE))
-            .add(projectId);
-    }
+//     static calculateLevel1Index({
+//         campaignId,
+//         projectId,
+//     }: {
+//         campaignId: Field;
+//         projectId: Field;
+//     }): Field {
+//         return campaignId
+//             .mul(Field(INSTANCE_LIMITS.PROJECT_TREE_SIZE))
+//             .add(projectId);
+//     }
 
-    calculateLevel1Index({
-        campaignId,
-        projectId,
-    }: {
-        campaignId: Field;
-        projectId: Field;
-    }): Field {
-        return ClaimedStorage.calculateLevel1Index({
-            campaignId,
-            projectId,
-        });
-    }
-}
+//     calculateLevel1Index({
+//         campaignId,
+//         projectId,
+//     }: {
+//         campaignId: Field;
+//         projectId: Field;
+//     }): Field {
+//         return ClaimedStorage.calculateLevel1Index({
+//             campaignId,
+//             projectId,
+//         });
+//     }
+// }
