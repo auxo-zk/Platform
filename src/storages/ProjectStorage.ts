@@ -234,15 +234,15 @@ export class MemberStorage extends ProjectStorage<MemberLeaf> {
     }
 }
 
-export type PayeeAccountLeaf = PublicKey;
+export type TreasuryAddressLeaf = PublicKey;
 
-export class PayeeAccountStorage extends ProjectStorage<PayeeAccountLeaf> {
-    static calculateLeaf(address: PayeeAccountLeaf): Field {
+export class TreasuryAddressStorage extends ProjectStorage<TreasuryAddressLeaf> {
+    static calculateLeaf(address: TreasuryAddressLeaf): Field {
         return Poseidon.hash(address.toFields());
     }
 
-    calculateLeaf(address: PayeeAccountLeaf): Field {
-        return PayeeAccountStorage.calculateLeaf(address);
+    calculateLeaf(address: TreasuryAddressLeaf): Field {
+        return TreasuryAddressStorage.calculateLeaf(address);
     }
 
     static calculateLevel1Index(projectId: Field): Field {
@@ -250,7 +250,7 @@ export class PayeeAccountStorage extends ProjectStorage<PayeeAccountLeaf> {
     }
 
     calculateLevel1Index(projectId: Field): Field {
-        return PayeeAccountStorage.calculateLevel1Index(projectId);
+        return TreasuryAddressStorage.calculateLevel1Index(projectId);
     }
 
     getWitness(level1Index: Field): Level1Witness {
@@ -263,7 +263,7 @@ export class PayeeAccountStorage extends ProjectStorage<PayeeAccountLeaf> {
 
     updateRawLeaf(
         { level1Index }: { level1Index: Field },
-        rawLeaf: PayeeAccountLeaf
+        rawLeaf: TreasuryAddressLeaf
     ): void {
         super.updateRawLeaf({ level1Index }, rawLeaf);
     }
@@ -303,7 +303,6 @@ export class IpfsHashStorage extends ProjectStorage<IpfsHashLeaf> {
         super.updateRawLeaf({ level1Index }, rawLeaf);
     }
 }
-
 
 export class MemberArray extends PublicKeyDynamicArray(
     INSTANCE_LIMITS.PROJECT_MEMBER_TREE_SIZE

@@ -22,7 +22,7 @@ import {
     ProjectActionEnum,
     MemberStorage,
     IpfsHashStorage,
-    PayeeAccountStorage,
+    TreasuryAddressStorage,
     EMPTY_LEVEL_2_PROJECT_MEMBER_TREE,
     DefaultRootForProjectTree,
 } from '../storages/ProjectStorage.js';
@@ -40,7 +40,7 @@ class ProjectAction extends Struct({
     projectId: Field,
     members: MemberArray,
     ipfsHash: IpfsHash,
-    payeeAccount: PublicKey,
+    treasuryAddress: PublicKey,
 }) {
     static fromFields(fields: Field[]): ProjectAction {
         return super.fromFields(fields) as ProjectAction;
@@ -51,12 +51,12 @@ class RollupProjectOutput extends Struct({
     initialProjectId: Field,
     initialMemberRoot: Field,
     initialIpfsHashRoot: Field,
-    initialPayeeAccountRoot: Field,
+    initialTreasuryAddressRoot: Field,
     initialActionState: Field,
     nextProjectId: Field,
     nextMemberRoot: Field,
     nextIpfsHashRoot: Field,
-    nextPayeeAccount: Field,
+    nextTreasuryAddressRoot: Field,
     nextActionState: Field,
 }) {}
 
@@ -70,19 +70,19 @@ const RollupProject = ZkProgram({
                 initialProjectId: Field,
                 initialMemberRoot: Field,
                 initialIpfsHashRoot: Field,
-                initialPayeeAccountRoot: Field,
+                initialTreasuryAddressRoot: Field,
                 initialActionState: Field
             ): RollupProjectOutput {
                 return new RollupProjectOutput({
                     initialProjectId: initialProjectId,
                     initialMemberRoot: initialMemberRoot,
                     initialIpfsHashRoot: initialIpfsHashRoot,
-                    initialPayeeAccountRoot: initialPayeeAccountRoot,
+                    initialTreasuryAddressRoot: initialTreasuryAddressRoot,
                     initialActionState: initialActionState,
                     nextProjectId: initialProjectId,
                     nextMemberRoot: initialMemberRoot,
                     nextIpfsHashRoot: initialIpfsHashRoot,
-                    nextPayeeAccount: initialPayeeAccountRoot,
+                    nextTreasuryAddressRoot: initialTreasuryAddressRoot,
                     nextActionState: initialActionState,
                 });
             },
@@ -100,7 +100,7 @@ const RollupProject = ZkProgram({
                 projectAction: ProjectAction,
                 memberWitness: Level1Witness,
                 ipfsHashWitness: Level1Witness,
-                payeeAccountWitness: Level1Witness
+                treasuryAddressWitness: Level1Witness
             ) {
                 earlierProof.verify();
                 projectAction.actionType.assertEquals(
@@ -119,12 +119,14 @@ const RollupProject = ZkProgram({
                 ipfsHashWitness
                     .calculateRoot(Field(0))
                     .assertEquals(earlierProof.publicOutput.nextIpfsHashRoot);
-                payeeAccountWitness
+                treasuryAddressWitness
                     .calculateIndex()
                     .assertEquals(earlierProof.publicOutput.nextProjectId);
-                payeeAccountWitness
+                treasuryAddressWitness
                     .calculateRoot(Field(0))
-                    .assertEquals(earlierProof.publicOutput.nextPayeeAccount);
+                    .assertEquals(
+                        earlierProof.publicOutput.nextTreasuryAddressRoot
+                    );
 
                 const memberTree = EMPTY_LEVEL_2_PROJECT_MEMBER_TREE();
                 for (
@@ -147,11 +149,12 @@ const RollupProject = ZkProgram({
                 const nextIpfsHashRoot = ipfsHashWitness.calculateRoot(
                     IpfsHashStorage.calculateLeaf(projectAction.ipfsHash)
                 );
-                const nextPayeeAccountRoot = payeeAccountWitness.calculateRoot(
-                    PayeeAccountStorage.calculateLeaf(
-                        projectAction.payeeAccount
-                    )
-                );
+                const nextTreasuryAddressRoot =
+                    treasuryAddressWitness.calculateRoot(
+                        TreasuryAddressStorage.calculateLeaf(
+                            projectAction.treasuryAddress
+                        )
+                    );
                 return new RollupProjectOutput({
                     initialProjectId:
                         earlierProof.publicOutput.initialProjectId,
@@ -159,15 +162,15 @@ const RollupProject = ZkProgram({
                         earlierProof.publicOutput.initialMemberRoot,
                     initialIpfsHashRoot:
                         earlierProof.publicOutput.initialIpfsHashRoot,
-                    initialPayeeAccountRoot:
-                        earlierProof.publicOutput.initialPayeeAccountRoot,
+                    initialTreasuryAddressRoot:
+                        earlierProof.publicOutput.initialTreasuryAddressRoot,
                     initialActionState:
                         earlierProof.publicOutput.initialActionState,
                     nextProjectId:
                         earlierProof.publicOutput.nextProjectId.add(1),
                     nextMemberRoot: nextMemberRoot,
                     nextIpfsHashRoot: nextIpfsHashRoot,
-                    nextPayeeAccount: nextPayeeAccountRoot,
+                    nextTreasuryAddressRoot: nextTreasuryAddressRoot,
                     nextActionState: Utils.updateActionState(
                         earlierProof.publicOutput.nextActionState,
                         [ProjectAction.toFields(projectAction)]
@@ -211,15 +214,15 @@ const RollupProject = ZkProgram({
                         earlierProof.publicOutput.initialMemberRoot,
                     initialIpfsHashRoot:
                         earlierProof.publicOutput.initialIpfsHashRoot,
-                    initialPayeeAccountRoot:
-                        earlierProof.publicOutput.initialPayeeAccountRoot,
+                    initialTreasuryAddressRoot:
+                        earlierProof.publicOutput.initialTreasuryAddressRoot,
                     initialActionState:
                         earlierProof.publicOutput.initialActionState,
                     nextProjectId: earlierProof.publicOutput.nextProjectId,
                     nextMemberRoot: earlierProof.publicOutput.nextMemberRoot,
                     nextIpfsHashRoot: nextIpfsHashRoot,
-                    nextPayeeAccount:
-                        earlierProof.publicOutput.nextPayeeAccount,
+                    nextTreasuryAddressRoot:
+                        earlierProof.publicOutput.nextTreasuryAddressRoot,
                     nextActionState: Utils.updateActionState(
                         earlierProof.publicOutput.nextActionState,
                         [ProjectAction.toFields(projectAction)]
@@ -236,7 +239,7 @@ class ProjectContract extends SmartContract {
     @state(Field) nextProjectId = State<Field>();
     @state(Field) memberRoot = State<Field>();
     @state(Field) ipfsHashRoot = State<Field>();
-    @state(Field) payeeAccountRoot = State<Field>();
+    @state(Field) treasuryAddressRoot = State<Field>();
     @state(Field) actionState = State<Field>();
 
     reducer = Reducer({ actionType: ProjectAction });
@@ -245,14 +248,14 @@ class ProjectContract extends SmartContract {
         super.init();
         this.memberRoot.set(DefaultRootForProjectTree);
         this.ipfsHashRoot.set(DefaultRootForProjectTree);
-        this.payeeAccountRoot.set(DefaultRootForProjectTree);
+        this.treasuryAddressRoot.set(DefaultRootForProjectTree);
         this.actionState.set(Reducer.initialActionState);
     }
 
     @method createProject(
         members: MemberArray,
         ipfsHash: IpfsHash,
-        payeeAccount: PublicKey
+        treasuryAddress: PublicKey
     ) {
         this.reducer.dispatch(
             new ProjectAction({
@@ -260,7 +263,7 @@ class ProjectContract extends SmartContract {
                 projectId: Field(-1),
                 members: members,
                 ipfsHash: ipfsHash,
-                payeeAccount: payeeAccount,
+                treasuryAddress: treasuryAddress,
             })
         );
     }
@@ -282,7 +285,7 @@ class ProjectContract extends SmartContract {
                 projectId: projectId,
                 ipfsHash: ipfsHash,
                 members: MemberArray.empty(), // no matter
-                payeeAccount: PublicKey.empty(), // no matter
+                treasuryAddress: PublicKey.empty(), // no matter
             })
         );
     }
@@ -291,7 +294,8 @@ class ProjectContract extends SmartContract {
         const nextProjectId = this.nextProjectId.getAndRequireEquals();
         const memberRoot = this.memberRoot.getAndRequireEquals();
         const ipfsHashRoot = this.ipfsHashRoot.getAndRequireEquals();
-        const payeeAccountRoot = this.payeeAccountRoot.getAndRequireEquals();
+        const treasuryAddressRoot =
+            this.treasuryAddressRoot.getAndRequireEquals();
         const actionState = this.actionState.getAndRequireEquals();
 
         nextProjectId.assertEquals(
@@ -303,8 +307,8 @@ class ProjectContract extends SmartContract {
         ipfsHashRoot.assertEquals(
             rollupProjectProof.publicOutput.initialIpfsHashRoot
         );
-        payeeAccountRoot.assertEquals(
-            rollupProjectProof.publicOutput.initialPayeeAccountRoot
+        treasuryAddressRoot.assertEquals(
+            rollupProjectProof.publicOutput.initialTreasuryAddressRoot
         );
         actionState.assertEquals(
             rollupProjectProof.publicOutput.initialActionState
@@ -315,8 +319,8 @@ class ProjectContract extends SmartContract {
         this.nextProjectId.set(rollupProjectProof.publicOutput.nextProjectId);
         this.memberRoot.set(rollupProjectProof.publicOutput.nextMemberRoot);
         this.ipfsHashRoot.set(rollupProjectProof.publicOutput.nextIpfsHashRoot);
-        this.payeeAccountRoot.set(
-            rollupProjectProof.publicOutput.nextPayeeAccount
+        this.treasuryAddressRoot.set(
+            rollupProjectProof.publicOutput.nextTreasuryAddressRoot
         );
         this.actionState.set(rollupProjectProof.publicOutput.nextActionState);
     }
