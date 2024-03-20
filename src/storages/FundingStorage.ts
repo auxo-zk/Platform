@@ -277,3 +277,14 @@ export function getCommitmentHash(
             .concat(amount.toFields())
     );
 }
+
+export enum FundingActionEnum {
+    FUND,
+    REFUND,
+}
+
+export enum FundingStateEnum {
+    NOT_EXISTED,
+    FUNDED,
+    REFUNDED,
+}
