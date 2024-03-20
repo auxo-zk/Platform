@@ -7,6 +7,7 @@ export const INSTANCE_LIMITS = {
     CAMPAIGN_TREE_SIZE: 2 ** 5,
     PARTICIPATION_INDEX_TREE_SIZE: 2 ** 5 * 2 ** 5,
     PARTICIPATION_SLOT_TREE_SIZE: Constants.REQUEST_MAX_SIZE,
+    CLAIMED_INDEX_TREE_SIZE: 2 ** 5 * Constants.REQUEST_MAX_SIZE,
     COMMITMENT_HASH_TREE_SIZE: 2 ** 8,
 };
 
@@ -18,13 +19,14 @@ export enum ZkAppEnum {
     ROUND1,
     ROUND2,
     RESPONSE,
+    REQUESTER,
     REQUEST,
-    PROJECT,
     CAMPAIGN,
+    PROJECT,
     PARTICIPATION,
     FUNDING,
+    TREASURY_MANAGER,
     TREASURY,
-    REQUESTER,
 }
 
 export enum ErrorEnum {
