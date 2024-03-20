@@ -268,7 +268,7 @@ class ParticipationContract extends SmartContract {
         );
         projectCounter
             .add(additionalCounter)
-            .assertLessThanOrEqual(
+            .assertLessThan(
                 Field(INSTANCE_LIMITS.PARTICIPATION_SLOT_TREE_SIZE)
             );
 
@@ -369,6 +369,7 @@ class ParticipationContract extends SmartContract {
         projectIndex: Field,
         projectIndexWitness: Level1CWitness
     ) {
+        projectIndex.assertGreaterThanOrEqual(1);
         projectIndexWitness.calculateIndex().assertEquals(
             ProjectIndexStorage.calculateLevel1Index({
                 campaignId,
