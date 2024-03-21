@@ -13,6 +13,8 @@ import {
     Group,
 } from 'o1js';
 import { ProjectContract, RollupProject } from '../contracts/Project';
+import * as projectMockData from './mock/projects.json';
+import { DefaultRootForProjectTree } from '../storages/ProjectStorage';
 
 let proofsEnabled = false;
 
@@ -53,7 +55,20 @@ describe('Project', () => {
         await tx.sign([deployerKey, projectContractPrivateKey]).send();
     }
 
-    it('', async () => {
+    it('Default root should be correct', async () => {
         await localDeploy();
+        expect(projectContract.nextProjectId.get()).toEqual(Field(0));
+        expect(projectContract.memberRoot.get()).toEqual(
+            DefaultRootForProjectTree
+        );
+        expect(projectContract.ipfsHashRoot.get()).toEqual(
+            DefaultRootForProjectTree
+        );
+        expect(projectContract.treasuryAddressRoot.get()).toEqual(
+            DefaultRootForProjectTree
+        );
+        expect(projectContract.actionState.get()).toEqual(
+            Reducer.initialActionState
+        );
     });
 });
