@@ -246,6 +246,7 @@ class ProjectContract extends SmartContract {
 
     init() {
         super.init();
+        this.nextProjectId.set(Field(0));
         this.memberRoot.set(DefaultRootForProjectTree);
         this.ipfsHashRoot.set(DefaultRootForProjectTree);
         this.treasuryAddressRoot.set(DefaultRootForProjectTree);
