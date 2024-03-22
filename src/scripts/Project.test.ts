@@ -11,6 +11,7 @@ import {
     Bool,
     UInt64,
     Group,
+    Cache,
 } from 'o1js';
 import { ProjectContract, RollupProject } from '../contracts/Project';
 import { ProjectMockData } from './mock/ProjectMockData';
@@ -24,6 +25,8 @@ import { fetchActions } from 'o1js/dist/node/lib/mina';
 let proofsEnabled = true;
 
 describe('Project', () => {
+    const cache = Cache.FileSystem('./caches');
+
     let deployerAccount: PublicKey,
         deployerKey: PrivateKey,
         senderAccount: PublicKey,
@@ -33,9 +36,9 @@ describe('Project', () => {
         projectContract: ProjectContract;
 
     beforeAll(async () => {
-        await RollupProject.compile();
+        await RollupProject.compile({ cache });
         if (proofsEnabled) {
-            await ProjectContract.compile();
+            await ProjectContract.compile({ cache });
         }
     });
 

@@ -6,6 +6,7 @@ import {
     AccountUpdate,
     Provable,
     UInt32,
+    Cache,
 } from 'o1js';
 import {
     ParticipationContract,
@@ -17,6 +18,8 @@ import { CampaignContract, RollupCampaign } from '../contracts/Campaign';
 let proofsEnabled = true;
 
 describe('Test compile contract', () => {
+    const cache = Cache.FileSystem('./caches');
+
     let deployerAccount: PublicKey,
         deployerKey: PrivateKey,
         senderAccount: PublicKey,

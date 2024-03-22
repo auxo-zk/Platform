@@ -1,5 +1,5 @@
 import { Field, MerkleTree, MerkleWitness, Poseidon, UInt64 } from 'o1js';
-import { INSTANCE_LIMITS } from '../constants.js';
+import { INSTANCE_LIMITS } from '../Constants.js';
 import { GroupDynamicArray, ScalarDynamicArray } from '@auxo-dev/auxo-libs';
 
 export const LEVEL_1_CAMPAIGN_TREE_HEIGHT =

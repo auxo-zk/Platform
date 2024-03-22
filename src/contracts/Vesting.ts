@@ -29,7 +29,7 @@ import {
     Storage,
 } from '@auxo-dev/dkg';
 
-import { INSTANCE_LIMITS, MINIMAL_MINA_UNIT, ZkAppEnum } from '../constants.js';
+import { INSTANCE_LIMITS, MINIMAL_MINA_UNIT, ZkAppEnum } from '../Constants.js';
 
 import {
     ZkAppRef,
