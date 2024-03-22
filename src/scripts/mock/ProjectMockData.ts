@@ -4,7 +4,6 @@ export const ProjectMockData = [
         members: [
             'B62qn3eAPeY4rpxyzvKYjUNsASuTWYzaMm7adPD8Py1hq6WdRdd2RvG',
             'B62qpdyBP9fgxF8Z6qCb3yWYcs1vQJdnidQNGLazbvcvbD5tQu5n7ZW',
-            'B62qkdFLPLyGTerG36r4nHM6ve9vbeas4ELV4Yp1fxk4invkWB6BnPk',
         ],
         treasuryAddress:
             'B62qqipHhZh99b2BWpToutBMQq6VoLcaRS7t4e6ESazQNkye6t79NKa',
