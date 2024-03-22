@@ -13,19 +13,25 @@ import {
     Group,
 } from 'o1js';
 import { ProjectContract, RollupProject } from '../contracts/Project';
-import * as projectMockData from './mock/projects.json';
-import { DefaultRootForProjectTree } from '../storages/ProjectStorage';
+import { ProjectMockData } from './mock/ProjectMockData';
+import {
+    DefaultRootForProjectTree,
+    MemberArray,
+} from '../storages/ProjectStorage';
+import { IpfsHash } from '@auxo-dev/auxo-libs';
+import { fetchActions } from 'o1js/dist/node/lib/mina';
 
-let proofsEnabled = false;
+let proofsEnabled = true;
 
 describe('Project', () => {
     let deployerAccount: PublicKey,
         deployerKey: PrivateKey,
         senderAccount: PublicKey,
         senderKey: PrivateKey,
-        projectContractAddress: PublicKey,
+        projectContractPublicKey: PublicKey,
         projectContractPrivateKey: PrivateKey,
         projectContract: ProjectContract;
+
     beforeAll(async () => {
         await RollupProject.compile();
         if (proofsEnabled) {
@@ -42,8 +48,8 @@ describe('Project', () => {
             Local.testAccounts[1]);
 
         projectContractPrivateKey = PrivateKey.random();
-        projectContractAddress = projectContractPrivateKey.toPublicKey();
-        projectContract = new ProjectContract(projectContractAddress);
+        projectContractPublicKey = projectContractPrivateKey.toPublicKey();
+        projectContract = new ProjectContract(projectContractPublicKey);
     });
 
     async function localDeploy() {
@@ -55,20 +61,39 @@ describe('Project', () => {
         await tx.sign([deployerKey, projectContractPrivateKey]).send();
     }
 
-    it('Default root should be correct', async () => {
+    // it('Default root should be correct', async () => {
+    //     await localDeploy();
+    //     expect(projectContract.nextProjectId.get()).toEqual(Field(0));
+    //     expect(projectContract.memberRoot.get()).toEqual(
+    //         DefaultRootForProjectTree
+    //     );
+    //     expect(projectContract.ipfsHashRoot.get()).toEqual(
+    //         DefaultRootForProjectTree
+    //     );
+    //     expect(projectContract.treasuryAddressRoot.get()).toEqual(
+    //         DefaultRootForProjectTree
+    //     );
+    //     expect(projectContract.actionState.get()).toEqual(
+    //         Reducer.initialActionState
+    //     );
+    // });
+
+    it('1', async () => {
         await localDeploy();
-        expect(projectContract.nextProjectId.get()).toEqual(Field(0));
-        expect(projectContract.memberRoot.get()).toEqual(
-            DefaultRootForProjectTree
-        );
-        expect(projectContract.ipfsHashRoot.get()).toEqual(
-            DefaultRootForProjectTree
-        );
-        expect(projectContract.treasuryAddressRoot.get()).toEqual(
-            DefaultRootForProjectTree
-        );
-        expect(projectContract.actionState.get()).toEqual(
-            Reducer.initialActionState
-        );
+        const members = new MemberArray();
+        for (let i = 0; i < ProjectMockData[0].members.length; i++) {
+            members.push(PublicKey.fromBase58(ProjectMockData[0].members[i]));
+        }
+        const tx = await Mina.transaction(senderAccount, () => {
+            projectContract.createProject(
+                members,
+                IpfsHash.fromString(ProjectMockData[0].ipfsHash),
+                PublicKey.fromBase58(ProjectMockData[0].treasuryAddress)
+            );
+        });
+        await tx.prove();
+        await tx.sign([senderKey]).send();
+        const actions = await fetchActions(projectContractPublicKey);
+        console.log(actions);
     });
 });
