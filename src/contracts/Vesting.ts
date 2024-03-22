@@ -29,11 +29,7 @@
 //     Storage,
 // } from '@auxo-dev/dkg';
 
-<<<<<<< Updated upstream
-import { INSTANCE_LIMITS, MINIMAL_MINA_UNIT, ZkAppEnum } from '../Constants.js';
-=======
 // import { INSTANCE_LIMITS, MINIMAL_MINA_UNIT, ZkAppEnum } from '../constants.js';
->>>>>>> Stashed changes
 
 // import {
 //     ZkAppRef,

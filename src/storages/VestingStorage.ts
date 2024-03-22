@@ -1,12 +1,6 @@
-<<<<<<< Updated upstream
-import { Field, MerkleTree, MerkleWitness, Poseidon, UInt64 } from 'o1js';
-import { INSTANCE_LIMITS } from '../Constants.js';
-import { GroupDynamicArray, ScalarDynamicArray } from '@auxo-dev/auxo-libs';
-=======
 // import { Field, MerkleTree, MerkleWitness, Poseidon, UInt64 } from 'o1js';
 // import { INSTANCE_LIMITS } from '../constants.js';
 // import { GroupDynamicArray, ScalarDynamicArray } from '@auxo-dev/auxo-libs';
->>>>>>> Stashed changes
 
 // export const LEVEL_1_CAMPAIGN_TREE_HEIGHT =
 //     Math.ceil(Math.log2(INSTANCE_LIMITS.PARTICIPATION_SLOT_TREE_SIZE)) + 1;
