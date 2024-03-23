@@ -211,40 +211,40 @@ class CampaignContract extends SmartContract {
         timeline: Timeline,
         ipfsHash: IpfsHash,
         committeeId: Field,
-        keyId: Field,
-        dkgContractRef: ZkAppRef,
-        keyStatusWitness: Storage.DKGStorage.Level1Witness,
-        requesterContractRef: ZkAppRef
+        keyId: Field
+        // dkgContractRef: ZkAppRef,
+        // keyStatusWitness: Storage.DKGStorage.Level1Witness,
+        // requesterContractRef: ZkAppRef
     ) {
         timeline.isValid().assertEquals(Bool(true));
         timeline.start.assertGreaterThan(
             this.network.timestamp.getAndRequireEquals()
         );
         // Should check the valid of key right here
-        verifyZkApp(
-            CampaignContract.name,
-            dkgContractRef,
-            this.zkAppRoot.getAndRequireEquals(),
-            Field(ZkAppEnum.DKG)
-        );
-        const dkgContract = new DkgContract(dkgContractRef.address);
-        dkgContract.verifyKeyStatus(
-            new KeyStatusInput({
-                committeeId: committeeId,
-                keyId: keyId,
-                status: Field(KeyStatus.ACTIVE),
-                witness: keyStatusWitness,
-            })
-        );
-        verifyZkApp(
-            CampaignContract.name,
-            requesterContractRef,
-            this.zkAppRoot.getAndRequireEquals(),
-            Field(ZkAppEnum.REQUESTER)
-        );
-        const requesterContract = new RequesterContract(
-            requesterContractRef.address
-        );
+        // verifyZkApp(
+        //     CampaignContract.name,
+        //     dkgContractRef,
+        //     this.zkAppRoot.getAndRequireEquals(),
+        //     Field(ZkAppEnum.DKG)
+        // );
+        // const dkgContract = new DkgContract(dkgContractRef.address);
+        // dkgContract.verifyKeyStatus(
+        //     new KeyStatusInput({
+        //         committeeId: committeeId,
+        //         keyId: keyId,
+        //         status: Field(KeyStatus.ACTIVE),
+        //         witness: keyStatusWitness,
+        //     })
+        // );
+        // verifyZkApp(
+        //     CampaignContract.name,
+        //     requesterContractRef,
+        //     this.zkAppRoot.getAndRequireEquals(),
+        //     Field(ZkAppEnum.REQUESTER)
+        // );
+        // const requesterContract = new RequesterContract(
+        //     requesterContractRef.address
+        // );
         // requesterContract.createTask(
         //     Storage.DKGStorage.calculateKeyIndex(committeeId, keyId)
         // );
@@ -317,13 +317,9 @@ class CampaignContract extends SmartContract {
                 currentTimestamp.lessThan(timeline.startFunding),
                 Field(CampaignTimelineStateEnum.PARTICIPATION),
                 Provable.if(
-                    currentTimestamp.lessThan(timeline.startRequest),
+                    currentTimestamp.lessThan(timeline.startRequesting),
                     Field(CampaignTimelineStateEnum.FUNDING),
-                    Provable.if(
-                        currentTimestamp.lessThan(timeline.end),
-                        Field(CampaignTimelineStateEnum.REQUESTING),
-                        Field(CampaignTimelineStateEnum.ENDED)
-                    )
+                    Field(CampaignTimelineStateEnum.REQUESTING)
                 )
             )
         );
