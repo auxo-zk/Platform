@@ -112,7 +112,7 @@ const RollupProject = ZkProgram({
                     .assertEquals(earlierProof.publicOutput.nextProjectId);
                 memberWitness
                     .calculateRoot(Field(0))
-                    .assertEquals(earlierProof.publicOutput.nextProjectId);
+                    .assertEquals(earlierProof.publicOutput.nextMemberRoot);
                 ipfsHashWitness
                     .calculateIndex()
                     .assertEquals(earlierProof.publicOutput.nextProjectId);
@@ -178,7 +178,7 @@ const RollupProject = ZkProgram({
                 });
             },
         },
-        updateProject: {
+        updateProjectStep: {
             privateInputs: [
                 SelfProof<Void, RollupProjectOutput>,
                 ProjectAction,
