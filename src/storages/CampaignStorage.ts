@@ -193,22 +193,18 @@ export class Timeline extends Struct({
     end: UInt64,
 }) {
     isValid(): Bool {
-        return Provable.if(
-            this.start
-                .lessThan(this.startParticipation)
-                .and(this.startParticipation.lessThan(this.startFunding))
-                .and(this.startFunding.lessThan(this.startRequest))
-                .and(this.startRequest.lessThan(this.end))
-                .and(
-                    this.end
-                        .sub(this.startRequest)
-                        .greaterThanOrEqual(
-                            new UInt64(DkgConstants.REQUEST_MIN_PERIOD)
-                        )
-                ),
-            Bool(true),
-            Bool(false)
-        );
+        return this.start
+            .lessThan(this.startParticipation)
+            .and(this.startParticipation.lessThan(this.startFunding))
+            .and(this.startFunding.lessThan(this.startRequest))
+            .and(this.startRequest.lessThan(this.end))
+            .and(
+                this.end
+                    .sub(this.startRequest)
+                    .greaterThanOrEqual(
+                        new UInt64(DkgConstants.REQUEST_MIN_PERIOD)
+                    )
+            );
     }
 
     hash(): Field {
