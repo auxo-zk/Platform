@@ -15,14 +15,22 @@ import {
 } from 'o1js';
 import { ProjectContract, RollupProject } from '../contracts/Project';
 import { CampaignContract, RollupCampaign } from '../contracts/Campaign';
-import { DefaultRootForCampaignTree } from '../storages/CampaignStorage';
+import {
+    DefaultRootForCampaignTree,
+    IpfsHashStorage,
+    KeyStorage,
+    Timeline,
+    TimelineStorage,
+} from '../storages/CampaignStorage';
 import { ProjectMockData } from './mock/ProjectMockData';
 import {
     DefaultRootForProjectTree,
     MemberArray,
 } from '../storages/ProjectStorage';
 import { IpfsHash } from '@auxo-dev/auxo-libs';
-import { fetchActions } from 'o1js/dist/node/lib/mina';
+import { fetchActions, LocalBlockchain } from 'o1js/dist/node/lib/mina';
+import { CampaignMockData } from './CampaignMockData';
+import { Action } from './interfaces/action.interface';
 
 let proofsEnabled = true;
 
@@ -42,6 +50,7 @@ describe('Campaign', () => {
         if (proofsEnabled) {
             await CampaignContract.compile({ cache });
         }
+
         const Local = Mina.LocalBlockchain({ proofsEnabled });
         Mina.setActiveInstance(Local);
         ({ privateKey: deployerKey, publicKey: deployerAccount } =
@@ -52,8 +61,7 @@ describe('Campaign', () => {
         campaignContractPrivateKey = PrivateKey.random();
         campaignContractPublicKey = campaignContractPrivateKey.toPublicKey();
         campaignContract = new CampaignContract(campaignContractPublicKey);
-
-        localDeploy();
+        await localDeploy();
     });
 
     async function localDeploy() {
@@ -81,22 +89,44 @@ describe('Campaign', () => {
         );
     });
 
-    // it('1', async () => {
-    //     await localDeploy();
-    //     const members = new MemberArray();
-    //     for (let i = 0; i < ProjectMockData[0].members.length; i++) {
-    //         members.push(PublicKey.fromBase58(ProjectMockData[0].members[i]));
-    //     }
-    //     const tx = await Mina.transaction(senderAccount, () => {
-    //         campaignContract.createCampaign(
-    //             members,
-    //             IpfsHash.fromString(ProjectMockData[0].ipfsHash),
-    //             PublicKey.fromBase58(ProjectMockData[0].treasuryAddress)
-    //         );
-    //     });
-    //     await tx.prove();
-    //     await tx.sign([senderKey]).send();
-    //     const actions = await fetchActions(campaignContractPublicKey);
-    //     console.log(actions);
-    // });
+    it('Test get campaign timeline state', async () => {
+        const start =
+            Number(Mina.getNetworkConstants().genesisTimestamp.toBigInt()) +
+            30000;
+        const startParticipation =
+            start + CampaignMockData[0].timelinePeriod.preparation;
+        const startFunding =
+            startParticipation +
+            CampaignMockData[0].timelinePeriod.participation;
+        const startRequesting =
+            startFunding + CampaignMockData[0].timelinePeriod.funding;
+        const timeline = new Timeline({
+            start: new UInt64(start),
+            startParticipation: new UInt64(startParticipation),
+            startFunding: new UInt64(startFunding),
+            startRequesting: new UInt64(startRequesting),
+        });
+
+        let nextCampaignId = Field(0);
+        const timelineTree = new TimelineStorage();
+        const ipfsHashTree = new IpfsHashStorage();
+        const keyTree = new KeyStorage();
+
+        const tx = await Mina.transaction(senderAccount, () => {
+            campaignContract.createCampaign(
+                timeline,
+                IpfsHash.fromString(CampaignMockData[0].ipfsHash),
+                Field(CampaignMockData[0].committeeId),
+                Field(CampaignMockData[0].keyId)
+            );
+        });
+        await tx.prove();
+        await tx.sign([senderKey]).send();
+        const actions: Action[] = (await fetchActions(
+            campaignContractPublicKey
+        )) as Action[];
+        expect(actions.length).toEqual(1);
+
+        // RollupCampaign.firstStep(nextCampaignId);
+    });
 });
