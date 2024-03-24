@@ -99,7 +99,7 @@ const RollupCampaign = ZkProgram({
                 });
             },
         },
-        nextStep: {
+        createCampaignStep: {
             privateInputs: [
                 SelfProof<Void, RollupCampaignOutput>,
                 CampaignAction,
@@ -155,7 +155,7 @@ const RollupCampaign = ZkProgram({
                 );
                 const nextKeyRoot = keyWitness.calculateRoot(
                     KeyStorage.calculateLeaf({
-                        committeeId: campaignAction.campaignId,
+                        committeeId: campaignAction.committeeId,
                         keyId: campaignAction.keyId,
                     })
                 );
@@ -216,10 +216,9 @@ class CampaignContract extends SmartContract {
         // keyStatusWitness: Storage.DKGStorage.Level1Witness,
         // requesterContractRef: ZkAppRef
     ) {
+        const currentTimestamp = this.network.timestamp.getAndRequireEquals();
         timeline.isValid().assertEquals(Bool(true));
-        timeline.start.assertGreaterThan(
-            this.network.timestamp.getAndRequireEquals()
-        );
+        timeline.start.assertGreaterThan(currentTimestamp);
         // Should check the valid of key right here
         // verifyZkApp(
         //     CampaignContract.name,
