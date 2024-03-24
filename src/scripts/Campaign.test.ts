@@ -14,8 +14,13 @@ import {
     Cache,
 } from 'o1js';
 import { ProjectContract, RollupProject } from '../contracts/Project';
-import { CampaignContract, RollupCampaign } from '../contracts/Campaign';
 import {
+    CampaignAction,
+    CampaignContract,
+    RollupCampaign,
+} from '../contracts/Campaign';
+import {
+    CampaignTimelineStateEnum,
     DefaultRootForCampaignTree,
     IpfsHashStorage,
     KeyStorage,
@@ -31,6 +36,7 @@ import { IpfsHash } from '@auxo-dev/auxo-libs';
 import { fetchActions, LocalBlockchain } from 'o1js/dist/node/lib/mina';
 import { CampaignMockData } from './CampaignMockData';
 import { Action } from './interfaces/action.interface';
+import { Utilities } from './utils';
 
 let proofsEnabled = true;
 
@@ -44,19 +50,19 @@ describe('Campaign', () => {
         campaignContractPublicKey: PublicKey,
         campaignContractPrivateKey: PrivateKey,
         campaignContract: CampaignContract;
+    const Local = Mina.LocalBlockchain({ proofsEnabled });
 
     beforeAll(async () => {
-        await RollupCampaign.compile({ cache });
-        if (proofsEnabled) {
-            await CampaignContract.compile({ cache });
-        }
-
-        const Local = Mina.LocalBlockchain({ proofsEnabled });
         Mina.setActiveInstance(Local);
         ({ privateKey: deployerKey, publicKey: deployerAccount } =
             Local.testAccounts[0]);
         ({ privateKey: senderKey, publicKey: senderAccount } =
             Local.testAccounts[1]);
+
+        await RollupCampaign.compile({ cache });
+        if (proofsEnabled) {
+            await CampaignContract.compile({ cache });
+        }
 
         campaignContractPrivateKey = PrivateKey.random();
         campaignContractPublicKey = campaignContractPrivateKey.toPublicKey();
@@ -92,7 +98,7 @@ describe('Campaign', () => {
     it('Test get campaign timeline state', async () => {
         const start =
             Number(Mina.getNetworkConstants().genesisTimestamp.toBigInt()) +
-            30000;
+            1000;
         const startParticipation =
             start + CampaignMockData[0].timelinePeriod.preparation;
         const startFunding =
@@ -112,7 +118,7 @@ describe('Campaign', () => {
         const ipfsHashTree = new IpfsHashStorage();
         const keyTree = new KeyStorage();
 
-        const tx = await Mina.transaction(senderAccount, () => {
+        let tx = await Mina.transaction(senderAccount, () => {
             campaignContract.createCampaign(
                 timeline,
                 IpfsHash.fromString(CampaignMockData[0].ipfsHash),
@@ -127,6 +133,85 @@ describe('Campaign', () => {
         )) as Action[];
         expect(actions.length).toEqual(1);
 
-        // RollupCampaign.firstStep(nextCampaignId);
+        const campaignAction = CampaignAction.fromFields(
+            Utilities.stringArrayToFields(actions[0].actions[0])
+        );
+        let proof = await RollupCampaign.firstStep(
+            nextCampaignId,
+            timelineTree.root,
+            ipfsHashTree.root,
+            keyTree.root,
+            campaignContract.actionState.get()
+        );
+
+        proof = await RollupCampaign.createCampaignStep(
+            proof,
+            campaignAction,
+            timelineTree.getLevel1Witness(nextCampaignId),
+            ipfsHashTree.getLevel1Witness(nextCampaignId),
+            keyTree.getLevel1Witness(nextCampaignId)
+        );
+
+        tx = await Mina.transaction(senderAccount, () => {
+            campaignContract.rollup(proof);
+        });
+        await tx.prove();
+        await tx.sign([senderKey]).send();
+
+        timelineTree.updateLeaf(
+            nextCampaignId,
+            TimelineStorage.calculateLeaf(campaignAction.timeline)
+        );
+        ipfsHashTree.updateLeaf(
+            nextCampaignId,
+            IpfsHashStorage.calculateLeaf(campaignAction.ipfsHash)
+        );
+        keyTree.updateLeaf(
+            nextCampaignId,
+            KeyStorage.calculateLeaf({
+                committeeId: campaignAction.committeeId,
+                keyId: campaignAction.keyId,
+            })
+        );
+
+        expect(timelineTree.root).toEqual(campaignContract.timelineRoot.get());
+        expect(ipfsHashTree.root).toEqual(campaignContract.ipfsHashRoot.get());
+        expect(keyTree.root).toEqual(campaignContract.keyRoot.get());
+
+        Local.incrementGlobalSlot(1);
+        expect(
+            campaignContract.getCampaignTimelineState(
+                Field(0),
+                timeline,
+                timelineTree.getLevel1Witness(Field(0))
+            )
+        ).toEqual(Field(CampaignTimelineStateEnum.PREPARATION));
+            
+        Local.incrementGlobalSlot(1);
+        expect(
+            campaignContract.getCampaignTimelineState(
+                Field(0),
+                timeline,
+                timelineTree.getLevel1Witness(Field(0))
+            )
+        ).toEqual(Field(CampaignTimelineStateEnum.PARTICIPATION));
+
+        Local.incrementGlobalSlot(1);
+        expect(
+            campaignContract.getCampaignTimelineState(
+                Field(0),
+                timeline,
+                timelineTree.getLevel1Witness(Field(0))
+            )
+        ).toEqual(Field(CampaignTimelineStateEnum.FUNDING));
+
+        Local.incrementGlobalSlot(1);
+        expect(
+            campaignContract.getCampaignTimelineState(
+                Field(0),
+                timeline,
+                timelineTree.getLevel1Witness(Field(0))
+            )
+        ).toEqual(Field(CampaignTimelineStateEnum.REQUESTING));
     });
 });
