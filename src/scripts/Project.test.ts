@@ -24,7 +24,7 @@ import {
     EMPTY_LEVEL_2_PROJECT_MEMBER_TREE,
     IpfsHashStorage,
     MemberArray,
-    MemberStorage,
+    ProjectMemberStorage,
     ProjectActionEnum,
     TreasuryAddressStorage,
 } from '../storages/ProjectStorage';
@@ -96,7 +96,7 @@ describe('Project', () => {
     it('Test success flow', async () => {
         const members = new MemberArray();
         let nextProjectId = Field(0);
-        const memberTree = new MemberStorage();
+        const memberTree = new ProjectMemberStorage();
         const ipfsHashTree = new IpfsHashStorage();
         const treasuryAddressTree = new TreasuryAddressStorage();
 
@@ -145,12 +145,12 @@ describe('Project', () => {
         const memberTreeLevel2 = EMPTY_LEVEL_2_PROJECT_MEMBER_TREE();
         memberTreeLevel2.setLeaf(
             0n,
-            MemberStorage.calculateLeaf(senderAccount)
+            ProjectMemberStorage.calculateLeaf(senderAccount)
         );
         for (let i = 0; i < ProjectMockData[0].members.length; i++) {
             memberTreeLevel2.setLeaf(
                 BigInt(i + 1),
-                MemberStorage.calculateLeaf(
+                ProjectMemberStorage.calculateLeaf(
                     PublicKey.fromBase58(ProjectMockData[0].members[i])
                 )
             );

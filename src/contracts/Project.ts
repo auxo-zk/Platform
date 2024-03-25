@@ -20,7 +20,7 @@ import {
     Level2Witness,
     MemberArray,
     ProjectActionEnum,
-    MemberStorage,
+    ProjectMemberStorage,
     IpfsHashStorage,
     TreasuryAddressStorage,
     EMPTY_LEVEL_2_PROJECT_MEMBER_TREE,
@@ -246,7 +246,7 @@ class ProjectContract extends SmartContract {
 
     init() {
         super.init();
-        this.nextProjectId.set(Field(0));
+        this.nextProjectId.set(Field(1));
         this.memberRoot.set(DefaultRootForProjectTree);
         this.ipfsHashRoot.set(DefaultRootForProjectTree);
         this.treasuryAddressRoot.set(DefaultRootForProjectTree);
@@ -340,7 +340,7 @@ class ProjectContract extends SmartContract {
                     memberWitnessLevel1
                         .calculateRoot(
                             memberWitnessLevel2.calculateRoot(
-                                MemberStorage.calculateLeaf(this.sender)
+                                ProjectMemberStorage.calculateLeaf(this.sender)
                             )
                         )
                         .equals(this.memberRoot.getAndRequireEquals())
