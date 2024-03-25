@@ -24,6 +24,7 @@ import {
     TimelineStorage,
 } from '../storages/CampaignStorage.js';
 import {
+    AddressWitness,
     DefaultRootForZkAppTree,
     verifyZkApp,
     ZkAppRef,
@@ -211,42 +212,53 @@ class CampaignContract extends SmartContract {
         timeline: Timeline,
         ipfsHash: IpfsHash,
         committeeId: Field,
-        keyId: Field
-        // dkgContractRef: ZkAppRef,
-        // keyStatusWitness: Storage.DKGStorage.Level1Witness,
-        // requesterContractRef: ZkAppRef
+        keyId: Field,
+        dkgContractRef: ZkAppRef,
+        keyStatusWitness: Storage.DKGStorage.DkgLevel1Witness,
+        requesterContractRef: ZkAppRef,
+        campaignContractWitness: AddressWitness
     ) {
         const currentTimestamp = this.network.timestamp.getAndRequireEquals();
         timeline.isValid().assertEquals(Bool(true));
-        timeline.start.assertGreaterThan(currentTimestamp);
-        // Should check the valid of key right here
-        // verifyZkApp(
-        //     CampaignContract.name,
-        //     dkgContractRef,
-        //     this.zkAppRoot.getAndRequireEquals(),
-        //     Field(ZkAppEnum.DKG)
-        // );
-        // const dkgContract = new DkgContract(dkgContractRef.address);
-        // dkgContract.verifyKeyStatus(
-        //     new KeyStatusInput({
-        //         committeeId: committeeId,
-        //         keyId: keyId,
-        //         status: Field(KeyStatus.ACTIVE),
-        //         witness: keyStatusWitness,
-        //     })
-        // );
-        // verifyZkApp(
-        //     CampaignContract.name,
-        //     requesterContractRef,
-        //     this.zkAppRoot.getAndRequireEquals(),
-        //     Field(ZkAppEnum.REQUESTER)
-        // );
-        // const requesterContract = new RequesterContract(
-        //     requesterContractRef.address
-        // );
-        // requesterContract.createTask(
-        //     Storage.DKGStorage.calculateKeyIndex(committeeId, keyId)
-        // );
+        timeline.startParticipation.assertGreaterThan(currentTimestamp);
+
+        // Verify the status of key is active
+        verifyZkApp(
+            CampaignContract.name,
+            dkgContractRef,
+            this.zkAppRoot.getAndRequireEquals(),
+            Field(ZkAppEnum.DKG)
+        );
+        const dkgContract = new DkgContract(dkgContractRef.address);
+        dkgContract.verifyKeyStatus(
+            new KeyStatusInput({
+                committeeId: committeeId,
+                keyId: keyId,
+                status: Field(KeyStatus.ACTIVE),
+                witness: keyStatusWitness,
+            })
+        );
+
+        // Create task in requester contract
+        verifyZkApp(
+            CampaignContract.name,
+            requesterContractRef,
+            this.zkAppRoot.getAndRequireEquals(),
+            Field(ZkAppEnum.REQUESTER)
+        );
+        const requesterContract = new RequesterContract(
+            requesterContractRef.address
+        );
+        requesterContract.createTask(
+            Storage.DKGStorage.calculateKeyIndex(committeeId, keyId),
+            timeline.startRequesting,
+            new ZkAppRef({
+                address: this.address,
+                witness: campaignContractWitness,
+            })
+        );
+
+        // Dispatch action
         this.reducer.dispatch(
             new CampaignAction({
                 campaignId: Field(-1),
@@ -302,7 +314,6 @@ class CampaignContract extends SmartContract {
         timeline: Timeline,
         timelineWitness: Level1Witness
     ): Field {
-        timeline.isValid().assertEquals(Bool(true));
         timelineWitness.calculateIndex().assertEquals(campaignId);
         const timelineRoot = this.timelineRoot.getAndRequireEquals();
         timelineRoot.assertEquals(

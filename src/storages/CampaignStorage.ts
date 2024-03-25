@@ -186,15 +186,13 @@ export enum CampaignActionEnum {
 }
 
 export class Timeline extends Struct({
-    start: UInt64,
     startParticipation: UInt64,
     startFunding: UInt64,
     startRequesting: UInt64,
 }) {
     isValid(): Bool {
-        return this.start
-            .lessThan(this.startParticipation)
-            .and(this.startParticipation.lessThan(this.startFunding))
+        return this.startParticipation
+            .lessThan(this.startFunding)
             .and(this.startFunding.lessThan(this.startRequesting));
     }
 
