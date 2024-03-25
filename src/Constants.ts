@@ -19,15 +19,14 @@ export enum ZkAppEnum {
     DKG,
     ROUND1,
     ROUND2,
-    RESPONSE,
-    REQUESTER,
     REQUEST,
+    REQUESTER,
+    RESPONSE,
     CAMPAIGN,
     PROJECT,
     PARTICIPATION,
     FUNDING,
     TREASURY_MANAGER,
-    TREASURY,
 }
 
 export enum ErrorEnum {
