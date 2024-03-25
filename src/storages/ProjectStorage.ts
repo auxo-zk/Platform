@@ -182,15 +182,15 @@ export abstract class ProjectStorage<RawLeaf> {
     }
 }
 
-export type MemberLeaf = PublicKey;
+export type ProjectMemberLeaf = PublicKey;
 
-export class MemberStorage extends ProjectStorage<MemberLeaf> {
-    static calculateLeaf(publicKey: MemberLeaf): Field {
+export class ProjectMemberStorage extends ProjectStorage<ProjectMemberLeaf> {
+    static calculateLeaf(publicKey: ProjectMemberLeaf): Field {
         return Poseidon.hash(publicKey.toFields());
     }
 
-    calculateLeaf(publicKey: MemberLeaf): Field {
-        return MemberStorage.calculateLeaf(publicKey);
+    calculateLeaf(publicKey: ProjectMemberLeaf): Field {
+        return ProjectMemberStorage.calculateLeaf(publicKey);
     }
 
     static calculateLevel1Index(projectId: Field): Field {
@@ -198,7 +198,7 @@ export class MemberStorage extends ProjectStorage<MemberLeaf> {
     }
 
     calculateLevel1Index(projectId: Field): Field {
-        return MemberStorage.calculateLevel1Index(projectId);
+        return ProjectMemberStorage.calculateLevel1Index(projectId);
     }
 
     static calculateLevel2Index(memberId: Field): Field {
@@ -206,7 +206,7 @@ export class MemberStorage extends ProjectStorage<MemberLeaf> {
     }
 
     calculateLevel2Index(memberId: Field): Field {
-        return MemberStorage.calculateLevel2Index(memberId);
+        return ProjectMemberStorage.calculateLevel2Index(memberId);
     }
 
     getWitness(level1Index: Field, level2Index: Field): FullMTWitness {
@@ -228,7 +228,7 @@ export class MemberStorage extends ProjectStorage<MemberLeaf> {
             level1Index,
             level2Index,
         }: { level1Index: Field; level2Index: Field },
-        rawLeaf: MemberLeaf
+        rawLeaf: ProjectMemberLeaf
     ): void {
         super.updateRawLeaf({ level1Index, level2Index }, rawLeaf);
     }
