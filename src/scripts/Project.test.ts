@@ -96,7 +96,7 @@ describe('Project', () => {
     });
 
     describe('Test success flow', () => {
-        it('1. Create project and rollup', async () => {
+        it('1. Create project', async () => {
             const members = new MemberArray();
             members.push(senderAccount);
             for (let i = 0; i < ProjectMockData[0].members.length; i++) {
