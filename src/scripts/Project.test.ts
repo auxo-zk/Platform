@@ -46,17 +46,19 @@ describe('Project', () => {
         projectContractPublicKey: PublicKey,
         projectContractPrivateKey: PrivateKey,
         projectContract: ProjectContract;
+    const Local = Mina.LocalBlockchain({ proofsEnabled });
+    let nextProjectId = Field(0);
+    const memberTree = new ProjectMemberStorage();
+    const ipfsHashTree = new IpfsHashStorage();
+    const treasuryAddressTree = new TreasuryAddressStorage();
 
     beforeAll(async () => {
+        Mina.setActiveInstance(Local);
         await RollupProject.compile({ cache });
         if (proofsEnabled) {
             await ProjectContract.compile({ cache });
         }
-    });
 
-    beforeEach(async () => {
-        const Local = Mina.LocalBlockchain({ proofsEnabled });
-        Mina.setActiveInstance(Local);
         ({ privateKey: deployerKey, publicKey: deployerAccount } =
             Local.testAccounts[0]);
         ({ privateKey: senderKey, publicKey: senderAccount } =
@@ -93,126 +95,149 @@ describe('Project', () => {
         );
     });
 
-    it('Test success flow', async () => {
-        const members = new MemberArray();
-        let nextProjectId = Field(0);
-        const memberTree = new ProjectMemberStorage();
-        const ipfsHashTree = new IpfsHashStorage();
-        const treasuryAddressTree = new TreasuryAddressStorage();
-
-        members.push(senderAccount);
-        for (let i = 0; i < ProjectMockData[0].members.length; i++) {
-            members.push(PublicKey.fromBase58(ProjectMockData[0].members[i]));
-        }
-        let tx = await Mina.transaction(senderAccount, () => {
-            projectContract.createProject(
-                members,
-                IpfsHash.fromString(ProjectMockData[0].ipfsHash),
-                PublicKey.fromBase58(ProjectMockData[0].treasuryAddress)
-            );
-        });
-        await tx.prove();
-        await tx.sign([senderKey]).send();
-        let actions: Action[] = (await fetchActions(
-            projectContractPublicKey
-        )) as Action[];
-        expect(actions.length).toEqual(1);
-
-        let projectAction = ProjectAction.fromFields(
-            Utilities.stringArrayToFields(actions[0].actions[0])
-        );
-        let proof = await RollupProject.firstStep(
-            nextProjectId,
-            memberTree.root,
-            ipfsHashTree.root,
-            treasuryAddressTree.root,
-            projectContract.actionState.get()
-        );
-        proof = await RollupProject.createProjectStep(
-            proof,
-            projectAction,
-            memberTree.getLevel1Witness(nextProjectId),
-            ipfsHashTree.getLevel1Witness(nextProjectId),
-            treasuryAddressTree.getLevel1Witness(nextProjectId)
-        );
-
-        tx = await Mina.transaction(senderAccount, () => {
-            projectContract.rollup(proof);
-        });
-        await tx.prove();
-        await tx.sign([senderKey]).send();
-
-        const memberTreeLevel2 = EMPTY_LEVEL_2_PROJECT_MEMBER_TREE();
-        memberTreeLevel2.setLeaf(
-            0n,
-            ProjectMemberStorage.calculateLeaf(senderAccount)
-        );
-        for (let i = 0; i < ProjectMockData[0].members.length; i++) {
-            memberTreeLevel2.setLeaf(
-                BigInt(i + 1),
-                ProjectMemberStorage.calculateLeaf(
+    describe('Test success flow', () => {
+        it('1. Create project and rollup', async () => {
+            const members = new MemberArray();
+            members.push(senderAccount);
+            for (let i = 0; i < ProjectMockData[0].members.length; i++) {
+                members.push(
                     PublicKey.fromBase58(ProjectMockData[0].members[i])
+                );
+            }
+            const tx = await Mina.transaction(senderAccount, () => {
+                projectContract.createProject(
+                    members,
+                    IpfsHash.fromString(ProjectMockData[0].ipfsHash),
+                    PublicKey.fromBase58(ProjectMockData[0].treasuryAddress)
+                );
+            });
+            await tx.prove();
+            await tx.sign([senderKey]).send();
+            const actions: Action[] = (await fetchActions(
+                projectContractPublicKey
+            )) as Action[];
+            expect(actions.length).toEqual(1);
+        });
+
+        it('2. Rollup', async () => {
+            const actions: Action[] = (await fetchActions(
+                projectContractPublicKey
+            )) as Action[];
+            expect(actions.length).toEqual(1);
+
+            const projectAction = ProjectAction.fromFields(
+                Utilities.stringArrayToFields(actions[0].actions[0])
+            );
+            let proof = await RollupProject.firstStep(
+                nextProjectId,
+                memberTree.root,
+                ipfsHashTree.root,
+                treasuryAddressTree.root,
+                projectContract.actionState.get()
+            );
+            proof = await RollupProject.createProjectStep(
+                proof,
+                projectAction,
+                memberTree.getLevel1Witness(nextProjectId),
+                ipfsHashTree.getLevel1Witness(nextProjectId),
+                treasuryAddressTree.getLevel1Witness(nextProjectId)
+            );
+
+            const tx = await Mina.transaction(senderAccount, () => {
+                projectContract.rollup(proof);
+            });
+            await tx.prove();
+            await tx.sign([senderKey]).send();
+
+            const memberTreeLevel2 = EMPTY_LEVEL_2_PROJECT_MEMBER_TREE();
+            memberTreeLevel2.setLeaf(
+                0n,
+                ProjectMemberStorage.calculateLeaf(senderAccount)
+            );
+            for (let i = 0; i < ProjectMockData[0].members.length; i++) {
+                memberTreeLevel2.setLeaf(
+                    BigInt(i + 1),
+                    ProjectMemberStorage.calculateLeaf(
+                        PublicKey.fromBase58(ProjectMockData[0].members[i])
+                    )
+                );
+            }
+            memberTree.updateInternal(nextProjectId, memberTreeLevel2);
+            ipfsHashTree.updateLeaf(
+                { level1Index: nextProjectId },
+                IpfsHashStorage.calculateLeaf(projectAction.ipfsHash)
+            );
+            treasuryAddressTree.updateLeaf(
+                { level1Index: nextProjectId },
+                TreasuryAddressStorage.calculateLeaf(
+                    projectAction.treasuryAddress
                 )
             );
-        }
-        memberTree.updateInternal(nextProjectId, memberTreeLevel2);
-        ipfsHashTree.updateLeaf(
-            { level1Index: nextProjectId },
-            IpfsHashStorage.calculateLeaf(projectAction.ipfsHash)
-        );
-        treasuryAddressTree.updateLeaf(
-            { level1Index: nextProjectId },
-            TreasuryAddressStorage.calculateLeaf(projectAction.treasuryAddress)
-        );
-        nextProjectId = nextProjectId.add(1);
+            nextProjectId = nextProjectId.add(1);
 
-        expect(memberTree.root).toEqual(projectContract.memberRoot.get());
-        expect(ipfsHashTree.root).toEqual(projectContract.ipfsHashRoot.get());
-        expect(treasuryAddressTree.root).toEqual(
-            projectContract.treasuryAddressRoot.get()
-        );
-
-        tx = await Mina.transaction(senderAccount, () => {
-            projectContract.updateProject(
-                Field(0),
-                IpfsHash.fromString(ProjectMockData[1].ipfsHash),
-                memberTree.getLevel1Witness(Field(0)),
-                memberTree.getLevel2Witness(Field(0), Field(0))
+            expect(memberTree.root).toEqual(projectContract.memberRoot.get());
+            expect(ipfsHashTree.root).toEqual(
+                projectContract.ipfsHashRoot.get()
+            );
+            expect(treasuryAddressTree.root).toEqual(
+                projectContract.treasuryAddressRoot.get()
             );
         });
-        await tx.prove();
-        await tx.sign([senderKey]).send();
-        actions = (await fetchActions(projectContractPublicKey)) as Action[];
-        expect(actions.length).toEqual(2);
-        projectAction = ProjectAction.fromFields(
-            Utilities.stringArrayToFields(actions[1].actions[0])
-        );
-        proof = await RollupProject.firstStep(
-            nextProjectId,
-            memberTree.root,
-            ipfsHashTree.root,
-            treasuryAddressTree.root,
-            projectContract.actionState.get()
-        );
 
-        proof = await RollupProject.updateProjectStep(
-            proof,
-            projectAction,
-            IpfsHash.fromString(ProjectMockData[0].ipfsHash),
-            ipfsHashTree.getLevel1Witness(Field(0))
-        );
-
-        tx = await Mina.transaction(senderAccount, () => {
-            projectContract.rollup(proof);
+        it('3. Update project', async () => {
+            const tx = await Mina.transaction(senderAccount, () => {
+                projectContract.updateProject(
+                    Field(0),
+                    IpfsHash.fromString(ProjectMockData[1].ipfsHash),
+                    memberTree.getLevel1Witness(Field(0)),
+                    memberTree.getLevel2Witness(Field(0), Field(0))
+                );
+            });
+            await tx.prove();
+            await tx.sign([senderKey]).send();
+            const actions = (await fetchActions(
+                projectContractPublicKey
+            )) as Action[];
+            expect(actions.length).toEqual(2);
         });
-        await tx.prove();
-        await tx.sign([senderKey]).send();
 
-        ipfsHashTree.updateLeaf(
-            { level1Index: Field(0) },
-            IpfsHashStorage.calculateLeaf(projectAction.ipfsHash)
-        );
+        it('4. Rollup', async () => {
+            const actions = (await fetchActions(
+                projectContractPublicKey
+            )) as Action[];
+            expect(actions.length).toEqual(2);
+            const projectAction = ProjectAction.fromFields(
+                Utilities.stringArrayToFields(actions[1].actions[0])
+            );
+            let proof = await RollupProject.firstStep(
+                nextProjectId,
+                memberTree.root,
+                ipfsHashTree.root,
+                treasuryAddressTree.root,
+                projectContract.actionState.get()
+            );
 
-        expect(ipfsHashTree.root).toEqual(projectContract.ipfsHashRoot.get());
+            proof = await RollupProject.updateProjectStep(
+                proof,
+                projectAction,
+                IpfsHash.fromString(ProjectMockData[0].ipfsHash),
+                ipfsHashTree.getLevel1Witness(Field(0))
+            );
+
+            const tx = await Mina.transaction(senderAccount, () => {
+                projectContract.rollup(proof);
+            });
+            await tx.prove();
+            await tx.sign([senderKey]).send();
+
+            ipfsHashTree.updateLeaf(
+                { level1Index: Field(0) },
+                IpfsHashStorage.calculateLeaf(projectAction.ipfsHash)
+            );
+
+            expect(ipfsHashTree.root).toEqual(
+                projectContract.ipfsHashRoot.get()
+            );
+        });
     });
 });
