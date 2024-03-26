@@ -8,21 +8,26 @@ import {
     UInt64,
 } from 'o1js';
 import { INSTANCE_LIMITS } from '../Constants.js';
-import { GroupDynamicArray, ScalarDynamicArray } from '@auxo-dev/auxo-libs';
-import { Libs as DkgLibs } from '@auxo-dev/dkg';
+import {
+    BoolDynamicArray,
+    DynamicArray,
+    GroupDynamicArray,
+    ScalarDynamicArray,
+} from '@auxo-dev/auxo-libs';
+import { Constants as DkgConstants, Libs as DkgLibs } from '@auxo-dev/dkg';
 
-export const LEVEL_1_FUNDING_TREE_HEIGHT =
+const LEVEL_1_FUNDING_TREE_HEIGHT =
     Math.ceil(Math.log2(INSTANCE_LIMITS.FUNDING_TREE_SIZE)) + 1;
 
-export class Level1MT extends MerkleTree {}
-export class Level1Witness extends MerkleWitness(LEVEL_1_FUNDING_TREE_HEIGHT) {}
+class Level1MT extends MerkleTree {}
+class Level1Witness extends MerkleWitness(LEVEL_1_FUNDING_TREE_HEIGHT) {}
 
-export const EMPTY_LEVEL_1_FUNDING_TREE = () =>
+const EMPTY_LEVEL_1_FUNDING_TREE = () =>
     new Level1MT(LEVEL_1_FUNDING_TREE_HEIGHT);
 
-export const DefaultRootForFundingTree = EMPTY_LEVEL_1_FUNDING_TREE().getRoot();
+const DefaultRootForFundingTree = EMPTY_LEVEL_1_FUNDING_TREE().getRoot();
 
-export abstract class FundingStorage<RawLeaf> {
+abstract class FundingStorage<RawLeaf> {
     private _level1: Level1MT;
     private _leafs: {
         [key: string]: { raw: RawLeaf | undefined; leaf: Field };
@@ -97,8 +102,8 @@ export abstract class FundingStorage<RawLeaf> {
     }
 }
 
-export type FundingInformationLeaf = FundingInformation;
-export class FundingInformationStorage extends FundingStorage<FundingInformationLeaf> {
+type FundingInformationLeaf = FundingInformation;
+class FundingInformationStorage extends FundingStorage<FundingInformationLeaf> {
     static calculateLeaf(fundingInformation: FundingInformationLeaf): Field {
         return fundingInformation.hash();
     }
@@ -112,50 +117,59 @@ export class FundingInformationStorage extends FundingStorage<FundingInformation
     }
 
     calculateLevel1Index(fundingId: Field): Field {
-        return TotalAmountStorage.calculateLevel1Index(fundingId);
+        return FundingInformationStorage.calculateLevel1Index(fundingId);
     }
 }
 
-export type TotalAmountLeaf = Field;
-export class TotalAmountStorage extends FundingStorage<TotalAmountLeaf> {
-    static calculateLeaf(totalAmount: TotalAmountLeaf): Field {
-        return totalAmount;
-    }
-
-    calculateLeaf(totalAmount: TotalAmountLeaf): Field {
-        return TotalAmountStorage.calculateLeaf(totalAmount);
-    }
-
-    static calculateLevel1Index(campaignId: Field): Field {
-        return campaignId;
-    }
-
-    calculateLevel1Index(campaignId: Field): Field {
-        return TotalAmountStorage.calculateLevel1Index(campaignId);
-    }
-}
-
-export enum FundingActionEnum {
+enum FundingActionEnum {
     FUND,
     REFUND,
 }
 
-export enum FundingStateEnum {
+enum FundingStateEnum {
     NOT_EXISTED,
     FUNDED,
     REFUNDED,
 }
 
-export class FundingInformation extends Struct({
+class FundingInformation extends Struct({
     campaignId: Field,
     investor: PublicKey,
     amount: UInt64,
 }) {
     hash() {
-        return Poseidon.hash([
-            this.campaignId,
-            Field.fromFields(this.investor.toFields()),
-            Field.fromFields(this.amount.toFields()),
-        ]);
+        return Poseidon.hash(
+            [
+                this.campaignId,
+                this.investor.toFields(),
+                this.amount.toFields(),
+            ].flat()
+        );
     }
 }
+
+class ExistedIndexFlag extends BoolDynamicArray(
+    DkgConstants.ENCRYPTION_LIMITS.DIMENSION
+) {}
+
+class AmountVector extends DynamicArray(
+    UInt64,
+    DkgConstants.ENCRYPTION_LIMITS.DIMENSION
+) {}
+
+export {
+    LEVEL_1_FUNDING_TREE_HEIGHT,
+    EMPTY_LEVEL_1_FUNDING_TREE,
+    DefaultRootForFundingTree,
+    FundingStorage,
+    FundingInformationStorage,
+    FundingInformation,
+    FundingInformationLeaf,
+    FundingStateEnum,
+    FundingActionEnum,
+    Level1MT as FundingLevel1MT,
+    Level1Witness as FundingLevel1Witness,
+    Level1Witness as FundingInformationLevel1Witness,
+    ExistedIndexFlag,
+    AmountVector
+};

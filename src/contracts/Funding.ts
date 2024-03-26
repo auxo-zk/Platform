@@ -21,13 +21,17 @@ import {
     UInt32,
 } from 'o1js';
 
-import { CustomScalar, ScalarDynamicArray, Utils } from '@auxo-dev/auxo-libs';
+import {
+    BoolDynamicArray,
+    CustomScalar,
+    ScalarDynamicArray,
+    Utils,
+} from '@auxo-dev/auxo-libs';
 
 import {
     ZkApp as DkgZkApp,
     Constants as DkgConstants,
-    DkgContract,
-    Storage,
+    Storage as DkgStorage,
     RequesterContract,
     Libs as DkgLibs,
 } from '@auxo-dev/dkg';
@@ -39,27 +43,23 @@ import {
     AddressWitness,
 } from '../storages/SharedStorage.js';
 import {
-    Level1Witness,
-    TotalAmountStorage,
+    AmountVector,
+    ExistedIndexFlag,
     FundingActionEnum,
     FundingInformation,
-    Level1MT,
+    FundingInformationLevel1Witness,
     FundingInformationStorage,
 } from '../storages/FundingStorage.js';
 import {
     CampaignTimelineStateEnum,
     Timeline,
-    Level1Witness as TimelineLevel1Witness,
-    Level1Witness as KeyLevel1Witness,
-    DefaultRootForCampaignTree,
+    TimelineLevel1Witness,
 } from '../storages/CampaignStorage.js';
-import {
-    Level1CWitness as ProjectIndexLevel1Witness,
-    Level1Witness as ProjectCounterLevel1Witness,
-} from '../storages/ParticipationStorage.js';
+import { ProjectCounterLevel1Witness } from '../storages/ParticipationStorage.js';
 import { CampaignContract } from './Campaign.js';
 import { ParticipationContract } from './Participation.js';
 import { TreasuryManagerContract } from './TreasuryManager.js';
+import { CampaignStateLevel1Witness } from '../storages/TreasuryManagerStorage.js';
 
 export {
     FundingAction,
@@ -120,12 +120,12 @@ const RollupFunding = ZkProgram({
             privateInputs: [
                 SelfProof<Void, RollupFundingOutput>,
                 FundingAction,
-                Level1Witness,
+                FundingInformationLevel1Witness,
             ],
             method(
                 earlierProof: SelfProof<Void, RollupFundingOutput>,
                 fundingAction: FundingAction,
-                fundingInformationWitness: Level1Witness
+                fundingInformationWitness: FundingInformationLevel1Witness
             ): RollupFundingOutput {
                 fundingAction.actionType.assertEquals(
                     Field(FundingActionEnum.FUND)
@@ -170,12 +170,12 @@ const RollupFunding = ZkProgram({
             privateInputs: [
                 SelfProof<Void, RollupFundingOutput>,
                 FundingAction,
-                Level1Witness,
+                FundingInformationLevel1Witness,
             ],
             method(
                 earlierProof: SelfProof<Void, RollupFundingOutput>,
                 fundingAction: FundingAction,
-                fundingInformationWitness: Level1Witness
+                fundingInformationWitness: FundingInformationLevel1Witness
             ) {
                 fundingAction.actionType.assertEquals(
                     Field(FundingActionEnum.REFUND)
@@ -247,26 +247,23 @@ class FundingContract extends SmartContract {
         campaignId: Field,
         timeline: Timeline,
         timelineWitness: TimelineLevel1Witness,
-        campaignContractRef: ZkAppRef,
-        participationContractRef: ZkAppRef,
-        dkgContractRef: ZkAppRef,
-        treasuryManagerContractRef: ZkAppRef,
-        requesterContractRef: ZkAppRef,
-        projectId: Field,
-        projectIndex: Field,
-        projectIndexWitness: ProjectIndexLevel1Witness,
+        projectIndexes: Field,
         projectCounter: Field,
         projectCounterWitness: ProjectCounterLevel1Witness,
         committeeId: Field,
         keyId: Field,
-        keyWitnessForRequester: Storage.RequesterStorage.RequesterLevel1Witness,
+        keyWitnessForRequester: DkgStorage.RequesterStorage.RequesterLevel1Witness,
         key: PublicKey,
-        keyWitnessForDkg: Storage.DKGStorage.DkgLevel1Witness,
-        amount: UInt64,
-        secretVector: DkgLibs.Requester.SecretVector,
+        keyWitnessForDkg: DkgStorage.DKGStorage.DkgLevel1Witness,
+        amounts: AmountVector,
         randomVector: DkgLibs.Requester.RandomVector,
         nullifiers: DkgLibs.Requester.NullifierArray,
-        fundingContractWitness: AddressWitness
+        fundingContractWitness: AddressWitness,
+        campaignContractRef: ZkAppRef,
+        participationContractRef: ZkAppRef,
+        dkgContractRef: ZkAppRef,
+        treasuryManagerContractRef: ZkAppRef,
+        requesterContractRef: ZkAppRef
     ) {
         const zkAppRoot = this.zkAppRoot.getAndRequireEquals();
 
@@ -297,17 +294,29 @@ class FundingContract extends SmartContract {
         participationContract
             .hasValidActionStateForFunding(timeline)
             .assertTrue();
-        participationContract.isValidProjectIndex(
-            campaignId,
-            projectId,
-            projectIndex,
-            projectIndexWitness
-        );
         participationContract.isValidProjectCounter(
             campaignId,
             projectCounter,
             projectCounterWitness
         );
+        const projectIndexesBits = projectIndexes.toBits();
+        const existedIndexFlag = new ExistedIndexFlag();
+        let totalAmount = new UInt64(0);
+        const secretVector = new DkgLibs.Requester.SecretVector();
+        for (let i = 0; i < DkgConstants.ENCRYPTION_LIMITS.DIMENSION; i++) {
+            const index = Field(i);
+            existedIndexFlag.get(index).assertFalse();
+            const projectIndex = Field.fromBits(
+                projectIndexesBits.slice(i * 8, (i + 1) * 8)
+            );
+            projectIndex.assertLessThan(projectCounter);
+            totalAmount = totalAmount.add(amounts.get(index));
+            secretVector.set(
+                index,
+                CustomScalar.fromUInt64(amounts.get(index))
+            );
+            existedIndexFlag.set(projectIndex, Bool(true));
+        }
 
         // Check Treasury contract
         verifyZkApp(
@@ -325,16 +334,15 @@ class FundingContract extends SmartContract {
             Field(ZkAppEnum.REQUESTER)
         );
 
-        amount.mod(new UInt64(MINIMAL_MINA_UNIT)).assertEquals(new UInt64(0));
         const requesterContract = new RequesterContract(
             requesterContractRef.address
         );
         requesterContract.submitEncryption(
             new UInt32(campaignId),
-            Storage.DKGStorage.calculateKeyIndex(committeeId, keyId),
+            DkgStorage.DKGStorage.calculateKeyIndex(committeeId, keyId),
             secretVector,
             randomVector,
-            projectIndex,
+            projectIndexes,
             nullifiers,
             key.toGroup(),
             keyWitnessForDkg,
@@ -349,7 +357,7 @@ class FundingContract extends SmartContract {
         const investor = AccountUpdate.createSigned(this.sender);
         investor.send({
             to: AccountUpdate.create(treasuryManagerContractRef.address),
-            amount: amount,
+            amount: totalAmount,
         });
 
         this.reducer.dispatch(
@@ -357,7 +365,7 @@ class FundingContract extends SmartContract {
                 fundingId: Field(-1),
                 campaignId: campaignId,
                 investor: this.sender,
-                amount: amount,
+                amount: totalAmount,
                 actionType: Field(FundingActionEnum.FUND),
             })
         );
@@ -367,7 +375,8 @@ class FundingContract extends SmartContract {
         fundingId: Field,
         campaignId: Field,
         amount: UInt64,
-        fundingInformationWitness: Level1Witness,
+        campaignStateWitness: CampaignStateLevel1Witness,
+        fundingInformationWitness: FundingInformationLevel1Witness,
         fundingContractWitness: AddressWitness,
         treasuryManagerContractRef: ZkAppRef
     ) {
@@ -419,6 +428,7 @@ class FundingContract extends SmartContract {
         );
         treasuryManagerContract.refund(
             fundingInformation,
+            campaignStateWitness,
             new ZkAppRef({
                 address: this.address,
                 witness: fundingContractWitness,
@@ -439,7 +449,7 @@ class FundingContract extends SmartContract {
     isFunded(
         fundingId: Field,
         fundingInformation: FundingInformation,
-        fundingInformationWitness: Level1Witness
+        fundingInformationWitness: FundingInformationLevel1Witness
     ): Bool {
         const nextFundingId = this.nextFundingId.getAndRequireEquals();
         const fundingInformationRoot =
