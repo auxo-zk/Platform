@@ -23,7 +23,6 @@ import {
     CampaignTimelineStateEnum,
     DefaultRootForCampaignTree,
     IpfsHashStorage,
-    KeyStorage,
     Timeline,
     TimelineStorage,
 } from '../storages/CampaignStorage';

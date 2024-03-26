@@ -13,6 +13,7 @@ import {
     RollupParticipation,
 } from '../contracts/Participation';
 import { CampaignContract, RollupCampaign } from '../contracts/Campaign';
+import { Utils } from '@auxo-dev/auxo-libs';
 // import { FundingContract, RollupFunding } from '../contracts/Funding';
 
 let proofsEnabled = true;
@@ -29,12 +30,35 @@ describe('Test compile contract', () => {
         zkApp: ParticipationContract;
 
     beforeAll(async () => {
+        const packed = Utils.packNumberArray([2, 2, 2], 8);
+        Provable.log(packed);
+        const unpacked = unpackNumberArray(packed, 8);
+        console.log(unpacked);
+        for (let i = 0; i < 3; i++) {
+            const index = Field.fromBits(
+                packed.toBits().slice(i * 8, (i + 1) * 8)
+            );
+        }
         if (proofsEnabled) {
             // Provable.log((await FundingContract.compile()).verificationKey);
             // Provable.log(ParticipationContract.analyzeMethods());
             // Provable.log(ParticipationContract.analyzeMethods());
         }
     });
+
+    function unpackNumberArray(packed: Field, maxSize: number): number[] {
+        let numbers: number[] = [];
+        for (let i = 0; i < 255 / maxSize; i++) {
+            numbers.push(
+                Number(
+                    Field.fromBits(
+                        packed.toBits().slice(i * maxSize, (i + 1) * maxSize)
+                    )
+                )
+            );
+        }
+        return numbers;
+    }
 
     // beforeEach(() => {
     //     const Local = Mina.LocalBlockchain({ proofsEnabled });
