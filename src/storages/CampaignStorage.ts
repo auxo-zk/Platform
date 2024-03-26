@@ -13,21 +13,18 @@ import { INSTANCE_LIMITS } from '../Constants.js';
 import { IpfsHash } from '@auxo-dev/auxo-libs';
 import { Constants as DkgConstants } from '@auxo-dev/dkg';
 
-export const LEVEL_1_CAMPAIGN_TREE_HEIGHT =
+const LEVEL_1_CAMPAIGN_TREE_HEIGHT =
     Math.ceil(Math.log2(INSTANCE_LIMITS.CAMPAIGN_TREE_SIZE)) + 1;
 
-export class Level1MT extends MerkleTree {}
-export class Level1Witness extends MerkleWitness(
-    LEVEL_1_CAMPAIGN_TREE_HEIGHT
-) {}
+class Level1MT extends MerkleTree {}
+class Level1Witness extends MerkleWitness(LEVEL_1_CAMPAIGN_TREE_HEIGHT) {}
 
-export const EMPTY_LEVEL_1_CAMPAIGN_TREE = () =>
+const EMPTY_LEVEL_1_CAMPAIGN_TREE = () =>
     new Level1MT(LEVEL_1_CAMPAIGN_TREE_HEIGHT);
 
-export const DefaultRootForCampaignTree =
-    EMPTY_LEVEL_1_CAMPAIGN_TREE().getRoot();
+const DefaultRootForCampaignTree = EMPTY_LEVEL_1_CAMPAIGN_TREE().getRoot();
 // Storage
-export abstract class CampaignStorage<RawLeaf> {
+abstract class CampaignStorage<RawLeaf> {
     private _level1: Level1MT;
     private _leafs: {
         [key: string]: { raw: RawLeaf | undefined; leaf: Field };
@@ -102,9 +99,9 @@ export abstract class CampaignStorage<RawLeaf> {
     }
 }
 
-export type IpfsHashLeaf = IpfsHash;
+type IpfsHashLeaf = IpfsHash;
 
-export class IpfsHashStorage extends CampaignStorage<IpfsHashLeaf> {
+class IpfsHashStorage extends CampaignStorage<IpfsHashLeaf> {
     static calculateLeaf(ipfsHash: IpfsHashLeaf): Field {
         return Poseidon.hash(ipfsHash.toFields());
     }
@@ -122,9 +119,9 @@ export class IpfsHashStorage extends CampaignStorage<IpfsHashLeaf> {
     }
 }
 
-export type OwnerLeaf = PublicKey;
+type OwnerLeaf = PublicKey;
 
-export class OwnerStorage extends CampaignStorage<OwnerLeaf> {
+class OwnerStorage extends CampaignStorage<OwnerLeaf> {
     static calculateLeaf(publicKey: OwnerLeaf): Field {
         return Poseidon.hash(publicKey.toFields());
     }
@@ -142,18 +139,18 @@ export class OwnerStorage extends CampaignStorage<OwnerLeaf> {
     }
 }
 
-export type KeyLeaf = {
+type KeyIndexLeaf = {
     committeeId: Field;
     keyId: Field;
 };
 
-export class KeyStorage extends CampaignStorage<KeyLeaf> {
-    static calculateLeaf(rawLeaf: KeyLeaf): Field {
+class KeyIndexStorage extends CampaignStorage<KeyIndexLeaf> {
+    static calculateLeaf(rawLeaf: KeyIndexLeaf): Field {
         return Poseidon.hash([rawLeaf.committeeId, rawLeaf.keyId]);
     }
 
-    calculateLeaf(rawLeaf: KeyLeaf): Field {
-        return KeyStorage.calculateLeaf(rawLeaf);
+    calculateLeaf(rawLeaf: KeyIndexLeaf): Field {
+        return KeyIndexStorage.calculateLeaf(rawLeaf);
     }
 
     static calculateLevel1Index(campaignId: Field): Field {
@@ -161,31 +158,23 @@ export class KeyStorage extends CampaignStorage<KeyLeaf> {
     }
 
     calculateLevel1Index(campaignId: Field): Field {
-        return KeyStorage.calculateLevel1Index(campaignId);
+        return KeyIndexStorage.calculateLevel1Index(campaignId);
     }
 }
 
-export enum CampaignTimelineStateEnum {
+enum CampaignTimelineStateEnum {
     PREPARATION,
     PARTICIPATION,
     FUNDING,
     REQUESTING,
-    ENDED,
 }
 
-export enum CampaignStateEnum {
-    NOT_CREATED,
-    CREATED,
-    COMPLETED,
-    ABORTED,
-}
-
-export enum CampaignActionEnum {
+enum CampaignActionEnum {
     CREATE_CAMPAIGN,
     END_CAMPAIGN,
 }
 
-export class Timeline extends Struct({
+class Timeline extends Struct({
     startParticipation: UInt64,
     startFunding: UInt64,
     startRequesting: UInt64,
@@ -201,9 +190,9 @@ export class Timeline extends Struct({
     }
 }
 
-export type TimelineLeaf = Timeline;
+type TimelineLeaf = Timeline;
 
-export class TimelineStorage extends CampaignStorage<TimelineLeaf> {
+class TimelineStorage extends CampaignStorage<TimelineLeaf> {
     static calculateLeaf(timeline: TimelineLeaf): Field {
         return timeline.hash();
     }
@@ -220,3 +209,27 @@ export class TimelineStorage extends CampaignStorage<TimelineLeaf> {
         return TimelineStorage.calculateLevel1Index(campaignId);
     }
 }
+
+export {
+    LEVEL_1_CAMPAIGN_TREE_HEIGHT,
+    EMPTY_LEVEL_1_CAMPAIGN_TREE,
+    DefaultRootForCampaignTree,
+    CampaignStorage,
+    TimelineStorage,
+    OwnerStorage,
+    IpfsHashStorage,
+    KeyIndexStorage,
+    Timeline,
+    TimelineLeaf,
+    OwnerLeaf,
+    IpfsHashLeaf,
+    KeyIndexLeaf,
+    CampaignTimelineStateEnum,
+    CampaignActionEnum,
+    Level1MT as CampaignLevel1MT,
+    Level1Witness as CampaignLevel1Witness,
+    Level1Witness as TimelineLevel1Witness,
+    Level1Witness as OwnerLevel1Witness,
+    Level1Witness as IpfsHashLevel1Witness,
+    Level1Witness as KeyIndexLevel1Witness,
+};

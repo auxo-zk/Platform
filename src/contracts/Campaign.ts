@@ -15,13 +15,15 @@ import {
 } from 'o1js';
 import { IpfsHash, Utils } from '@auxo-dev/auxo-libs';
 import {
-    Level1Witness,
     DefaultRootForCampaignTree,
     Timeline,
     CampaignTimelineStateEnum,
     IpfsHashStorage,
-    KeyStorage,
+    KeyIndexStorage,
     TimelineStorage,
+    TimelineLevel1Witness,
+    IpfsHashLevel1Witness,
+    KeyIndexLevel1Witness,
 } from '../storages/CampaignStorage.js';
 import {
     AddressWitness,
@@ -31,10 +33,9 @@ import {
 } from '../storages/SharedStorage.js';
 import { ZkAppEnum } from '../Constants.js';
 import {
-    DkgContract,
     KeyStatus,
     KeyStatusInput,
-    RequesterContract,
+    ZkApp as DkgZkApp,
     Storage,
 } from '@auxo-dev/dkg';
 
@@ -63,13 +64,13 @@ class RollupCampaignOutput extends Struct({
     initialCampaignId: Field,
     initialTimelineRoot: Field,
     initialIpfsHashRoot: Field,
-    initialKeyRoot: Field,
+    initialKeyIndexRoot: Field,
     initialActionState: Field,
 
     nextCampaignId: Field,
     nextTimelineRoot: Field,
     nextIpfsHashRoot: Field,
-    nextKeyRoot: Field,
+    nextKeyIndexRoot: Field,
     nextActionState: Field,
 }) {}
 
@@ -83,19 +84,19 @@ const RollupCampaign = ZkProgram({
                 initialCampaignId: Field,
                 initialTimelineRoot: Field,
                 initialIpfsHashRoot: Field,
-                initialKeyRoot: Field,
+                initialKeyIndexRoot: Field,
                 initialActionState: Field
             ): RollupCampaignOutput {
                 return new RollupCampaignOutput({
                     initialCampaignId,
                     initialTimelineRoot,
                     initialIpfsHashRoot,
-                    initialKeyRoot,
+                    initialKeyIndexRoot,
                     initialActionState,
                     nextCampaignId: initialCampaignId,
                     nextTimelineRoot: initialTimelineRoot,
                     nextIpfsHashRoot: initialIpfsHashRoot,
-                    nextKeyRoot: initialKeyRoot,
+                    nextKeyIndexRoot: initialKeyIndexRoot,
                     nextActionState: initialActionState,
                 });
             },
@@ -104,49 +105,41 @@ const RollupCampaign = ZkProgram({
             privateInputs: [
                 SelfProof<Void, RollupCampaignOutput>,
                 CampaignAction,
-                Level1Witness,
-                Level1Witness,
-                Level1Witness,
+                TimelineLevel1Witness,
+                IpfsHashLevel1Witness,
+                KeyIndexLevel1Witness,
             ],
             method(
                 earlierProof: SelfProof<Void, RollupCampaignOutput>,
                 campaignAction: CampaignAction,
-                timelineWitness: Level1Witness,
-                ipfsHashWitness: Level1Witness,
-                keyWitness: Level1Witness
+                timelineWitness: TimelineLevel1Witness,
+                ipfsHashWitness: IpfsHashLevel1Witness,
+                keyIndexWitness: KeyIndexLevel1Witness
             ) {
                 earlierProof.verify();
                 // Verify empty timeline
-                const previousTimelineRoot = timelineWitness.calculateRoot(
-                    Field(0)
-                );
-                const timelineIndex = timelineWitness.calculateIndex();
-                previousTimelineRoot.assertEquals(
-                    earlierProof.publicOutput.nextTimelineRoot
-                );
-                timelineIndex.assertEquals(
-                    earlierProof.publicOutput.nextCampaignId
-                );
+                timelineWitness
+                    .calculateRoot(Field(0))
+                    .assertEquals(earlierProof.publicOutput.nextTimelineRoot);
+                timelineWitness
+                    .calculateIndex()
+                    .assertEquals(earlierProof.publicOutput.nextCampaignId);
 
                 // Verify empty ipfs hash
-                const previousIpfsHashRoot = ipfsHashWitness.calculateRoot(
-                    Field(0)
-                );
-                const ipfsHashIndex = ipfsHashWitness.calculateIndex();
-                previousIpfsHashRoot.assertEquals(
-                    earlierProof.publicOutput.nextIpfsHashRoot
-                );
-                ipfsHashIndex.assertEquals(
-                    earlierProof.publicOutput.nextCampaignId
-                );
+                ipfsHashWitness
+                    .calculateRoot(Field(0))
+                    .assertEquals(earlierProof.publicOutput.nextIpfsHashRoot);
+                ipfsHashWitness
+                    .calculateIndex()
+                    .assertEquals(earlierProof.publicOutput.nextCampaignId);
 
                 // Verify empty key
-                const previousKeyRoot = keyWitness.calculateRoot(Field(0));
-                const keyIndex = keyWitness.calculateIndex();
-                previousKeyRoot.assertEquals(
-                    earlierProof.publicOutput.nextKeyRoot
-                );
-                keyIndex.assertEquals(earlierProof.publicOutput.nextCampaignId);
+                keyIndexWitness
+                    .calculateRoot(Field(0))
+                    .assertEquals(earlierProof.publicOutput.nextKeyIndexRoot);
+                keyIndexWitness
+                    .calculateIndex()
+                    .assertEquals(earlierProof.publicOutput.nextCampaignId);
 
                 const nextTimelineRoot = timelineWitness.calculateRoot(
                     TimelineStorage.calculateLeaf(campaignAction.timeline)
@@ -154,8 +147,8 @@ const RollupCampaign = ZkProgram({
                 const nextIpfsHashRoot = ipfsHashWitness.calculateRoot(
                     IpfsHashStorage.calculateLeaf(campaignAction.ipfsHash)
                 );
-                const nextKeyRoot = keyWitness.calculateRoot(
-                    KeyStorage.calculateLeaf({
+                const nextKeyIndexRoot = keyIndexWitness.calculateRoot(
+                    KeyIndexStorage.calculateLeaf({
                         committeeId: campaignAction.committeeId,
                         keyId: campaignAction.keyId,
                     })
@@ -168,14 +161,15 @@ const RollupCampaign = ZkProgram({
                         earlierProof.publicOutput.initialTimelineRoot,
                     initialIpfsHashRoot:
                         earlierProof.publicOutput.initialIpfsHashRoot,
-                    initialKeyRoot: earlierProof.publicOutput.initialKeyRoot,
+                    initialKeyIndexRoot:
+                        earlierProof.publicOutput.initialKeyIndexRoot,
                     initialActionState:
                         earlierProof.publicOutput.initialActionState,
                     nextCampaignId:
                         earlierProof.publicOutput.nextCampaignId.add(1),
                     nextTimelineRoot: nextTimelineRoot,
                     nextIpfsHashRoot: nextIpfsHashRoot,
-                    nextKeyRoot: nextKeyRoot,
+                    nextKeyIndexRoot: nextKeyIndexRoot,
                     nextActionState: Utils.updateActionState(
                         earlierProof.publicOutput.nextActionState,
                         [CampaignAction.toFields(campaignAction)]
@@ -192,7 +186,7 @@ class CampaignContract extends SmartContract {
     @state(Field) nextCampaignId = State<Field>();
     @state(Field) timelineRoot = State<Field>();
     @state(Field) ipfsHashRoot = State<Field>();
-    @state(Field) keyRoot = State<Field>();
+    @state(Field) keyIndexRoot = State<Field>();
     @state(Field) zkAppRoot = State<Field>();
     @state(Field) actionState = State<Field>();
 
@@ -203,7 +197,7 @@ class CampaignContract extends SmartContract {
         this.nextCampaignId.set(Field(0));
         this.timelineRoot.set(DefaultRootForCampaignTree);
         this.ipfsHashRoot.set(DefaultRootForCampaignTree);
-        this.keyRoot.set(DefaultRootForCampaignTree);
+        this.keyIndexRoot.set(DefaultRootForCampaignTree);
         this.zkAppRoot.set(DefaultRootForZkAppTree);
         this.actionState.set(Reducer.initialActionState);
     }
@@ -213,10 +207,10 @@ class CampaignContract extends SmartContract {
         ipfsHash: IpfsHash,
         committeeId: Field,
         keyId: Field,
-        dkgContractRef: ZkAppRef,
         keyStatusWitness: Storage.DKGStorage.DkgLevel1Witness,
-        requesterContractRef: ZkAppRef,
-        campaignContractWitness: AddressWitness
+        campaignContractWitness: AddressWitness,
+        dkgContractRef: ZkAppRef,
+        requesterContractRef: ZkAppRef
     ) {
         const currentTimestamp = this.network.timestamp.getAndRequireEquals();
         timeline.isValid().assertEquals(Bool(true));
@@ -229,7 +223,9 @@ class CampaignContract extends SmartContract {
             this.zkAppRoot.getAndRequireEquals(),
             Field(ZkAppEnum.DKG)
         );
-        const dkgContract = new DkgContract(dkgContractRef.address);
+        const dkgContract = new DkgZkApp.DKG.DkgContract(
+            dkgContractRef.address
+        );
         dkgContract.verifyKeyStatus(
             new KeyStatusInput({
                 committeeId: committeeId,
@@ -246,7 +242,7 @@ class CampaignContract extends SmartContract {
             this.zkAppRoot.getAndRequireEquals(),
             Field(ZkAppEnum.REQUESTER)
         );
-        const requesterContract = new RequesterContract(
+        const requesterContract = new DkgZkApp.Requester.RequesterContract(
             requesterContractRef.address
         );
         requesterContract.createTask(
@@ -276,7 +272,7 @@ class CampaignContract extends SmartContract {
         const nextCampaignId = this.nextCampaignId.getAndRequireEquals();
         const timelineRoot = this.timelineRoot.getAndRequireEquals();
         const ipfsHashRoot = this.ipfsHashRoot.getAndRequireEquals();
-        const keyRoot = this.keyRoot.getAndRequireEquals();
+        const keyIndexRoot = this.keyIndexRoot.getAndRequireEquals();
         const actionState = this.actionState.getAndRequireEquals();
 
         nextCampaignId.assertEquals(
@@ -288,7 +284,9 @@ class CampaignContract extends SmartContract {
         ipfsHashRoot.assertEquals(
             rollupCampaignProof.publicOutput.initialIpfsHashRoot
         );
-        keyRoot.assertEquals(rollupCampaignProof.publicOutput.initialKeyRoot);
+        keyIndexRoot.assertEquals(
+            rollupCampaignProof.publicOutput.initialKeyIndexRoot
+        );
         actionState.assertEquals(
             rollupCampaignProof.publicOutput.initialActionState
         );
@@ -305,14 +303,16 @@ class CampaignContract extends SmartContract {
         this.ipfsHashRoot.set(
             rollupCampaignProof.publicOutput.nextIpfsHashRoot
         );
-        this.keyRoot.set(rollupCampaignProof.publicOutput.nextKeyRoot);
+        this.keyIndexRoot.set(
+            rollupCampaignProof.publicOutput.nextKeyIndexRoot
+        );
         this.actionState.set(rollupCampaignProof.publicOutput.nextActionState);
     }
 
     getCampaignTimelineState(
         campaignId: Field,
         timeline: Timeline,
-        timelineWitness: Level1Witness
+        timelineWitness: TimelineLevel1Witness
     ): Field {
         timelineWitness.calculateIndex().assertEquals(campaignId);
         const timelineRoot = this.timelineRoot.getAndRequireEquals();
@@ -340,17 +340,17 @@ class CampaignContract extends SmartContract {
         campaignId: Field,
         committeeId: Field,
         keyId: Field,
-        keyWitness: Level1Witness
+        keyWitness: TimelineLevel1Witness
     ): Bool {
         return keyWitness
             .calculateIndex()
-            .equals(KeyStorage.calculateLevel1Index(campaignId))
+            .equals(KeyIndexStorage.calculateLevel1Index(campaignId))
             .and(
                 keyWitness
                     .calculateRoot(
-                        KeyStorage.calculateLeaf({ committeeId, keyId })
+                        KeyIndexStorage.calculateLeaf({ committeeId, keyId })
                     )
-                    .equals(this.keyRoot.getAndRequireEquals())
+                    .equals(this.keyIndexRoot.getAndRequireEquals())
             );
     }
 }
