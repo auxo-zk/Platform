@@ -9,34 +9,32 @@ import {
 import { INSTANCE_LIMITS } from '../Constants.js';
 import { IpfsHash, PublicKeyDynamicArray } from '@auxo-dev/auxo-libs';
 
-export const LEVEL_1_PROJECT_TREE_HEIGHT =
+const LEVEL_1_PROJECT_TREE_HEIGHT =
     Math.ceil(Math.log2(INSTANCE_LIMITS.PROJECT_TREE_SIZE)) + 1;
-export const LEVEL_2_PROJECT_MEMBER_TREE_HEIGHT =
+const LEVEL_2_PROJECT_MEMBER_TREE_HEIGHT =
     Math.ceil(Math.log2(INSTANCE_LIMITS.PROJECT_MEMBER_TREE_SIZE)) + 1;
 
-export class Level1MT extends MerkleTree {}
-export class Level1Witness extends MerkleWitness(LEVEL_1_PROJECT_TREE_HEIGHT) {}
-export class Level2MT extends MerkleTree {}
-export class Level2Witness extends MerkleWitness(
-    LEVEL_2_PROJECT_MEMBER_TREE_HEIGHT
-) {}
+class Level1MT extends MerkleTree {}
+class Level1Witness extends MerkleWitness(LEVEL_1_PROJECT_TREE_HEIGHT) {}
+class Level2MT extends MerkleTree {}
+class Level2Witness extends MerkleWitness(LEVEL_2_PROJECT_MEMBER_TREE_HEIGHT) {}
 
-export const EMPTY_LEVEL_1_PROJECT_TREE = () =>
+const EMPTY_LEVEL_1_PROJECT_TREE = () =>
     new Level1MT(LEVEL_1_PROJECT_TREE_HEIGHT);
-export const EMPTY_LEVEL_2_PROJECT_MEMBER_TREE = () =>
+const EMPTY_LEVEL_2_PROJECT_MEMBER_TREE = () =>
     new Level2MT(LEVEL_2_PROJECT_MEMBER_TREE_HEIGHT);
 
-export const DefaultRootForProjectTree = EMPTY_LEVEL_1_PROJECT_TREE().getRoot();
-export const DefaultRootForProjectMemberTree =
+const DefaultRootForProjectTree = EMPTY_LEVEL_1_PROJECT_TREE().getRoot();
+const DefaultRootForProjectMemberTree =
     EMPTY_LEVEL_2_PROJECT_MEMBER_TREE().getRoot();
 
-export class FullMTWitness extends Struct({
+class FullWitness extends Struct({
     level1: Level1Witness,
     level2: Level2Witness,
 }) {}
 
 // Storage
-export abstract class ProjectStorage<RawLeaf> {
+abstract class ProjectStorage<RawLeaf> {
     private _level1: Level1MT;
     private _level2s: { [key: string]: Level2MT };
     private _leafs: {
@@ -114,9 +112,9 @@ export abstract class ProjectStorage<RawLeaf> {
     getWitness(
         level1Index: Field,
         level2Index?: Field
-    ): Level1Witness | FullMTWitness {
+    ): Level1Witness | FullWitness {
         if (level2Index) {
-            return new FullMTWitness({
+            return new FullWitness({
                 level1: this.getLevel1Witness(level1Index),
                 level2: this.getLevel2Witness(level1Index, level2Index),
             });
@@ -182,9 +180,9 @@ export abstract class ProjectStorage<RawLeaf> {
     }
 }
 
-export type ProjectMemberLeaf = PublicKey;
+type ProjectMemberLeaf = PublicKey;
 
-export class ProjectMemberStorage extends ProjectStorage<ProjectMemberLeaf> {
+class ProjectMemberStorage extends ProjectStorage<ProjectMemberLeaf> {
     static calculateLeaf(publicKey: ProjectMemberLeaf): Field {
         return Poseidon.hash(publicKey.toFields());
     }
@@ -209,8 +207,8 @@ export class ProjectMemberStorage extends ProjectStorage<ProjectMemberLeaf> {
         return ProjectMemberStorage.calculateLevel2Index(memberId);
     }
 
-    getWitness(level1Index: Field, level2Index: Field): FullMTWitness {
-        return super.getWitness(level1Index, level2Index) as FullMTWitness;
+    getWitness(level1Index: Field, level2Index: Field): FullWitness {
+        return super.getWitness(level1Index, level2Index) as FullWitness;
     }
 
     updateLeaf(
@@ -234,9 +232,9 @@ export class ProjectMemberStorage extends ProjectStorage<ProjectMemberLeaf> {
     }
 }
 
-export type TreasuryAddressLeaf = PublicKey;
+type TreasuryAddressLeaf = PublicKey;
 
-export class TreasuryAddressStorage extends ProjectStorage<TreasuryAddressLeaf> {
+class TreasuryAddressStorage extends ProjectStorage<TreasuryAddressLeaf> {
     static calculateLeaf(address: TreasuryAddressLeaf): Field {
         return Poseidon.hash(address.toFields());
     }
@@ -269,9 +267,9 @@ export class TreasuryAddressStorage extends ProjectStorage<TreasuryAddressLeaf> 
     }
 }
 
-export type IpfsHashLeaf = IpfsHash;
+type IpfsHashLeaf = IpfsHash;
 
-export class IpfsHashStorage extends ProjectStorage<IpfsHashLeaf> {
+class IpfsHashStorage extends ProjectStorage<IpfsHashLeaf> {
     static calculateLeaf(ipfsHash: IpfsHashLeaf): Field {
         return Poseidon.hash(ipfsHash.toFields());
     }
@@ -304,11 +302,36 @@ export class IpfsHashStorage extends ProjectStorage<IpfsHashLeaf> {
     }
 }
 
-export class MemberArray extends PublicKeyDynamicArray(
+class MemberArray extends PublicKeyDynamicArray(
     INSTANCE_LIMITS.PROJECT_MEMBER_TREE_SIZE
 ) {}
 
-export enum ProjectActionEnum {
+enum ProjectActionEnum {
     CREATE_PROJECT,
     UPDATE_PROJECT,
 }
+
+export {
+    LEVEL_1_PROJECT_TREE_HEIGHT,
+    LEVEL_2_PROJECT_MEMBER_TREE_HEIGHT,
+    EMPTY_LEVEL_1_PROJECT_TREE,
+    EMPTY_LEVEL_2_PROJECT_MEMBER_TREE,
+    DefaultRootForProjectTree,
+    DefaultRootForProjectMemberTree,
+    ProjectStorage,
+    ProjectMemberStorage,
+    TreasuryAddressStorage,
+    IpfsHashStorage,
+    ProjectMemberLeaf,
+    TreasuryAddressLeaf,
+    IpfsHashLeaf,
+    MemberArray,
+    ProjectActionEnum,
+    Level1MT as ProjectLevel1MT,
+    Level2MT as ProjectLevel2MT,
+    FullWitness as ProjectFullWitness,
+    Level1Witness as ProjectMemberLevel1Witness,
+    Level2Witness as ProjectMemberLevel2Witness,
+    Level1Witness as TreasuryAddressLevel1Witness,
+    Level1Witness as IpfsHashLevel1Witness,
+};

@@ -16,8 +16,6 @@ import {
 import { IpfsHash, Utils } from '@auxo-dev/auxo-libs';
 import { INSTANCE_LIMITS } from '../Constants.js';
 import {
-    Level1Witness,
-    Level2Witness,
     MemberArray,
     ProjectActionEnum,
     ProjectMemberStorage,
@@ -25,6 +23,10 @@ import {
     TreasuryAddressStorage,
     EMPTY_LEVEL_2_PROJECT_MEMBER_TREE,
     DefaultRootForProjectTree,
+    ProjectMemberLevel1Witness,
+    ProjectMemberLevel2Witness,
+    IpfsHashLevel1Witness,
+    TreasuryAddressLevel1Witness,
 } from '../storages/ProjectStorage.js';
 
 export {
@@ -91,16 +93,16 @@ const RollupProject = ZkProgram({
             privateInputs: [
                 SelfProof<Void, RollupProjectOutput>,
                 ProjectAction,
-                Level1Witness,
-                Level1Witness,
-                Level1Witness,
+                ProjectMemberLevel1Witness,
+                IpfsHashLevel1Witness,
+                TreasuryAddressLevel1Witness,
             ],
             method(
                 earlierProof: SelfProof<Void, RollupProjectOutput>,
                 projectAction: ProjectAction,
-                memberWitness: Level1Witness,
-                ipfsHashWitness: Level1Witness,
-                treasuryAddressWitness: Level1Witness
+                memberWitness: ProjectMemberLevel1Witness,
+                ipfsHashWitness: IpfsHashLevel1Witness,
+                treasuryAddressWitness: TreasuryAddressLevel1Witness
             ) {
                 earlierProof.verify();
                 projectAction.actionType.assertEquals(
@@ -183,13 +185,13 @@ const RollupProject = ZkProgram({
                 SelfProof<Void, RollupProjectOutput>,
                 ProjectAction,
                 IpfsHash,
-                Level1Witness,
+                IpfsHashLevel1Witness,
             ],
             method(
                 earlierProof: SelfProof<Void, RollupProjectOutput>,
                 projectAction: ProjectAction,
                 currentIpfsHash: IpfsHash,
-                ipfsHashWitness: Level1Witness
+                ipfsHashWitness: IpfsHashLevel1Witness
             ) {
                 earlierProof.verify();
                 projectAction.actionType.assertEquals(
@@ -272,8 +274,8 @@ class ProjectContract extends SmartContract {
     @method updateProject(
         projectId: Field,
         ipfsHash: IpfsHash,
-        memberWitnessLevel1: Level1Witness,
-        memberWitnessLevel2: Level2Witness
+        memberWitnessLevel1: ProjectMemberLevel1Witness,
+        memberWitnessLevel2: ProjectMemberLevel2Witness
     ) {
         this.isOwner(
             projectId,
@@ -328,26 +330,39 @@ class ProjectContract extends SmartContract {
 
     isOwner(
         projectId: Field,
-        memberWitnessLevel1: Level1Witness,
-        memberWitnessLevel2: Level2Witness
+        memberWitnessLevel1: ProjectMemberLevel1Witness,
+        memberWitnessLevel2: ProjectMemberLevel2Witness
     ): Bool {
-        return Provable.if(
-            this.nextProjectId
-                .getAndRequireEquals()
-                .greaterThan(projectId)
-                .and(memberWitnessLevel1.calculateIndex().equals(projectId))
-                .and(
-                    memberWitnessLevel1
-                        .calculateRoot(
-                            memberWitnessLevel2.calculateRoot(
-                                ProjectMemberStorage.calculateLeaf(this.sender)
-                            )
+        return this.nextProjectId
+            .getAndRequireEquals()
+            .greaterThan(projectId)
+            .and(memberWitnessLevel1.calculateIndex().equals(projectId))
+            .and(
+                memberWitnessLevel1
+                    .calculateRoot(
+                        memberWitnessLevel2.calculateRoot(
+                            ProjectMemberStorage.calculateLeaf(this.sender)
                         )
-                        .equals(this.memberRoot.getAndRequireEquals())
-                )
-                .and(memberWitnessLevel2.calculateIndex().equals(Field(0))),
-            Bool(true),
-            Bool(false)
-        );
+                    )
+                    .equals(this.memberRoot.getAndRequireEquals())
+            )
+            .and(memberWitnessLevel2.calculateIndex().equals(Field(0)));
+    }
+
+    isValidTreasuryAddress(
+        projectId: Field,
+        treasuryAddress: PublicKey,
+        treasuryAddressWitness: TreasuryAddressLevel1Witness
+    ): Bool {
+        return treasuryAddressWitness
+            .calculateIndex()
+            .equals(projectId)
+            .and(
+                treasuryAddressWitness
+                    .calculateRoot(
+                        TreasuryAddressStorage.calculateLeaf(treasuryAddress)
+                    )
+                    .equals(this.treasuryAddressRoot.getAndRequireEquals())
+            );
     }
 }
