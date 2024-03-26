@@ -1,110 +1,21 @@
 import { Field, MerkleTree, MerkleWitness, Poseidon } from 'o1js';
 import { INSTANCE_LIMITS } from '../Constants.js';
 import { IpfsHash } from '@auxo-dev/auxo-libs';
+import { CampaignStorage, CampaignLevel1Witness } from './CampaignStorage.js';
 
-export const LEVEL_1_PARTICIPATION_INDEX_TREE_HEIGHT =
-    Math.ceil(Math.log2(INSTANCE_LIMITS.PARTICIPATION_INDEX_TREE_SIZE)) + 1;
+const LEVEL_1_PARTICIPATION_TREE_HEIGHT =
+    Math.ceil(Math.log2(INSTANCE_LIMITS.PARTICIPATION_TREE_SIZE)) + 1;
 
-export const LEVEL_1_CAMPAIGN_TREE_HEIGHT =
-    Math.ceil(Math.log2(INSTANCE_LIMITS.CAMPAIGN_TREE_SIZE)) + 1;
+class Level1MT extends MerkleTree {}
+class Level1Witness extends MerkleWitness(LEVEL_1_PARTICIPATION_TREE_HEIGHT) {}
 
-export class Level1CMT extends MerkleTree {}
-export class Level1CWitness extends MerkleWitness(
-    LEVEL_1_PARTICIPATION_INDEX_TREE_HEIGHT
-) {}
+const EMPTY_LEVEL_1_PARTICIPATION_TREE = () =>
+    new Level1MT(LEVEL_1_PARTICIPATION_TREE_HEIGHT);
 
-export class Level1MT extends MerkleTree {}
-export class Level1Witness extends MerkleWitness(
-    LEVEL_1_CAMPAIGN_TREE_HEIGHT
-) {}
+const DefaultRootForParticipationTree =
+    EMPTY_LEVEL_1_PARTICIPATION_TREE().getRoot();
 
-export const EMPTY_LEVEL_1_COMBINED_TREE = () =>
-    new Level1CMT(LEVEL_1_PARTICIPATION_INDEX_TREE_HEIGHT);
-
-export const EMPTY_LEVEL_1_TREE = () =>
-    new Level1MT(LEVEL_1_CAMPAIGN_TREE_HEIGHT);
-
-export const DefaultLevel1Root = EMPTY_LEVEL_1_TREE().getRoot();
-export const DefaultLevel1CombinedRoot =
-    EMPTY_LEVEL_1_COMBINED_TREE().getRoot();
-export const DefaultRootForParticipationIndexRoot =
-    EMPTY_LEVEL_1_COMBINED_TREE().getRoot();
-
-export abstract class ParticipationIndexStorage<RawLeaf> {
-    private _level1: Level1CMT;
-    private _leafs: {
-        [key: string]: { raw: RawLeaf | undefined; leaf: Field };
-    };
-
-    constructor(
-        leafs?: {
-            level1Index: Field;
-            leaf: RawLeaf | Field;
-        }[]
-    ) {
-        this._level1 = EMPTY_LEVEL_1_COMBINED_TREE();
-        this._leafs = {};
-        if (leafs) {
-            for (let i = 0; i < leafs.length; i++) {
-                if (leafs[i].leaf instanceof Field) {
-                    this.updateLeaf(
-                        leafs[i].level1Index,
-                        leafs[i].leaf as Field
-                    );
-                } else {
-                    this.updateRawLeaf(
-                        leafs[i].level1Index,
-                        leafs[i].leaf as RawLeaf
-                    );
-                }
-            }
-        }
-    }
-
-    get root(): Field {
-        return this._level1.getRoot();
-    }
-
-    get level1(): Level1CMT {
-        return this._level1;
-    }
-
-    get leafs(): { [key: string]: { raw: RawLeaf | undefined; leaf: Field } } {
-        return this._leafs;
-    }
-
-    abstract calculateLeaf(rawLeaf: RawLeaf): Field;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    abstract calculateLevel1Index(args: any): Field;
-
-    getLevel1Witness(level1Index: Field): Level1CWitness {
-        return new Level1CWitness(
-            this._level1.getWitness(level1Index.toBigInt())
-        );
-    }
-
-    getWitness(level1Index: Field): Level1CWitness {
-        return this.getLevel1Witness(level1Index);
-    }
-
-    updateLeaf(level1Index: Field, leaf: Field): void {
-        this._level1.setLeaf(level1Index.toBigInt(), leaf);
-        this._leafs[level1Index.toString()] = {
-            raw: undefined,
-            leaf: leaf,
-        };
-    }
-
-    updateRawLeaf(level1Index: Field, rawLeaf: RawLeaf): void {
-        let leaf = this.calculateLeaf(rawLeaf);
-        this._level1.setLeaf(level1Index.toBigInt(), leaf);
-        this._leafs[level1Index.toString()] = {
-            raw: rawLeaf,
-            leaf: leaf,
-        };
-    }
-}
-export abstract class ParticipationStorage<RawLeaf> {
+abstract class ParticipationStorage<RawLeaf> {
     private _level1: Level1MT;
     private _leafs: {
         [key: string]: { raw: RawLeaf | undefined; leaf: Field };
@@ -116,7 +27,7 @@ export abstract class ParticipationStorage<RawLeaf> {
             leaf: RawLeaf | Field;
         }[]
     ) {
-        this._level1 = EMPTY_LEVEL_1_TREE();
+        this._level1 = EMPTY_LEVEL_1_PARTICIPATION_TREE();
         this._leafs = {};
         if (leafs) {
             for (let i = 0; i < leafs.length; i++) {
@@ -179,9 +90,9 @@ export abstract class ParticipationStorage<RawLeaf> {
     }
 }
 
-export type ProjectIndexLeaf = Field;
+type ProjectIndexLeaf = Field;
 
-export class ProjectIndexStorage extends ParticipationIndexStorage<ProjectIndexLeaf> {
+class ProjectIndexStorage extends ParticipationStorage<ProjectIndexLeaf> {
     static calculateLeaf(index: ProjectIndexLeaf): Field {
         return index;
     }
@@ -214,9 +125,9 @@ export class ProjectIndexStorage extends ParticipationIndexStorage<ProjectIndexL
     }
 }
 
-export type IpfsHashLeaf = IpfsHash;
+type IpfsHashLeaf = IpfsHash;
 
-export class IpfsHashStorage extends ParticipationIndexStorage<IpfsHashLeaf> {
+class IpfsHashStorage extends ParticipationStorage<IpfsHashLeaf> {
     static calculateLeaf(ipfsHash: IpfsHashLeaf): Field {
         return Poseidon.hash(ipfsHash.toFields());
     }
@@ -246,9 +157,9 @@ export class IpfsHashStorage extends ParticipationIndexStorage<IpfsHashLeaf> {
     }
 }
 
-export type ProjectCounterLeaf = Field;
+type ProjectCounterLeaf = Field;
 
-export class ProjectCounterStorage extends ParticipationStorage<ProjectCounterLeaf> {
+class ProjectCounterStorage extends CampaignStorage<ProjectCounterLeaf> {
     static calculateLeaf(counter: ProjectCounterLeaf): Field {
         return counter;
     }
@@ -265,3 +176,21 @@ export class ProjectCounterStorage extends ParticipationStorage<ProjectCounterLe
         return ProjectCounterStorage.calculateLevel1Index(campaignId);
     }
 }
+
+export {
+    LEVEL_1_PARTICIPATION_TREE_HEIGHT,
+    EMPTY_LEVEL_1_PARTICIPATION_TREE,
+    DefaultRootForParticipationTree,
+    ParticipationStorage,
+    ProjectIndexStorage,
+    IpfsHashStorage,
+    ProjectCounterStorage,
+    ProjectIndexLeaf,
+    IpfsHashLeaf,
+    ProjectCounterLeaf,
+    Level1MT as ParticipationLevel1MT,
+    Level1Witness as ParticipationLevel1Witness,
+    Level1Witness as ProjectIndexLevel1Witness,
+    Level1Witness as IpfsHashLevel1Witness,
+    CampaignLevel1Witness as ProjectCounterLevel1Witness,
+};

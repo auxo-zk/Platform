@@ -18,12 +18,12 @@ import {
 } from 'o1js';
 import { IpfsHash, Utils } from '@auxo-dev/auxo-libs';
 import {
-    Level1Witness,
-    Level1CWitness,
     ProjectIndexStorage,
-    DefaultLevel1Root,
-    DefaultLevel1CombinedRoot,
     IpfsHashStorage,
+    DefaultRootForParticipationTree,
+    ProjectIndexLevel1Witness,
+    ProjectCounterLevel1Witness,
+    IpfsHashLevel1Witness,
 } from '../storages/ParticipationStorage.js';
 import {
     DefaultRootForZkAppTree,
@@ -33,14 +33,15 @@ import {
 import { INSTANCE_LIMITS, ZkAppEnum } from '../Constants.js';
 import { CampaignContract } from './Campaign.js';
 import {
-    Level1Witness as TimelineLevel1Witness,
     CampaignTimelineStateEnum,
+    DefaultRootForCampaignTree,
     Timeline,
+    TimelineLevel1Witness,
 } from '../storages/CampaignStorage.js';
 import { ProjectContract } from './Project.js';
 import {
-    Level1Witness as MemberLevel1Witness,
-    Level2Witness as MemberLevel2Witness,
+    ProjectMemberLevel1Witness,
+    ProjectMemberLevel2Witness,
 } from '../storages/ProjectStorage.js';
 
 export {
@@ -108,17 +109,17 @@ const RollupParticipation = ZkProgram({
                 SelfProof<Void, RollupParticipationOutput>,
                 ParticipationAction,
                 Field,
-                Level1CWitness,
-                Level1Witness,
-                Level1CWitness,
+                ProjectIndexLevel1Witness,
+                ProjectCounterLevel1Witness,
+                IpfsHashLevel1Witness,
             ],
             method(
                 earlierProof: SelfProof<Void, RollupParticipationOutput>,
                 participationAction: ParticipationAction,
                 projectCounter: Field,
-                projectIndexWitness: Level1CWitness,
-                projectCounterWitness: Level1Witness,
-                ipfsHashWitness: Level1CWitness
+                projectIndexWitness: ProjectIndexLevel1Witness,
+                projectCounterWitness: ProjectCounterLevel1Witness,
+                ipfsHashWitness: IpfsHashLevel1Witness
             ) {
                 earlierProof.verify();
                 const campaignId = participationAction.campaignId;
@@ -187,6 +188,7 @@ const RollupParticipation = ZkProgram({
 class RollupParticipationProof extends ZkProgram.Proof(RollupParticipation) {}
 
 class ParticipationContract extends SmartContract {
+    // Project Index counts from 1 -> n in this tree, but while using in other places, it starts from 0
     @state(Field) projectIndexRoot = State<Field>();
     @state(Field) projectCounterRoot = State<Field>();
     @state(Field) ipfsHashRoot = State<Field>();
@@ -196,9 +198,9 @@ class ParticipationContract extends SmartContract {
     reducer = Reducer({ actionType: ParticipationAction });
 
     init() {
-        this.projectIndexRoot.set(DefaultLevel1CombinedRoot);
-        this.projectCounterRoot.set(DefaultLevel1Root);
-        this.ipfsHashRoot.set(DefaultLevel1CombinedRoot);
+        this.projectIndexRoot.set(DefaultRootForParticipationTree);
+        this.projectCounterRoot.set(DefaultRootForCampaignTree);
+        this.ipfsHashRoot.set(DefaultRootForParticipationTree);
         this.zkAppRoot.set(DefaultRootForZkAppTree);
         this.actionState.set(Reducer.initialActionState);
     }
@@ -207,15 +209,15 @@ class ParticipationContract extends SmartContract {
         campaignId: Field,
         projectId: Field,
         ipfsHash: IpfsHash,
-        campaignContractRef: ZkAppRef,
-        projectContractRef: ZkAppRef,
         timeline: Timeline,
         timelineWitness: TimelineLevel1Witness,
-        memberLevel1Witness: MemberLevel1Witness,
-        memberLevel2Witness: MemberLevel2Witness,
-        projectIndexWitness: Level1CWitness,
+        memberLevel1Witness: ProjectMemberLevel1Witness,
+        memberLevel2Witness: ProjectMemberLevel2Witness,
+        projectIndexWitness: ProjectIndexLevel1Witness,
         projectCounter: Field,
-        projectCounterWitness: Level1Witness
+        projectCounterWitness: ProjectCounterLevel1Witness,
+        campaignContractRef: ZkAppRef,
+        projectContractRef: ZkAppRef
     ) {
         const participationAction = new ParticipationAction({
             campaignId: campaignId,
@@ -345,7 +347,7 @@ class ParticipationContract extends SmartContract {
     isExistedProjectIndex(
         campaignId: Field,
         projectId: Field,
-        projectIndexWitness: Level1CWitness
+        projectIndexWitness: ProjectIndexLevel1Witness
     ): Bool {
         projectIndexWitness.calculateIndex().assertEquals(
             ProjectIndexStorage.calculateLevel1Index({
@@ -354,20 +356,16 @@ class ParticipationContract extends SmartContract {
             })
         );
         const projectIndexRoot = this.projectIndexRoot.getAndRequireEquals();
-        return Provable.if(
-            projectIndexRoot.equals(
-                projectIndexWitness.calculateRoot(Field(0))
-            ),
-            Bool(false),
-            Bool(true)
-        );
+        return projectIndexRoot
+            .equals(projectIndexWitness.calculateRoot(Field(0)))
+            .not();
     }
 
     isValidProjectIndex(
         campaignId: Field,
         projectId: Field,
         projectIndex: Field,
-        projectIndexWitness: Level1CWitness
+        projectIndexWitness: ProjectIndexLevel1Witness
     ) {
         projectIndex.assertGreaterThanOrEqual(1);
         projectIndexWitness.calculateIndex().assertEquals(
@@ -377,29 +375,21 @@ class ParticipationContract extends SmartContract {
             })
         );
         const projectIndexRoot = this.projectIndexRoot.getAndRequireEquals();
-        return Provable.if(
-            projectIndexRoot.equals(
-                projectIndexWitness.calculateRoot(projectIndex)
-            ),
-            Bool(true),
-            Bool(false)
+        return projectIndexRoot.equals(
+            projectIndexWitness.calculateRoot(projectIndex)
         );
     }
 
     isValidProjectCounter(
         campaignId: Field,
         projectCounter: Field,
-        projectCounterWitness: Level1Witness
+        projectCounterWitness: ProjectCounterLevel1Witness
     ): Bool {
         projectCounterWitness.calculateIndex().assertEquals(campaignId);
         const projectCounterRoot =
             this.projectCounterRoot.getAndRequireEquals();
-        return Provable.if(
-            projectCounterRoot.equals(
-                projectCounterWitness.calculateRoot(projectCounter)
-            ),
-            Bool(true),
-            Bool(false)
+        return projectCounterRoot.equals(
+            projectCounterWitness.calculateRoot(projectCounter)
         );
     }
 
