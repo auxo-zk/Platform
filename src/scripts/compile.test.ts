@@ -32,7 +32,7 @@ describe('Test compile contract', () => {
 
     beforeAll(async () => {
         if (proofsEnabled) {
-            Provable.log(( FundingContract.analyzeMethods()));
+            // Provable.log(( FundingContract.analyzeMethods()));
             Provable.log(( TreasuryManagerContract.analyzeMethods()));
             // Provable.log(ParticipationContract.analyzeMethods());
             // Provable.log(ParticipationContract.analyzeMethods());
