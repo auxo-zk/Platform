@@ -33,7 +33,7 @@ import {
 } from '../storages/ProjectStorage';
 import { IpfsHash } from '@auxo-dev/auxo-libs';
 import { fetchActions, LocalBlockchain } from 'o1js/dist/node/lib/mina';
-import { CampaignMockData } from './CampaignMockData';
+import { CampaignMockData } from './mock/CampaignMockData';
 import { Action } from './interfaces/action.interface';
 import { Utilities } from './utils';
 import { ParticipationContract } from '../contracts/Participation';
