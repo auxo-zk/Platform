@@ -43,6 +43,7 @@ import { CampaignContract } from './Campaign';
 import {
     CampaignStateEnum,
     CampaignStateLevel1Witness,
+    CampaignStateStorage,
     ClaimedIndexLevel1Witness,
     ClaimedIndexStorage,
     DefaultRootForTreasuryManagerTree,
@@ -53,7 +54,7 @@ import { TreasuryAddressLevel1Witness } from '../storages/ProjectStorage';
 import { ParticipationContract } from './Participation';
 import { ProjectContract } from './Project';
 
-export { TreasuryManagerContract };
+export { TreasuryManagerContract, TreasuryManagerAction };
 
 class TreasuryManagerAction extends Struct({
     campaignId: Field,
@@ -87,6 +88,181 @@ class TreasuryManagerAction extends Struct({
     }
 }
 
+class RollupTreasuryManagerOutput extends Struct({
+    initialCampaignStateRoot: Field,
+    initialClaimedIndexRoot: Field,
+    initialActionState: Field,
+    nextCampaignStateRoot: Field,
+    nextClaimedIndexRoot: Field,
+    nextActionState: Field,
+}) {}
+
+const RollupTreasuryManager = ZkProgram({
+    name: 'RollupTreasuryManager',
+    publicOutput: RollupTreasuryManagerOutput,
+    methods: {
+        firstStep: {
+            privateInputs: [Field, Field, Field],
+            method(
+                initialCampaignStateRoot: Field,
+                initialClaimedIndexRoot: Field,
+                initialActionState: Field
+            ): RollupTreasuryManagerOutput {
+                return new RollupTreasuryManagerOutput({
+                    initialCampaignStateRoot: initialCampaignStateRoot,
+                    initialClaimedIndexRoot: initialClaimedIndexRoot,
+                    initialActionState: initialActionState,
+                    nextCampaignStateRoot: initialCampaignStateRoot,
+                    nextClaimedIndexRoot: initialClaimedIndexRoot,
+                    nextActionState: initialActionState,
+                });
+            },
+        },
+        completeCampaignStep: {
+            privateInputs: [
+                SelfProof<Void, RollupTreasuryManagerOutput>,
+                TreasuryManagerAction,
+                CampaignStateLevel1Witness,
+            ],
+            method(
+                earlierProof: SelfProof<Void, RollupTreasuryManagerOutput>,
+                treasuryManagerAction: TreasuryManagerAction,
+                campaignStateWitness: CampaignStateLevel1Witness
+            ): RollupTreasuryManagerOutput {
+                earlierProof.verify();
+                treasuryManagerAction.actionType.assertEquals(
+                    Field(TreasuryManagerActionEnum.COMPLETE_CAMPAIGN)
+                );
+                campaignStateWitness
+                    .calculateIndex()
+                    .assertEquals(treasuryManagerAction.campaignId);
+                campaignStateWitness
+                    .calculateRoot(Field(0))
+                    .assertEquals(
+                        earlierProof.publicOutput.nextCampaignStateRoot
+                    );
+                const nextCampaignStateRoot =
+                    campaignStateWitness.calculateRoot(
+                        CampaignStateStorage.calculateLeaf(
+                            CampaignStateEnum.COMPLETED
+                        )
+                    );
+                return new RollupTreasuryManagerOutput({
+                    initialCampaignStateRoot:
+                        earlierProof.publicOutput.initialCampaignStateRoot,
+                    initialClaimedIndexRoot:
+                        earlierProof.publicOutput.initialClaimedIndexRoot,
+                    initialActionState:
+                        earlierProof.publicOutput.initialActionState,
+                    nextCampaignStateRoot: nextCampaignStateRoot,
+                    nextClaimedIndexRoot:
+                        earlierProof.publicOutput.nextClaimedIndexRoot,
+                    nextActionState: Utils.updateActionState(
+                        earlierProof.publicOutput.nextActionState,
+                        [TreasuryManagerAction.toFields(treasuryManagerAction)]
+                    ),
+                });
+            },
+        },
+        abortCampaignStep: {
+            privateInputs: [
+                SelfProof<Void, RollupTreasuryManagerOutput>,
+                TreasuryManagerAction,
+                CampaignStateLevel1Witness,
+            ],
+            method(
+                earlierProof: SelfProof<Void, RollupTreasuryManagerOutput>,
+                treasuryManagerAction: TreasuryManagerAction,
+                campaignStateWitness: CampaignStateLevel1Witness
+            ) {
+                earlierProof.verify();
+                treasuryManagerAction.actionType.assertEquals(
+                    Field(TreasuryManagerActionEnum.ABORT_CAMPAIGN)
+                );
+                campaignStateWitness
+                    .calculateIndex()
+                    .assertEquals(treasuryManagerAction.campaignId);
+                campaignStateWitness
+                    .calculateRoot(Field(0))
+                    .assertEquals(
+                        earlierProof.publicOutput.nextCampaignStateRoot
+                    );
+                const nextCampaignStateRoot =
+                    campaignStateWitness.calculateRoot(
+                        CampaignStateStorage.calculateLeaf(
+                            CampaignStateEnum.ABORTED
+                        )
+                    );
+                return new RollupTreasuryManagerOutput({
+                    initialCampaignStateRoot:
+                        earlierProof.publicOutput.initialCampaignStateRoot,
+                    initialClaimedIndexRoot:
+                        earlierProof.publicOutput.initialClaimedIndexRoot,
+                    initialActionState:
+                        earlierProof.publicOutput.initialActionState,
+                    nextCampaignStateRoot: nextCampaignStateRoot,
+                    nextClaimedIndexRoot:
+                        earlierProof.publicOutput.nextClaimedIndexRoot,
+                    nextActionState: Utils.updateActionState(
+                        earlierProof.publicOutput.nextActionState,
+                        [TreasuryManagerAction.toFields(treasuryManagerAction)]
+                    ),
+                });
+            },
+        },
+        claimFundStep: {
+            privateInputs: [
+                SelfProof<Void, RollupTreasuryManagerOutput>,
+                TreasuryManagerAction,
+                ClaimedIndexLevel1Witness,
+            ],
+            method(
+                earlierProof: SelfProof<Void, RollupTreasuryManagerOutput>,
+                treasuryManagerAction: TreasuryManagerAction,
+                claimedIndexWitness: ClaimedIndexLevel1Witness
+            ) {
+                earlierProof.verify();
+                treasuryManagerAction.actionType.assertEquals(
+                    Field(TreasuryManagerActionEnum.CLAIM_FUND)
+                );
+                claimedIndexWitness.calculateIndex().assertEquals(
+                    ClaimedIndexStorage.calculateLevel1Index({
+                        campaignId: treasuryManagerAction.campaignId,
+                        dimensionIndex:
+                            treasuryManagerAction.projectIndex.sub(1),
+                    })
+                );
+                claimedIndexWitness
+                    .calculateRoot(Field(0))
+                    .assertEquals(
+                        earlierProof.publicOutput.nextClaimedIndexRoot
+                    );
+                const nextClaimedIndexRoot = claimedIndexWitness.calculateRoot(
+                    ClaimedIndexStorage.calculateLeaf(Bool(true))
+                );
+                return new RollupTreasuryManagerOutput({
+                    initialCampaignStateRoot:
+                        earlierProof.publicOutput.initialCampaignStateRoot,
+                    initialClaimedIndexRoot:
+                        earlierProof.publicOutput.initialClaimedIndexRoot,
+                    initialActionState:
+                        earlierProof.publicOutput.initialActionState,
+                    nextCampaignStateRoot:
+                        earlierProof.publicOutput.nextCampaignStateRoot,
+                    nextClaimedIndexRoot: nextClaimedIndexRoot,
+                    nextActionState: Utils.updateActionState(
+                        earlierProof.publicOutput.nextActionState,
+                        [TreasuryManagerAction.toFields(treasuryManagerAction)]
+                    ),
+                });
+            },
+        },
+    },
+});
+
+class RollupTreasuryManagerProof extends ZkProgram.Proof(
+    RollupTreasuryManager
+) {}
 class TreasuryManagerContract extends SmartContract {
     @state(Field) campaignStateRoot = State<Field>();
     @state(Field) claimedIndexRoot = State<Field>();
@@ -401,8 +577,34 @@ class TreasuryManagerContract extends SmartContract {
         });
     }
 
-    @method rollup() {
-        //
+    @method rollup(rollupTreasuryManagerProof: RollupTreasuryManagerProof) {
+        const campaignStateRoot = this.campaignStateRoot.getAndRequireEquals();
+        const claimedIndexRoot = this.claimedIndexRoot.getAndRequireEquals();
+        const actionState = this.actionState.getAndRequireEquals();
+
+        campaignStateRoot.assertEquals(
+            rollupTreasuryManagerProof.publicOutput.initialCampaignStateRoot
+        );
+        claimedIndexRoot.assertEquals(
+            rollupTreasuryManagerProof.publicOutput.initialClaimedIndexRoot
+        );
+        actionState.assertEquals(
+            rollupTreasuryManagerProof.publicOutput.initialClaimedIndexRoot
+        );
+        this.account.actionState
+            .getAndRequireEquals()
+            .assertEquals(
+                rollupTreasuryManagerProof.publicOutput.nextActionState
+            );
+        this.campaignStateRoot.set(
+            rollupTreasuryManagerProof.publicOutput.nextCampaignStateRoot
+        );
+        this.claimedIndexRoot.set(
+            rollupTreasuryManagerProof.publicOutput.nextClaimedIndexRoot
+        );
+        this.actionState.set(
+            rollupTreasuryManagerProof.publicOutput.nextActionState
+        );
     }
 
     isNotEnded(
