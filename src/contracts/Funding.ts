@@ -247,7 +247,7 @@ class FundingContract extends SmartContract {
         campaignId: Field,
         timeline: Timeline,
         timelineWitness: TimelineLevel1Witness,
-        projectIndexes: Field,
+        dimensionIndexes: Field,
         projectCounter: Field,
         projectCounterWitness: ProjectCounterLevel1Witness,
         committeeId: Field,
@@ -294,28 +294,30 @@ class FundingContract extends SmartContract {
         participationContract
             .hasValidActionStateForFunding(timeline)
             .assertTrue();
-        participationContract.isValidProjectCounter(
-            campaignId,
-            projectCounter,
-            projectCounterWitness
-        );
-        const projectIndexesBits = projectIndexes.toBits();
+        participationContract
+            .isValidProjectCounter(
+                campaignId,
+                projectCounter,
+                projectCounterWitness
+            )
+            .assertTrue();
+        const dimensionIndexesBits = dimensionIndexes.toBits();
         const existedIndexFlag = new ExistedIndexFlag();
         let totalAmount = new UInt64(0);
         const secretVector = new DkgLibs.Requester.SecretVector();
         for (let i = 0; i < DkgConstants.ENCRYPTION_LIMITS.DIMENSION; i++) {
             const index = Field(i);
             existedIndexFlag.get(index).assertFalse();
-            const projectIndex = Field.fromBits(
-                projectIndexesBits.slice(i * 8, (i + 1) * 8)
+            const dimensionIndex = Field.fromBits(
+                dimensionIndexesBits.slice(i * 8, (i + 1) * 8)
             );
-            projectIndex.assertLessThan(projectCounter);
+            dimensionIndex.assertLessThan(projectCounter);
             totalAmount = totalAmount.add(amounts.get(index));
             secretVector.set(
                 index,
                 CustomScalar.fromUInt64(amounts.get(index))
             );
-            existedIndexFlag.set(projectIndex, Bool(true));
+            existedIndexFlag.set(dimensionIndex, Bool(true));
         }
 
         // Check Treasury contract
@@ -342,7 +344,7 @@ class FundingContract extends SmartContract {
             DkgStorage.DKGStorage.calculateKeyIndex(committeeId, keyId),
             secretVector,
             randomVector,
-            projectIndexes,
+            dimensionIndexes,
             nullifiers,
             key.toGroup(),
             keyWitnessForDkg,

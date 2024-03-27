@@ -25,7 +25,7 @@ import {
     ZkAppRef,
 } from '../storages/SharedStorage';
 import { ZkAppEnum } from '../Constants';
-import { Utils } from '@auxo-dev/auxo-libs';
+import { CustomScalar, Utils } from '@auxo-dev/auxo-libs';
 import { FundingInformation } from '../storages/FundingStorage';
 import {
     Storage,
@@ -57,8 +57,35 @@ export { TreasuryManagerContract };
 
 class TreasuryManagerAction extends Struct({
     campaignId: Field,
+    projectIndex: Field,
+    amount: UInt64,
     actionType: Field,
-}) {}
+}) {
+    getUniqueClaimedId() {
+        return Poseidon.hash(
+            [
+                this.campaignId,
+                this.projectIndex,
+                this.amount.toFields(),
+                Field(TreasuryManagerActionEnum.CLAIM_FUND),
+            ].flat()
+        );
+    }
+
+    getUniqueCompletedId() {
+        return Poseidon.hash([
+            this.campaignId,
+            Field(TreasuryManagerActionEnum.COMPLETE_CAMPAIGN),
+        ]);
+    }
+
+    getUniqueAbortedId() {
+        return Poseidon.hash([
+            this.campaignId,
+            Field(TreasuryManagerActionEnum.ABORT_CAMPAIGN),
+        ]);
+    }
+}
 
 class TreasuryManagerContract extends SmartContract {
     @state(Field) campaignStateRoot = State<Field>();
@@ -135,12 +162,33 @@ class TreasuryManagerContract extends SmartContract {
             resultWitness
         );
         requestStatus.assertEquals(Field(RequestStatus.RESOLVED));
-        this.reducer.dispatch(
-            new TreasuryManagerAction({
-                campaignId: campaignId,
-                actionType: Field(TreasuryManagerActionEnum.COMPLETE_CAMPAIGN),
-            })
+
+        // Check not exist complete action of this campaign
+        const treasuryManagerAction = new TreasuryManagerAction({
+            campaignId: campaignId,
+            projectIndex: Field(0),
+            amount: new UInt64(0),
+            actionType: Field(TreasuryManagerActionEnum.COMPLETE_CAMPAIGN),
+        });
+        const actionState = this.actionState.getAndRequireEquals();
+        const actions = this.reducer.getActions({
+            fromActionState: actionState,
+        });
+        const { state: existed } = this.reducer.reduce(
+            actions,
+            Bool,
+            (state: Bool, action: TreasuryManagerAction) => {
+                return action
+                    .getUniqueCompletedId()
+                    .equals(treasuryManagerAction.getUniqueCompletedId())
+                    .or(state);
+            },
+            // initial state
+            { state: Bool(false), actionState: actionState }
         );
+        existed.assertFalse();
+
+        this.reducer.dispatch(treasuryManagerAction);
     }
 
     @method abortCampaign(
@@ -202,12 +250,33 @@ class TreasuryManagerContract extends SmartContract {
             resultWitness
         );
         requestStatus.assertEquals(Field(RequestStatus.EXPIRED));
-        this.reducer.dispatch(
-            new TreasuryManagerAction({
-                campaignId: campaignId,
-                actionType: Field(TreasuryManagerActionEnum.ABORT_CAMPAIGN),
-            })
+
+        // Check not exist abort campaign action of this campaign
+        const treasuryManagerAction = new TreasuryManagerAction({
+            campaignId: campaignId,
+            projectIndex: Field(0),
+            amount: new UInt64(0),
+            actionType: Field(TreasuryManagerActionEnum.ABORT_CAMPAIGN),
+        });
+        const actionState = this.actionState.getAndRequireEquals();
+        const actions = this.reducer.getActions({
+            fromActionState: actionState,
+        });
+        const { state: existed } = this.reducer.reduce(
+            actions,
+            Bool,
+            (state: Bool, action: TreasuryManagerAction) => {
+                return action
+                    .getUniqueAbortedId()
+                    .equals(treasuryManagerAction.getUniqueAbortedId())
+                    .or(state);
+            },
+            // initial state
+            { state: Bool(false), actionState: actionState }
         );
+        existed.assertFalse();
+
+        this.reducer.dispatch(treasuryManagerAction);
     }
 
     @method claimFund(
@@ -218,7 +287,9 @@ class TreasuryManagerContract extends SmartContract {
         treasuryAddress: PublicKey,
         treasuryAddressWitness: TreasuryAddressLevel1Witness,
         claimedIndexWitness: ClaimedIndexLevel1Witness,
+        amount: UInt64,
         participationContractRef: ZkAppRef,
+        requestContractRef: ZkAppRef,
         projectContractRef: ZkAppRef
     ) {
         const zkAppRoot = this.zkAppRoot.getAndRequireEquals();
@@ -227,6 +298,12 @@ class TreasuryManagerContract extends SmartContract {
             participationContractRef,
             zkAppRoot,
             Field(ZkAppEnum.PARTICIPATION)
+        );
+        verifyZkApp(
+            TreasuryManagerContract.name,
+            requestContractRef,
+            zkAppRoot,
+            Field(ZkAppEnum.REQUEST)
         );
         verifyZkApp(
             TreasuryManagerContract.name,
@@ -246,6 +323,12 @@ class TreasuryManagerContract extends SmartContract {
                 projectIndexWitness
             )
             .assertTrue();
+        const requestContract = new DkgZkApp.Request.RequestContract(
+            requestContractRef.address
+        );
+        const dimensionIndex = projectIndex.sub(1);
+        const result = CustomScalar.fromUInt64(amount);
+        // Verify result right here
 
         const projectContract = new ProjectContract(projectContractRef.address);
         projectContract
@@ -258,9 +341,39 @@ class TreasuryManagerContract extends SmartContract {
 
         this.isClaimed(
             campaignId,
-            projectIndex.sub(1),
+            dimensionIndex,
             claimedIndexWitness
         ).assertFalse();
+
+        // Check not exist action claim of this project in this campaign
+        const treasuryManagerAction = new TreasuryManagerAction({
+            campaignId: campaignId,
+            projectIndex: projectIndex,
+            amount: amount,
+            actionType: Field(TreasuryManagerActionEnum.CLAIM_FUND),
+        });
+        const actionState = this.actionState.getAndRequireEquals();
+        const actions = this.reducer.getActions({
+            fromActionState: actionState,
+        });
+        const { state: existed } = this.reducer.reduce(
+            actions,
+            Bool,
+            (state: Bool, action: TreasuryManagerAction) => {
+                return action
+                    .getUniqueClaimedId()
+                    .equals(treasuryManagerAction.getUniqueClaimedId())
+                    .or(state);
+            },
+            // initial state
+            { state: Bool(false), actionState: actionState }
+        );
+        existed.assertFalse();
+
+        const sender = AccountUpdate.createSigned(this.address);
+        sender.send({ to: treasuryAddress, amount: amount });
+
+        this.reducer.dispatch(treasuryManagerAction);
     }
 
     @method refund(
@@ -336,7 +449,7 @@ class TreasuryManagerContract extends SmartContract {
 
     isClaimed(
         campaignId: Field,
-        projectIndex: Field,
+        dimensionIndex: Field,
         claimedIndexWitness: ClaimedIndexLevel1Witness
     ): Bool {
         return claimedIndexWitness
@@ -344,7 +457,7 @@ class TreasuryManagerContract extends SmartContract {
             .equals(
                 ClaimedIndexStorage.calculateLevel1Index({
                     campaignId,
-                    projectIndex,
+                    dimensionIndex,
                 })
             )
             .and(

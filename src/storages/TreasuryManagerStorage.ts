@@ -104,26 +104,26 @@ class ClaimedIndexStorage extends TreasuryManagerStorage<ClaimedIndexLeaf> {
 
     static calculateLevel1Index({
         campaignId,
-        projectIndex,
+        dimensionIndex,
     }: {
         campaignId: Field;
-        projectIndex: Field;
+        dimensionIndex: Field;
     }): Field {
         return campaignId
             .mul(INSTANCE_LIMITS.PARTICIPATION_SLOT_TREE_SIZE)
-            .add(projectIndex);
+            .add(dimensionIndex);
     }
 
     calculateLevel1Index({
         campaignId,
-        projectIndex,
+        dimensionIndex,
     }: {
         campaignId: Field;
-        projectIndex: Field;
+        dimensionIndex: Field;
     }): Field {
         return ClaimedIndexStorage.calculateLevel1Index({
             campaignId,
-            projectIndex,
+            dimensionIndex,
         });
     }
 }

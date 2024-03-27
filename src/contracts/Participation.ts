@@ -366,18 +366,21 @@ class ParticipationContract extends SmartContract {
         projectId: Field,
         projectIndex: Field,
         projectIndexWitness: ProjectIndexLevel1Witness
-    ) {
+    ): Bool {
         projectIndex.assertGreaterThanOrEqual(1);
-        projectIndexWitness.calculateIndex().assertEquals(
-            ProjectIndexStorage.calculateLevel1Index({
-                campaignId,
-                projectId,
-            })
-        );
-        const projectIndexRoot = this.projectIndexRoot.getAndRequireEquals();
-        return projectIndexRoot.equals(
-            projectIndexWitness.calculateRoot(projectIndex)
-        );
+        return projectIndexWitness
+            .calculateIndex()
+            .equals(
+                ProjectIndexStorage.calculateLevel1Index({
+                    campaignId,
+                    projectId,
+                })
+            )
+            .and(
+                projectIndexWitness
+                    .calculateRoot(projectIndex)
+                    .equals(this.projectIndexRoot.getAndRequireEquals())
+            );
     }
 
     isValidProjectCounter(
@@ -385,12 +388,14 @@ class ParticipationContract extends SmartContract {
         projectCounter: Field,
         projectCounterWitness: ProjectCounterLevel1Witness
     ): Bool {
-        projectCounterWitness.calculateIndex().assertEquals(campaignId);
-        const projectCounterRoot =
-            this.projectCounterRoot.getAndRequireEquals();
-        return projectCounterRoot.equals(
-            projectCounterWitness.calculateRoot(projectCounter)
-        );
+        return projectCounterWitness
+            .calculateIndex()
+            .equals(campaignId)
+            .and(
+                projectCounterWitness
+                    .calculateRoot(projectCounter)
+                    .equals(this.projectCounterRoot.getAndRequireEquals())
+            );
     }
 
     hasValidActionStateForFunding(timeline: Timeline): Bool {
