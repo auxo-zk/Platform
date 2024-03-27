@@ -54,7 +54,13 @@ import { TreasuryAddressLevel1Witness } from '../storages/ProjectStorage';
 import { ParticipationContract } from './Participation';
 import { ProjectContract } from './Project';
 
-export { TreasuryManagerContract, TreasuryManagerAction };
+export {
+    TreasuryManagerContract,
+    TreasuryManagerAction,
+    RollupTreasuryManager,
+    RollupTreasuryManagerOutput,
+    RollupTreasuryManagerProof,
+};
 
 class TreasuryManagerAction extends Struct({
     campaignId: Field,
