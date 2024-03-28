@@ -1,4 +1,4 @@
-import { Bool, Field, MerkleTree, MerkleWitness } from 'o1js';
+import { Bool, Field, MerkleTree, MerkleWitness, UInt8 } from 'o1js';
 import { INSTANCE_LIMITS } from '../Constants.js';
 import { CampaignStorage, CampaignLevel1Witness } from './CampaignStorage.js';
 
@@ -107,11 +107,11 @@ class ClaimedIndexStorage extends TreasuryManagerStorage<ClaimedIndexLeaf> {
         dimensionIndex,
     }: {
         campaignId: Field;
-        dimensionIndex: Field;
+        dimensionIndex: UInt8;
     }): Field {
         return campaignId
             .mul(INSTANCE_LIMITS.PARTICIPATION_SLOT_TREE_SIZE)
-            .add(dimensionIndex);
+            .add(Field.fromFields(dimensionIndex.toUInt64().toFields()));
     }
 
     calculateLevel1Index({
@@ -119,7 +119,7 @@ class ClaimedIndexStorage extends TreasuryManagerStorage<ClaimedIndexLeaf> {
         dimensionIndex,
     }: {
         campaignId: Field;
-        dimensionIndex: Field;
+        dimensionIndex: UInt8;
     }): Field {
         return ClaimedIndexStorage.calculateLevel1Index({
             campaignId,

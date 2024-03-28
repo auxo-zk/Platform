@@ -18,6 +18,7 @@ import {
     Bool,
     UInt64,
     AccountUpdate,
+    UInt8,
 } from 'o1js';
 import {
     DefaultRootForZkAppTree,
@@ -234,8 +235,9 @@ const RollupTreasuryManager = ZkProgram({
                 claimedIndexWitness.calculateIndex().assertEquals(
                     ClaimedIndexStorage.calculateLevel1Index({
                         campaignId: treasuryManagerAction.campaignId,
-                        dimensionIndex:
-                            treasuryManagerAction.projectIndex.sub(1),
+                        dimensionIndex: UInt8.from(
+                            treasuryManagerAction.projectIndex.sub(1)
+                        ),
                     })
                 );
                 claimedIndexWitness
@@ -291,7 +293,7 @@ class TreasuryManagerContract extends SmartContract {
         timeline: Timeline,
         timelineWitness: TimelineLevel1Witness,
         campaignStateWitness: CampaignStateLevel1Witness,
-        taskWitness: Storage.RequestStorage.RequestLevel1Witness,
+        requesterAddressWitness: Storage.RequestStorage.RequestLevel1Witness,
         expirationTimestamp: UInt64,
         expirationWitness: Storage.RequestStorage.RequestLevel1Witness,
         resultWitness: Storage.RequestStorage.RequestLevel1Witness,
@@ -335,7 +337,7 @@ class TreasuryManagerContract extends SmartContract {
             requestId,
             requesterContractRef.address,
             campaignId,
-            taskWitness
+            requesterAddressWitness
         );
         const requestStatus = requestContract.getRequestStatus(
             requestId,
@@ -379,7 +381,7 @@ class TreasuryManagerContract extends SmartContract {
         timeline: Timeline,
         timelineWitness: TimelineLevel1Witness,
         campaignStateWitness: CampaignStateLevel1Witness,
-        taskWitness: Storage.RequestStorage.RequestLevel1Witness,
+        requesterAddressWitness: Storage.RequestStorage.RequestLevel1Witness,
         expirationTimestamp: UInt64,
         expirationWitness: Storage.RequestStorage.RequestLevel1Witness,
         resultWitness: Storage.RequestStorage.RequestLevel1Witness,
@@ -423,7 +425,7 @@ class TreasuryManagerContract extends SmartContract {
             requestId,
             requesterContractRef.address,
             campaignId,
-            taskWitness
+            requesterAddressWitness
         );
         const requestStatus = requestContract.getRequestStatus(
             requestId,
@@ -466,12 +468,17 @@ class TreasuryManagerContract extends SmartContract {
         projectId: Field,
         projectIndex: Field,
         projectIndexWitness: ProjectIndexLevel1Witness,
+        requestId: Field,
+        requesterAddressWitness: Storage.RequestStorage.RequestLevel1Witness,
+        resultVectorWitness: Storage.RequestStorage.RequestLevel1Witness,
+        resultValueWitness: Storage.RequestStorage.RequestLevel2Witness,
         treasuryAddress: PublicKey,
         treasuryAddressWitness: TreasuryAddressLevel1Witness,
         claimedIndexWitness: ClaimedIndexLevel1Witness,
         amount: UInt64,
         participationContractRef: ZkAppRef,
         requestContractRef: ZkAppRef,
+        requesterContractRef: ZkAppRef,
         projectContractRef: ZkAppRef
     ) {
         const zkAppRoot = this.zkAppRoot.getAndRequireEquals();
@@ -486,6 +493,12 @@ class TreasuryManagerContract extends SmartContract {
             requestContractRef,
             zkAppRoot,
             Field(ZkAppEnum.REQUEST)
+        );
+        verifyZkApp(
+            TreasuryManagerContract.name,
+            requesterContractRef,
+            zkAppRoot,
+            Field(ZkAppEnum.REQUESTER)
         );
         verifyZkApp(
             TreasuryManagerContract.name,
@@ -508,9 +521,23 @@ class TreasuryManagerContract extends SmartContract {
         const requestContract = new DkgZkApp.Request.RequestContract(
             requestContractRef.address
         );
-        const dimensionIndex = projectIndex.sub(1);
-        const result = CustomScalar.fromUInt64(amount);
+        const dimensionIndex = UInt8.from(projectIndex.sub(1));
+
+        const result = CustomScalar.fromUInt64(amount).toScalar();
         // Verify result right here
+        requestContract.verifyTaskId(
+            requestId,
+            requesterContractRef.address,
+            campaignId,
+            requesterAddressWitness
+        );
+        requestContract.verifyResult(
+            requestId,
+            dimensionIndex,
+            result,
+            resultVectorWitness,
+            resultValueWitness
+        );
 
         const projectContract = new ProjectContract(projectContractRef.address);
         projectContract
@@ -657,7 +684,7 @@ class TreasuryManagerContract extends SmartContract {
 
     isClaimed(
         campaignId: Field,
-        dimensionIndex: Field,
+        dimensionIndex: UInt8,
         claimedIndexWitness: ClaimedIndexLevel1Witness
     ): Bool {
         return claimedIndexWitness
