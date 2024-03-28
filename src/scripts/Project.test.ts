@@ -175,6 +175,7 @@ describe('Project', () => {
             );
             nextProjectId = nextProjectId.add(1);
 
+            expect(nextProjectId).toEqual(projectContract.nextProjectId.get());
             expect(memberTree.root).toEqual(projectContract.memberRoot.get());
             expect(ipfsHashTree.root).toEqual(
                 projectContract.ipfsHashRoot.get()

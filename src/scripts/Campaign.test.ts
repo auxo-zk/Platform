@@ -87,15 +87,19 @@ describe('Campaign', () => {
         campaignContractPrivateKey = PrivateKey.random();
         campaignContractPublicKey = campaignContractPrivateKey.toPublicKey();
         campaignContract = new CampaignContractMock(campaignContractPublicKey);
+
         dkgContractPrivateKey = PrivateKey.random();
-        dkgContractPublicKey = campaignContractPrivateKey.toPublicKey();
+        dkgContractPublicKey = dkgContractPrivateKey.toPublicKey();
+
         requesterContractPrivateKey = PrivateKey.random();
-        requesterContractPublicKey = campaignContractPrivateKey.toPublicKey();
+        requesterContractPublicKey = requesterContractPrivateKey.toPublicKey();
+
         zkAppStorage = Utilities.getZkAppStorage({
             campaignAddress: campaignContractPublicKey,
             dkgAddress: dkgContractPublicKey,
             requesterAddress: requesterContractPublicKey,
         });
+
         await localDeploy();
     });
 
@@ -231,45 +235,49 @@ describe('Campaign', () => {
         });
 
         it('3. Campaign timeline state should be PREPARATION', async () => {
+            const campaignId = Field(0);
             Local.incrementGlobalSlot(1);
             expect(
                 campaignContract.getCampaignTimelineState(
-                    Field(0),
+                    campaignId,
                     timeline,
-                    timelineTree.getLevel1Witness(Field(0))
+                    timelineTree.getLevel1Witness(campaignId)
                 )
             ).toEqual(Field(CampaignTimelineStateEnum.PREPARATION));
         });
 
         it('4. Campaign timeline state should be PARTICIPATION', async () => {
+            const campaignId = Field(0);
             Local.incrementGlobalSlot(1);
             expect(
                 campaignContract.getCampaignTimelineState(
-                    Field(0),
+                    campaignId,
                     timeline,
-                    timelineTree.getLevel1Witness(Field(0))
+                    timelineTree.getLevel1Witness(campaignId)
                 )
             ).toEqual(Field(CampaignTimelineStateEnum.PARTICIPATION));
         });
 
         it('5. Campaign timeline state should be FUNDING', async () => {
+            const campaignId = Field(0);
             Local.incrementGlobalSlot(1);
             expect(
                 campaignContract.getCampaignTimelineState(
-                    Field(0),
+                    campaignId,
                     timeline,
-                    timelineTree.getLevel1Witness(Field(0))
+                    timelineTree.getLevel1Witness(campaignId)
                 )
             ).toEqual(Field(CampaignTimelineStateEnum.FUNDING));
         });
 
         it('6. Campaign timeline state should be REQUESTING', async () => {
+            const campaignId = Field(0);
             Local.incrementGlobalSlot(1);
             expect(
                 campaignContract.getCampaignTimelineState(
-                    Field(0),
+                    campaignId,
                     timeline,
-                    timelineTree.getLevel1Witness(Field(0))
+                    timelineTree.getLevel1Witness(campaignId)
                 )
             ).toEqual(Field(CampaignTimelineStateEnum.REQUESTING));
         });
