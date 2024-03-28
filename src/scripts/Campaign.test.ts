@@ -126,114 +126,152 @@ describe('Campaign', () => {
         );
     });
 
-    it('Test get campaign timeline state', async () => {
-        const start =
-            Number(Mina.getNetworkConstants().genesisTimestamp.toBigInt()) +
-            1000;
-        const startParticipation =
-            start + CampaignMockData[0].timelinePeriod.preparation;
-        const startFunding =
-            startParticipation +
-            CampaignMockData[0].timelinePeriod.participation;
-        const startRequesting =
-            startFunding + CampaignMockData[0].timelinePeriod.funding;
-        const timeline = new Timeline({
-            startParticipation: new UInt64(startParticipation),
-            startFunding: new UInt64(startFunding),
-            startRequesting: new UInt64(startRequesting),
+    describe('Test campaign timeline state', () => {
+        let start: number,
+            startParticipation: number,
+            startFunding: number,
+            startRequesting: number,
+            timeline: Timeline;
+
+        beforeAll(async () => {
+            start =
+                Number(Mina.getNetworkConstants().genesisTimestamp.toBigInt()) +
+                1000;
+            startParticipation =
+                start + CampaignMockData[0].timelinePeriod.preparation;
+            startFunding =
+                startParticipation +
+                CampaignMockData[0].timelinePeriod.participation;
+            startRequesting =
+                startFunding + CampaignMockData[0].timelinePeriod.funding;
+            timeline = new Timeline({
+                startParticipation: new UInt64(startParticipation),
+                startFunding: new UInt64(startFunding),
+                startRequesting: new UInt64(startRequesting),
+            });
         });
-        let tx = await Mina.transaction(senderAccount, () => {
-            campaignContract.createCampaign(
-                timeline,
-                IpfsHash.fromString(CampaignMockData[0].ipfsHash),
-                Field(CampaignMockData[0].committeeId),
-                Field(CampaignMockData[0].keyId),
-                // keyStatusTree.getWitness(Field(0)),
-                zkAppStorage.getWitness(Field(ZkAppEnum.CAMPAIGN)),
-                zkAppStorage.getZkAppRef(ZkAppEnum.DKG, dkgContractPublicKey),
-                zkAppStorage.getZkAppRef(
-                    ZkAppEnum.REQUESTER,
-                    requesterContractPublicKey
-                )
+
+        it('1. Create campaign', async () => {
+            const tx = await Mina.transaction(senderAccount, () => {
+                campaignContract.createCampaign(
+                    timeline,
+                    IpfsHash.fromString(CampaignMockData[0].ipfsHash),
+                    Field(CampaignMockData[0].committeeId),
+                    Field(CampaignMockData[0].keyId),
+                    // keyStatusTree.getWitness(Field(0)),
+                    zkAppStorage.getWitness(Field(ZkAppEnum.CAMPAIGN)),
+                    zkAppStorage.getZkAppRef(
+                        ZkAppEnum.DKG,
+                        dkgContractPublicKey
+                    ),
+                    zkAppStorage.getZkAppRef(
+                        ZkAppEnum.REQUESTER,
+                        requesterContractPublicKey
+                    )
+                );
+            });
+            await tx.prove();
+            await tx.sign([senderKey]).send();
+            const actions: Action[] = (await fetchActions(
+                campaignContractPublicKey
+            )) as Action[];
+            expect(actions.length).toEqual(1);
+        });
+
+        it('2. Rollup', async () => {
+            const actions: Action[] = (await fetchActions(
+                campaignContractPublicKey
+            )) as Action[];
+            const campaignAction = CampaignAction.fromFields(
+                Utilities.stringArrayToFields(actions[0].actions[0])
+            );
+            let proof = await RollupCampaign.firstStep(
+                nextCampaignId,
+                timelineTree.root,
+                ipfsHashTree.root,
+                keyIndexTree.root,
+                campaignContract.actionState.get()
+            );
+            proof = await RollupCampaign.createCampaignStep(
+                proof,
+                campaignAction,
+                timelineTree.getLevel1Witness(nextCampaignId),
+                ipfsHashTree.getLevel1Witness(nextCampaignId),
+                keyIndexTree.getLevel1Witness(nextCampaignId)
+            );
+            const tx = await Mina.transaction(senderAccount, () => {
+                campaignContract.rollup(proof);
+            });
+            await tx.prove();
+            await tx.sign([senderKey]).send();
+            timelineTree.updateLeaf(
+                nextCampaignId,
+                TimelineStorage.calculateLeaf(campaignAction.timeline)
+            );
+            ipfsHashTree.updateLeaf(
+                nextCampaignId,
+                IpfsHashStorage.calculateLeaf(campaignAction.ipfsHash)
+            );
+            keyIndexTree.updateLeaf(
+                nextCampaignId,
+                KeyIndexStorage.calculateLeaf({
+                    committeeId: campaignAction.committeeId,
+                    keyId: campaignAction.keyId,
+                })
+            );
+            expect(timelineTree.root).toEqual(
+                campaignContract.timelineRoot.get()
+            );
+            expect(ipfsHashTree.root).toEqual(
+                campaignContract.ipfsHashRoot.get()
+            );
+            expect(keyIndexTree.root).toEqual(
+                campaignContract.keyIndexRoot.get()
             );
         });
-        await tx.prove();
-        await tx.sign([senderKey]).send();
-        const actions: Action[] = (await fetchActions(
-            campaignContractPublicKey
-        )) as Action[];
-        expect(actions.length).toEqual(1);
-        const campaignAction = CampaignAction.fromFields(
-            Utilities.stringArrayToFields(actions[0].actions[0])
-        );
-        let proof = await RollupCampaign.firstStep(
-            nextCampaignId,
-            timelineTree.root,
-            ipfsHashTree.root,
-            keyIndexTree.root,
-            campaignContract.actionState.get()
-        );
-        proof = await RollupCampaign.createCampaignStep(
-            proof,
-            campaignAction,
-            timelineTree.getLevel1Witness(nextCampaignId),
-            ipfsHashTree.getLevel1Witness(nextCampaignId),
-            keyIndexTree.getLevel1Witness(nextCampaignId)
-        );
-        tx = await Mina.transaction(senderAccount, () => {
-            campaignContract.rollup(proof);
+
+        it('3. Campaign timeline state should be PREPARATION', async () => {
+            Local.incrementGlobalSlot(1);
+            expect(
+                campaignContract.getCampaignTimelineState(
+                    Field(0),
+                    timeline,
+                    timelineTree.getLevel1Witness(Field(0))
+                )
+            ).toEqual(Field(CampaignTimelineStateEnum.PREPARATION));
         });
-        await tx.prove();
-        await tx.sign([senderKey]).send();
-        timelineTree.updateLeaf(
-            nextCampaignId,
-            TimelineStorage.calculateLeaf(campaignAction.timeline)
-        );
-        ipfsHashTree.updateLeaf(
-            nextCampaignId,
-            IpfsHashStorage.calculateLeaf(campaignAction.ipfsHash)
-        );
-        keyIndexTree.updateLeaf(
-            nextCampaignId,
-            KeyIndexStorage.calculateLeaf({
-                committeeId: campaignAction.committeeId,
-                keyId: campaignAction.keyId,
-            })
-        );
-        expect(timelineTree.root).toEqual(campaignContract.timelineRoot.get());
-        expect(ipfsHashTree.root).toEqual(campaignContract.ipfsHashRoot.get());
-        expect(keyIndexTree.root).toEqual(campaignContract.keyIndexRoot.get());
-        Local.incrementGlobalSlot(1);
-        expect(
-            campaignContract.getCampaignTimelineState(
-                Field(0),
-                timeline,
-                timelineTree.getLevel1Witness(Field(0))
-            )
-        ).toEqual(Field(CampaignTimelineStateEnum.PREPARATION));
-        Local.incrementGlobalSlot(1);
-        expect(
-            campaignContract.getCampaignTimelineState(
-                Field(0),
-                timeline,
-                timelineTree.getLevel1Witness(Field(0))
-            )
-        ).toEqual(Field(CampaignTimelineStateEnum.PARTICIPATION));
-        Local.incrementGlobalSlot(1);
-        expect(
-            campaignContract.getCampaignTimelineState(
-                Field(0),
-                timeline,
-                timelineTree.getLevel1Witness(Field(0))
-            )
-        ).toEqual(Field(CampaignTimelineStateEnum.FUNDING));
-        Local.incrementGlobalSlot(1);
-        expect(
-            campaignContract.getCampaignTimelineState(
-                Field(0),
-                timeline,
-                timelineTree.getLevel1Witness(Field(0))
-            )
-        ).toEqual(Field(CampaignTimelineStateEnum.REQUESTING));
+
+        it('4. Campaign timeline state should be PARTICIPATION', async () => {
+            Local.incrementGlobalSlot(1);
+            expect(
+                campaignContract.getCampaignTimelineState(
+                    Field(0),
+                    timeline,
+                    timelineTree.getLevel1Witness(Field(0))
+                )
+            ).toEqual(Field(CampaignTimelineStateEnum.PARTICIPATION));
+        });
+
+        it('5. Campaign timeline state should be FUNDING', async () => {
+            Local.incrementGlobalSlot(1);
+            expect(
+                campaignContract.getCampaignTimelineState(
+                    Field(0),
+                    timeline,
+                    timelineTree.getLevel1Witness(Field(0))
+                )
+            ).toEqual(Field(CampaignTimelineStateEnum.FUNDING));
+        });
+
+        it('6. Campaign timeline state should be REQUESTING', async () => {
+            Local.incrementGlobalSlot(1);
+            expect(
+                campaignContract.getCampaignTimelineState(
+                    Field(0),
+                    timeline,
+                    timelineTree.getLevel1Witness(Field(0))
+                )
+            ).toEqual(Field(CampaignTimelineStateEnum.REQUESTING));
+        });
     });
 });
