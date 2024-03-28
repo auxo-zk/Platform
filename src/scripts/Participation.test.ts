@@ -500,7 +500,7 @@ describe('Participation', () => {
                 participationContract.participateCampaign(
                     campaignId,
                     projectId,
-                    IpfsHash.fromString(ParticipationMockData[0].ipfsHash),
+                    IpfsHash.fromString(ParticipationMockData[1].ipfsHash),
                     timeline,
                     campaignTrees.timelineTree.getLevel1Witness(campaignId),
                     projectTrees.memberTree.getLevel1Witness(projectId),
