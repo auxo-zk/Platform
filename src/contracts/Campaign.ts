@@ -42,6 +42,7 @@ import {
 export {
     CampaignAction,
     CampaignContract,
+    CampaignContractMock,
     RollupCampaign,
     RollupCampaignOutput,
     RollupCampaignProof,
@@ -253,6 +254,178 @@ class CampaignContract extends SmartContract {
                 witness: campaignContractWitness,
             })
         );
+
+        // Dispatch action
+        this.reducer.dispatch(
+            new CampaignAction({
+                campaignId: Field(-1),
+                ipfsHash: ipfsHash,
+                owner: this.sender,
+                timeline: timeline,
+                committeeId: committeeId,
+                keyId: keyId,
+            })
+        );
+    }
+
+    @method rollup(rollupCampaignProof: RollupCampaignProof) {
+        rollupCampaignProof.verify();
+        const nextCampaignId = this.nextCampaignId.getAndRequireEquals();
+        const timelineRoot = this.timelineRoot.getAndRequireEquals();
+        const ipfsHashRoot = this.ipfsHashRoot.getAndRequireEquals();
+        const keyIndexRoot = this.keyIndexRoot.getAndRequireEquals();
+        const actionState = this.actionState.getAndRequireEquals();
+
+        nextCampaignId.assertEquals(
+            rollupCampaignProof.publicOutput.initialCampaignId
+        );
+        timelineRoot.assertEquals(
+            rollupCampaignProof.publicOutput.initialTimelineRoot
+        );
+        ipfsHashRoot.assertEquals(
+            rollupCampaignProof.publicOutput.initialIpfsHashRoot
+        );
+        keyIndexRoot.assertEquals(
+            rollupCampaignProof.publicOutput.initialKeyIndexRoot
+        );
+        actionState.assertEquals(
+            rollupCampaignProof.publicOutput.initialActionState
+        );
+        this.account.actionState
+            .getAndRequireEquals()
+            .assertEquals(rollupCampaignProof.publicOutput.nextActionState);
+
+        this.nextCampaignId.set(
+            rollupCampaignProof.publicOutput.nextCampaignId
+        );
+        this.timelineRoot.set(
+            rollupCampaignProof.publicOutput.nextTimelineRoot
+        );
+        this.ipfsHashRoot.set(
+            rollupCampaignProof.publicOutput.nextIpfsHashRoot
+        );
+        this.keyIndexRoot.set(
+            rollupCampaignProof.publicOutput.nextKeyIndexRoot
+        );
+        this.actionState.set(rollupCampaignProof.publicOutput.nextActionState);
+    }
+
+    getCampaignTimelineState(
+        campaignId: Field,
+        timeline: Timeline,
+        timelineWitness: TimelineLevel1Witness
+    ): Field {
+        timelineWitness.calculateIndex().assertEquals(campaignId);
+        const timelineRoot = this.timelineRoot.getAndRequireEquals();
+        timelineRoot.assertEquals(
+            timelineWitness.calculateRoot(timeline.hash())
+        );
+        const currentTimestamp = this.network.timestamp.getAndRequireEquals();
+        const campaignState = Provable.if(
+            currentTimestamp.lessThan(timeline.startParticipation),
+            Field(CampaignTimelineStateEnum.PREPARATION),
+            Provable.if(
+                currentTimestamp.lessThan(timeline.startFunding),
+                Field(CampaignTimelineStateEnum.PARTICIPATION),
+                Provable.if(
+                    currentTimestamp.lessThan(timeline.startRequesting),
+                    Field(CampaignTimelineStateEnum.FUNDING),
+                    Field(CampaignTimelineStateEnum.REQUESTING)
+                )
+            )
+        );
+        return campaignState;
+    }
+
+    isValidKey(
+        campaignId: Field,
+        committeeId: Field,
+        keyId: Field,
+        keyWitness: TimelineLevel1Witness
+    ): Bool {
+        return keyWitness
+            .calculateIndex()
+            .equals(KeyIndexStorage.calculateLevel1Index(campaignId))
+            .and(
+                keyWitness
+                    .calculateRoot(
+                        KeyIndexStorage.calculateLeaf({ committeeId, keyId })
+                    )
+                    .equals(this.keyIndexRoot.getAndRequireEquals())
+            );
+    }
+}
+class CampaignContractMock extends SmartContract {
+    @state(Field) nextCampaignId = State<Field>();
+    @state(Field) timelineRoot = State<Field>();
+    @state(Field) ipfsHashRoot = State<Field>();
+    @state(Field) keyIndexRoot = State<Field>();
+    @state(Field) zkAppRoot = State<Field>();
+    @state(Field) actionState = State<Field>();
+
+    reducer = Reducer({ actionType: CampaignAction });
+
+    init() {
+        super.init();
+        this.nextCampaignId.set(Field(0));
+        this.timelineRoot.set(DefaultRootForCampaignTree);
+        this.ipfsHashRoot.set(DefaultRootForCampaignTree);
+        this.keyIndexRoot.set(DefaultRootForCampaignTree);
+        this.zkAppRoot.set(DefaultRootForZkAppTree);
+        this.actionState.set(Reducer.initialActionState);
+    }
+
+    @method createCampaign(
+        timeline: Timeline,
+        ipfsHash: IpfsHash,
+        committeeId: Field,
+        keyId: Field,
+        // keyStatusWitness: Storage.DKGStorage.DkgLevel1Witness,
+        campaignContractWitness: AddressWitness,
+        dkgContractRef: ZkAppRef,
+        requesterContractRef: ZkAppRef
+    ) {
+        const currentTimestamp = this.network.timestamp.getAndRequireEquals();
+        timeline.isValid().assertEquals(Bool(true));
+        timeline.startParticipation.assertGreaterThan(currentTimestamp);
+
+        // Verify the status of key is active
+        verifyZkApp(
+            CampaignContract.name,
+            dkgContractRef,
+            this.zkAppRoot.getAndRequireEquals(),
+            Field(ZkAppEnum.DKG)
+        );
+        // const dkgContract = new DkgZkApp.DKG.DkgContract(
+        //     dkgContractRef.address
+        // );
+        // dkgContract.verifyKeyStatus(
+        //     new KeyStatusInput({
+        //         committeeId: committeeId,
+        //         keyId: keyId,
+        //         status: Field(KeyStatus.ACTIVE),
+        //         witness: keyStatusWitness,
+        //     })
+        // );
+
+        // Create task in requester contract
+        verifyZkApp(
+            CampaignContract.name,
+            requesterContractRef,
+            this.zkAppRoot.getAndRequireEquals(),
+            Field(ZkAppEnum.REQUESTER)
+        );
+        // const requesterContract = new DkgZkApp.Requester.RequesterContract(
+        //     requesterContractRef.address
+        // );
+        // requesterContract.createTask(
+        //     Storage.DKGStorage.calculateKeyIndex(committeeId, keyId),
+        //     timeline.startRequesting,
+        //     new ZkAppRef({
+        //         address: this.address,
+        //         witness: campaignContractWitness,
+        //     })
+        // );
 
         // Dispatch action
         this.reducer.dispatch(

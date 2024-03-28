@@ -1,5 +1,5 @@
 import { Field, PublicKey } from 'o1js';
-import { ZkAppAddressStorage } from '../storages/SharedStorage';
+import { ZkAppStorage } from '../storages/SharedStorage';
 import { ZkAppEnum } from '../Constants';
 
 export class Utilities {
@@ -24,8 +24,8 @@ export class Utilities {
         participationAddress?: PublicKey;
         fundingAddress?: PublicKey;
         treasuryManagerAddress?: PublicKey;
-    }): ZkAppAddressStorage {
-        const zkAppStorage = new ZkAppAddressStorage();
+    }): ZkAppStorage {
+        const zkAppStorage = new ZkAppStorage();
         if (addresses.committeeAddress) {
             zkAppStorage.updateAddress(
                 Field(ZkAppEnum.COMMITTEE),
