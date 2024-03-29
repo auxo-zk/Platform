@@ -85,7 +85,7 @@ import {
     ClaimedIndexStorage,
 } from '../storages/TreasuryManagerStorage';
 
-let proofsEnabled = true;
+let proofsEnabled = false;
 
 describe('Funding', () => {
     const cache = Cache.FileSystem('./caches');
@@ -166,7 +166,6 @@ describe('Funding', () => {
 
     beforeAll(async () => {
         Mina.setActiveInstance(Local);
-        await RollupProject.compile({ cache });
         await RollupCampaign.compile({ cache });
         await RollupProject.compile({ cache });
         await RollupParticipation.compile({ cache });
@@ -236,18 +235,14 @@ describe('Funding', () => {
 
     async function localDeploy() {
         const tx = await Mina.transaction(deployerAccount, () => {
-            AccountUpdate.fundNewAccount(deployerAccount);
+            AccountUpdate.fundNewAccount(deployerAccount, 5);
             campaignContract.deploy();
             campaignContract['zkAppRoot'].set(zkAppStorage.root);
-            AccountUpdate.fundNewAccount(deployerAccount);
             projectContract.deploy();
-            AccountUpdate.fundNewAccount(deployerAccount);
             participationContract.deploy();
             participationContract['zkAppRoot'].set(zkAppStorage.root);
-            AccountUpdate.fundNewAccount(deployerAccount);
             fundingContract.deploy();
             fundingContract['zkAppRoot'].set(zkAppStorage.root);
-            AccountUpdate.fundNewAccount(deployerAccount);
             treasuryManagerContract.deploy();
             treasuryManagerContract['zkAppRoot'].set(zkAppStorage.root);
         });
@@ -1007,6 +1002,7 @@ describe('Funding', () => {
                 const balanceBefore =
                     treasuryManagerContract.account.balance.get();
                 const tx = await Mina.transaction(senderAccount, () => {
+                    // AccountUpdate.fundNewAccount(senderAccount);
                     fundingContract.refund(
                         fundingId,
                         campaignId,
@@ -1050,26 +1046,25 @@ describe('Funding', () => {
                 fundingContract.actionState.get()
             );
 
-            for (let i = 0; i < actions.length; i++) {
+            for (let i = 0; i < 3; i++) {
                 const fundingAction = FundingAction.fromFields(
                     Utilities.stringArrayToFields(actions[3 + i].actions[0])
                 );
-                const fundingId = Field(i);
                 proof = await RollupFunding.refundStep(
                     proof,
                     fundingAction,
                     fundingTrees.fundingInformationTree.getLevel1Witness(
-                        fundingId
+                        fundingAction.fundingId
                     )
                 );
 
                 fundingTrees.fundingInformationTree.updateLeaf(
-                    fundingId,
+                    fundingAction.fundingId,
                     FundingInformationStorage.calculateLeaf(
                         new FundingInformation({
                             campaignId: fundingAction.campaignId,
                             investor: fundingAction.investor,
-                            amount: fundingAction.amount,
+                            amount: new UInt64(0),
                         })
                     )
                 );

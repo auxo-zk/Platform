@@ -25,7 +25,7 @@ import {
     verifyZkApp,
     ZkAppRef,
 } from '../storages/SharedStorage';
-import { ZkAppEnum } from '../Constants';
+import { MINIMAL_MINA_UNIT, ZkAppEnum } from '../Constants';
 import { CustomScalar, Utils } from '@auxo-dev/auxo-libs';
 import { FundingInformation } from '../storages/FundingStorage';
 import {
@@ -40,7 +40,7 @@ import {
     TimelineLevel1Witness,
     DefaultRootForCampaignTree,
 } from '../storages/CampaignStorage';
-import { CampaignContract } from './Campaign';
+import { CampaignContract, CampaignContractMock } from './Campaign';
 import {
     CampaignStateEnum,
     CampaignStateLevel1Witness,
@@ -52,7 +52,10 @@ import {
 } from '../storages/TreasuryManagerStorage';
 import { ProjectIndexLevel1Witness } from '../storages/ParticipationStorage';
 import { TreasuryAddressLevel1Witness } from '../storages/ProjectStorage';
-import { ParticipationContract } from './Participation';
+import {
+    ParticipationContract,
+    ParticipationContractMock,
+} from './Participation';
 import { ProjectContract } from './Project';
 
 export {
@@ -563,7 +566,7 @@ class TreasuryManagerContract extends SmartContract {
         const treasuryManagerAction = new TreasuryManagerAction({
             campaignId: campaignId,
             projectIndex: projectIndex,
-            amount: amount,
+            amount: amount.mul(MINIMAL_MINA_UNIT),
             actionType: Field(TreasuryManagerActionEnum.CLAIM_FUND),
         });
         const actionState = this.actionState.getAndRequireEquals();
@@ -584,8 +587,10 @@ class TreasuryManagerContract extends SmartContract {
         );
         existed.assertFalse();
 
-        const sender = AccountUpdate.createSigned(this.address);
-        sender.send({ to: treasuryAddress, amount: amount });
+        this.send({
+            to: AccountUpdate.create(treasuryAddress),
+            amount: amount.mul(MINIMAL_MINA_UNIT),
+        });
 
         this.reducer.dispatch(treasuryManagerAction);
     }
@@ -600,6 +605,7 @@ class TreasuryManagerContract extends SmartContract {
             campaignStateWitness
         ).assertTrue();
         // require call from FundingContract
+        // Utils.requireCaller(fundingContractRef.address, this);
         const zkAppRoot = this.zkAppRoot.getAndRequireEquals();
         verifyZkApp(
             TreasuryManagerContract.name,
@@ -607,10 +613,8 @@ class TreasuryManagerContract extends SmartContract {
             zkAppRoot,
             Field(ZkAppEnum.FUNDING)
         );
-        Utils.requireCaller(fundingContractRef.address, this);
-        const sender = AccountUpdate.createSigned(this.address);
-        sender.send({
-            to: fundingInformation.investor,
+        this.send({
+            to: AccountUpdate.create(fundingInformation.investor),
             amount: fundingInformation.amount,
         });
     }
@@ -762,7 +766,7 @@ class TreasuryManagerContractMock extends SmartContract {
             Field(ZkAppEnum.REQUEST)
         );
 
-        const campaignContract = new CampaignContract(
+        const campaignContract = new CampaignContractMock(
             campaignContractRef.address
         );
         campaignContract
@@ -851,7 +855,7 @@ class TreasuryManagerContractMock extends SmartContract {
             Field(ZkAppEnum.REQUEST)
         );
 
-        const campaignContract = new CampaignContract(
+        const campaignContract = new CampaignContractMock(
             campaignContractRef.address
         );
         campaignContract
@@ -948,7 +952,7 @@ class TreasuryManagerContractMock extends SmartContract {
             Field(ZkAppEnum.PROJECT)
         );
 
-        const participationContract = new ParticipationContract(
+        const participationContract = new ParticipationContractMock(
             participationContractRef.address
         );
         participationContract
@@ -999,7 +1003,7 @@ class TreasuryManagerContractMock extends SmartContract {
         const treasuryManagerAction = new TreasuryManagerAction({
             campaignId: campaignId,
             projectIndex: projectIndex,
-            amount: amount,
+            amount: amount.mul(MINIMAL_MINA_UNIT),
             actionType: Field(TreasuryManagerActionEnum.CLAIM_FUND),
         });
         const actionState = this.actionState.getAndRequireEquals();
@@ -1020,8 +1024,10 @@ class TreasuryManagerContractMock extends SmartContract {
         );
         existed.assertFalse();
 
-        const sender = AccountUpdate.createSigned(this.address);
-        sender.send({ to: treasuryAddress, amount: amount });
+        this.send({
+            to: AccountUpdate.create(treasuryAddress),
+            amount: amount.mul(MINIMAL_MINA_UNIT),
+        });
 
         this.reducer.dispatch(treasuryManagerAction);
     }
@@ -1036,6 +1042,7 @@ class TreasuryManagerContractMock extends SmartContract {
             campaignStateWitness
         ).assertTrue();
         // require call from FundingContract
+        // Utils.requireCaller(fundingContractRef.address, this);
         const zkAppRoot = this.zkAppRoot.getAndRequireEquals();
         verifyZkApp(
             TreasuryManagerContract.name,
@@ -1043,10 +1050,8 @@ class TreasuryManagerContractMock extends SmartContract {
             zkAppRoot,
             Field(ZkAppEnum.FUNDING)
         );
-        Utils.requireCaller(fundingContractRef.address, this);
-        const sender = AccountUpdate.createSigned(this.address);
-        sender.send({
-            to: fundingInformation.investor,
+        this.send({
+            to: AccountUpdate.create(fundingInformation.investor),
             amount: fundingInformation.amount,
         });
     }

@@ -57,9 +57,9 @@ import {
     TimelineLevel1Witness,
 } from '../storages/CampaignStorage.js';
 import { ProjectCounterLevel1Witness } from '../storages/ParticipationStorage.js';
-import { CampaignContract } from './Campaign.js';
-import { ParticipationContract } from './Participation.js';
-import { TreasuryManagerContract } from './TreasuryManager.js';
+import { CampaignContract, CampaignContractMock } from './Campaign.js';
+import { ParticipationContract, ParticipationContractMock } from './Participation.js';
+import { TreasuryManagerContract, TreasuryManagerContractMock } from './TreasuryManager.js';
 import { CampaignStateLevel1Witness } from '../storages/TreasuryManagerStorage.js';
 
 export {
@@ -402,7 +402,7 @@ class FundingContract extends SmartContract {
         const fundingInformation = new FundingInformation({
             campaignId: campaignId,
             investor: this.sender,
-            amount: amount,
+            amount: amount.mul(MINIMAL_MINA_UNIT),
         });
         this.isFunded(
             fundingId,
@@ -459,7 +459,7 @@ class FundingContract extends SmartContract {
                 fundingId: fundingId,
                 campaignId: campaignId,
                 investor: this.sender,
-                amount: amount,
+                amount: amount.mul(MINIMAL_MINA_UNIT),
                 actionType: Field(FundingActionEnum.REFUND),
             })
         );
@@ -564,7 +564,7 @@ class FundingContractMock extends SmartContract {
             zkAppRoot,
             Field(ZkAppEnum.CAMPAIGN)
         );
-        const campaignContract = new CampaignContract(
+        const campaignContract = new CampaignContractMock(
             campaignContractRef.address
         );
         campaignContract
@@ -578,7 +578,7 @@ class FundingContractMock extends SmartContract {
             zkAppRoot,
             Field(ZkAppEnum.PARTICIPATION)
         );
-        const participationContract = new ParticipationContract(
+        const participationContract = new ParticipationContractMock(
             participationContractRef.address
         );
         participationContract
@@ -725,7 +725,7 @@ class FundingContractMock extends SmartContract {
             this.zkAppRoot.getAndRequireEquals(),
             Field(ZkAppEnum.TREASURY_MANAGER)
         );
-        const treasuryManagerContract = new TreasuryManagerContract(
+        const treasuryManagerContract = new TreasuryManagerContractMock(
             treasuryManagerContractRef.address
         );
         treasuryManagerContract.refund(
