@@ -13,6 +13,8 @@ import {
     Group,
     Cache,
     fetchAccount,
+    TokenId,
+    TokenContract,
 } from 'o1js';
 import {
     ProjectAction,
@@ -107,9 +109,11 @@ describe('Funding', () => {
         fundingContractPrivateKey: PrivateKey,
         fundingContractPublicKey: PublicKey,
         fundingContract: FundingContractMock,
+        fundingTokenContract: FundingContractMock,
         treasuryManagerContractPrivateKey: PrivateKey,
         treasuryManagerContractPublicKey: PublicKey,
         treasuryManagerContract: TreasuryManagerContractMock,
+        treasuryManagerTokenContract: TreasuryManagerContractMock,
         dkgContractPrivateKey: PrivateKey,
         dkgContractPublicKey: PublicKey,
         requesterContractPrivateKey: PrivateKey,
@@ -203,11 +207,21 @@ describe('Funding', () => {
         fundingContractPublicKey = fundingContractPrivateKey.toPublicKey();
         fundingContract = new FundingContractMock(fundingContractPublicKey);
 
+        fundingTokenContract = new FundingContractMock(
+            fundingContractPublicKey,
+            TokenId.derive(fundingContractPublicKey)
+        );
+
         treasuryManagerContractPrivateKey = PrivateKey.random();
         treasuryManagerContractPublicKey =
             treasuryManagerContractPrivateKey.toPublicKey();
         treasuryManagerContract = new TreasuryManagerContractMock(
             treasuryManagerContractPublicKey
+        );
+
+        treasuryManagerTokenContract = new TreasuryManagerContractMock(
+            treasuryManagerContractPublicKey,
+            TokenId.derive(fundingContractPublicKey)
         );
 
         dkgContractPrivateKey = PrivateKey.random();
@@ -235,16 +249,24 @@ describe('Funding', () => {
 
     async function localDeploy() {
         const tx = await Mina.transaction(deployerAccount, () => {
-            AccountUpdate.fundNewAccount(deployerAccount, 5);
+            AccountUpdate.fundNewAccount(deployerAccount, 6);
             campaignContract.deploy();
             campaignContract['zkAppRoot'].set(zkAppStorage.root);
+
             projectContract.deploy();
+
             participationContract.deploy();
             participationContract['zkAppRoot'].set(zkAppStorage.root);
+
             fundingContract.deploy();
             fundingContract['zkAppRoot'].set(zkAppStorage.root);
+
             treasuryManagerContract.deploy();
             treasuryManagerContract['zkAppRoot'].set(zkAppStorage.root);
+
+            treasuryManagerTokenContract.deploy();
+
+            fundingContract.approve(treasuryManagerTokenContract.self);
         });
         await tx.prove();
         await tx

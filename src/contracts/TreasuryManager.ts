@@ -605,7 +605,7 @@ class TreasuryManagerContract extends SmartContract {
             campaignStateWitness
         ).assertTrue();
         // require call from FundingContract
-        // Utils.requireCaller(fundingContractRef.address, this);
+        Utils.requireCaller(fundingContractRef.address, this);
         const zkAppRoot = this.zkAppRoot.getAndRequireEquals();
         verifyZkApp(
             TreasuryManagerContract.name,
@@ -736,10 +736,10 @@ class TreasuryManagerContractMock extends SmartContract {
         timeline: Timeline,
         timelineWitness: TimelineLevel1Witness,
         campaignStateWitness: CampaignStateLevel1Witness,
-        requesterAddressWitness: Storage.RequestStorage.RequestLevel1Witness,
+        // requesterAddressWitness: Storage.RequestStorage.RequestLevel1Witness,
         expirationTimestamp: UInt64,
-        expirationWitness: Storage.RequestStorage.RequestLevel1Witness,
-        resultWitness: Storage.RequestStorage.RequestLevel1Witness,
+        // expirationWitness: Storage.RequestStorage.RequestLevel1Witness,
+        // resultWitness: Storage.RequestStorage.RequestLevel1Witness,
         campaignContractRef: ZkAppRef,
         requesterContractRef: ZkAppRef,
         requestContractRef: ZkAppRef
@@ -914,9 +914,9 @@ class TreasuryManagerContractMock extends SmartContract {
         projectIndex: Field,
         projectIndexWitness: ProjectIndexLevel1Witness,
         requestId: Field,
-        taskIdWitness: Storage.RequestStorage.RequestLevel1Witness,
-        resultVectorWitness: Storage.RequestStorage.RequestLevel1Witness,
-        resultValueWitness: Storage.RequestStorage.RequestLevel2Witness,
+        // taskIdWitness: Storage.RequestStorage.RequestLevel1Witness,
+        // resultVectorWitness: Storage.RequestStorage.RequestLevel1Witness,
+        // resultValueWitness: Storage.RequestStorage.RequestLevel2Witness,
         treasuryAddress: PublicKey,
         treasuryAddressWitness: TreasuryAddressLevel1Witness,
         claimedIndexWitness: ClaimedIndexLevel1Witness,
@@ -1042,7 +1042,7 @@ class TreasuryManagerContractMock extends SmartContract {
             campaignStateWitness
         ).assertTrue();
         // require call from FundingContract
-        // Utils.requireCaller(fundingContractRef.address, this);
+        Utils.requireCaller(fundingContractRef.address, this);
         const zkAppRoot = this.zkAppRoot.getAndRequireEquals();
         verifyZkApp(
             TreasuryManagerContract.name,
