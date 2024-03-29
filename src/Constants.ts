@@ -14,7 +14,7 @@ export const INSTANCE_LIMITS = {
     COMMITMENT_HASH_TREE_SIZE: 2 ** 8,
 };
 
-export const MINIMAL_MINA_UNIT = 100000000n;
+export const MINIMAL_MINA_UNIT = 100000000;
 
 export enum ZkAppEnum {
     COMMITTEE,
