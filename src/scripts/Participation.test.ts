@@ -109,7 +109,9 @@ describe('Participation', () => {
         ipfsHashTree: new ParticipationIpfsHashStorage(),
     };
 
-    const keyStatusTree = new Storage.DKGStorage.KeyStatusStorage();
+    const dkgTrees = {
+        keyStatusTree: new Storage.DKGStorage.KeyStatusStorage(),
+    };
 
     beforeAll(async () => {
         Mina.setActiveInstance(Local);

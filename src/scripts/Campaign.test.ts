@@ -162,7 +162,16 @@ describe('Campaign', () => {
                     IpfsHash.fromString(CampaignMockData[0].ipfsHash),
                     Field(CampaignMockData[0].committeeId),
                     Field(CampaignMockData[0].keyId),
-                    // keyStatusTree.getWitness(Field(0)),
+                    // keyStatusTree.getWitness(
+                    //     Storage.DKGStorage.KeyStatusStorage.calculateLevel1Index(
+                    //         {
+                    //             committeeId: Field(
+                    //                 CampaignMockData[0].committeeId
+                    //             ),
+                    //             keyId: Field(CampaignMockData[0].keyId),
+                    //         }
+                    //     )
+                    // ),
                     zkAppStorage.getWitness(Field(ZkAppEnum.CAMPAIGN)),
                     zkAppStorage.getZkAppRef(
                         ZkAppEnum.DKG,
