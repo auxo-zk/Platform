@@ -2,6 +2,7 @@ import * as CampaignStorage from './CampaignStorage.js';
 import * as ProjectStorage from './ProjectStorage.js';
 import * as ParticipationStorage from './ParticipationStorage.js';
 import * as FundingStorage from './FundingStorage.js';
+import * as TreasuryManagerStorage from './TreasuryManagerStorage.js';
 import * as SharedStorage from './SharedStorage.js';
 
 export {
@@ -9,5 +10,6 @@ export {
     ProjectStorage,
     ParticipationStorage,
     FundingStorage,
+    TreasuryManagerStorage,
     SharedStorage,
 };
