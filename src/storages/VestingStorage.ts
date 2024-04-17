@@ -274,6 +274,12 @@ class VestingRequestInfoStorage extends VestingStorageForCombineTree<VestingRequ
     }
 }
 
+enum VestingActionEnum {
+    CREATE_VESTING_REQUEST,
+    VOTING,
+    CLAIM_VESTING,
+}
+
 export {
     LEVEL_1_VESTING_TREE_HEIGHT,
     LEVEL_1_VESTING_COMBINE_TREE_HEIGHT,
@@ -290,6 +296,7 @@ export {
     VestingRequestInfo,
     VestingRequestInfoLeaf,
     VestingRequestInfoStorage,
+    VestingActionEnum,
     Level1MT as VestingLevel1MT,
     Level1Witness as VestingLevel1Witness,
     Level1CombineWitness as VestingLevel1CombineWitness,
