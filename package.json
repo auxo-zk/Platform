@@ -1,6 +1,6 @@
 {
     "name": "@auxo-dev/platform",
-    "version": "0.2.1",
+    "version": "0.2.3",
     "description": "Auxo's On-chain Funding platform on Mina blockchain",
     "author": "",
     "license": "Apache-2.0",
@@ -65,10 +65,10 @@
         "zkapp-cli": "^0.17.0"
     },
     "dependencies": {
-        "@auxo-dev/auxo-libs": "0.4.9",
-        "@auxo-dev/dkg": "0.3.7",
+        "@auxo-dev/auxo-libs": "0.5.7",
+        "@auxo-dev/dkg": "0.4.1",
         "axios": "^1.6.7",
         "dotenv": "^16.3.1",
-        "o1js": "0.17.0"
+        "o1js": "0.18.0"
     }
 }
