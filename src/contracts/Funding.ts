@@ -58,8 +58,14 @@ import {
 } from '../storages/CampaignStorage.js';
 import { ProjectCounterLevel1Witness } from '../storages/ParticipationStorage.js';
 import { CampaignContract, CampaignContractMock } from './Campaign.js';
-import { ParticipationContract, ParticipationContractMock } from './Participation.js';
-import { TreasuryManagerContract, TreasuryManagerContractMock } from './TreasuryManager.js';
+import {
+    ParticipationContract,
+    ParticipationContractMock,
+} from './Participation.js';
+import {
+    TreasuryManagerContract,
+    TreasuryManagerContractMock,
+} from './TreasuryManager.js';
 import { CampaignStateLevel1Witness } from '../storages/TreasuryManagerStorage.js';
 
 export {
@@ -106,11 +112,11 @@ const RollupFunding = ZkProgram({
     methods: {
         firstStep: {
             privateInputs: [Field, Field, Field],
-            method(
+            async method(
                 initialFundingId: Field,
                 initialFundingInformationRoot: Field,
                 initialActionState: Field
-            ): RollupFundingOutput {
+            ): Promise<RollupFundingOutput> {
                 return new RollupFundingOutput({
                     initialFundingId: initialFundingId,
                     initialFundingInformationRoot:
@@ -128,11 +134,11 @@ const RollupFunding = ZkProgram({
                 FundingAction,
                 FundingInformationLevel1Witness,
             ],
-            method(
+            async method(
                 earlierProof: SelfProof<Void, RollupFundingOutput>,
                 fundingAction: FundingAction,
                 fundingInformationWitness: FundingInformationLevel1Witness
-            ): RollupFundingOutput {
+            ): Promise<RollupFundingOutput> {
                 fundingAction.actionType.assertEquals(
                     Field(FundingActionEnum.FUND)
                 );
@@ -178,11 +184,11 @@ const RollupFunding = ZkProgram({
                 FundingAction,
                 FundingInformationLevel1Witness,
             ],
-            method(
+            async method(
                 earlierProof: SelfProof<Void, RollupFundingOutput>,
                 fundingAction: FundingAction,
                 fundingInformationWitness: FundingInformationLevel1Witness
-            ) {
+            ): Promise<RollupFundingOutput> {
                 fundingAction.actionType.assertEquals(
                     Field(FundingActionEnum.REFUND)
                 );
@@ -250,7 +256,7 @@ class FundingContract extends SmartContract {
         this.actionState.set(Reducer.initialActionState);
     }
 
-    @method fund(
+    @method async fund(
         campaignId: Field,
         timeline: Timeline,
         timelineWitness: TimelineLevel1Witness,
@@ -356,8 +362,9 @@ class FundingContract extends SmartContract {
         const requesterContract = new RequesterContract(
             requesterContractRef.address
         );
-        requesterContract.submitEncryption(
-            new UInt32(campaignId),
+
+        await requesterContract.submitEncryption(
+            UInt32.fromFields(campaignId.toFields()),
             DkgStorage.DKGStorage.calculateKeyIndex(committeeId, keyId),
             secretVector,
             randomVector,
@@ -373,7 +380,9 @@ class FundingContract extends SmartContract {
             dkgContractRef
         );
 
-        const investor = AccountUpdate.createSigned(this.sender);
+        const investor = AccountUpdate.createSigned(
+            this.sender.getAndRequireSignature()
+        );
         investor.send({
             to: AccountUpdate.create(treasuryManagerContractRef.address),
             amount: totalAmount,
@@ -383,14 +392,14 @@ class FundingContract extends SmartContract {
             new FundingAction({
                 fundingId: Field(-1),
                 campaignId: campaignId,
-                investor: this.sender,
+                investor: this.sender.getAndRequireSignature(),
                 amount: totalAmount,
                 actionType: Field(FundingActionEnum.FUND),
             })
         );
     }
 
-    @method refund(
+    @method async refund(
         fundingId: Field,
         campaignId: Field,
         amount: UInt64,
@@ -401,7 +410,7 @@ class FundingContract extends SmartContract {
     ) {
         const fundingInformation = new FundingInformation({
             campaignId: campaignId,
-            investor: this.sender,
+            investor: this.sender.getAndRequireSignature(),
             amount: amount.mul(MINIMAL_MINA_UNIT),
         });
         this.isFunded(
@@ -445,7 +454,7 @@ class FundingContract extends SmartContract {
         const treasuryManagerContract = new TreasuryManagerContract(
             treasuryManagerContractRef.address
         );
-        treasuryManagerContract.refund(
+        await treasuryManagerContract.refund(
             fundingInformation,
             campaignStateWitness,
             new ZkAppRef({
@@ -458,14 +467,14 @@ class FundingContract extends SmartContract {
             new FundingAction({
                 fundingId: fundingId,
                 campaignId: campaignId,
-                investor: this.sender,
+                investor: this.sender.getAndRequireSignature(),
                 amount: amount.mul(MINIMAL_MINA_UNIT),
                 actionType: Field(FundingActionEnum.REFUND),
             })
         );
     }
 
-    @method rollup(rollupFundingProof: RollupFundingProof) {
+    @method async rollup(rollupFundingProof: RollupFundingProof) {
         rollupFundingProof.verify();
         const nextFundingId = this.nextFundingId.getAndRequireEquals();
         const fundingInformationRoot =
@@ -533,7 +542,7 @@ class FundingContractMock extends SmartContract {
         this.actionState.set(Reducer.initialActionState);
     }
 
-    @method fund(
+    @method async fund(
         campaignId: Field,
         timeline: Timeline,
         timelineWitness: TimelineLevel1Witness,
@@ -656,7 +665,9 @@ class FundingContractMock extends SmartContract {
         //     dkgContractRef
         // );
 
-        const investor = AccountUpdate.createSigned(this.sender);
+        const investor = AccountUpdate.createSigned(
+            this.sender.getAndRequireSignature()
+        );
         investor.send({
             to: AccountUpdate.create(treasuryManagerContractRef.address),
             amount: totalAmount,
@@ -666,14 +677,14 @@ class FundingContractMock extends SmartContract {
             new FundingAction({
                 fundingId: Field(-1),
                 campaignId: campaignId,
-                investor: this.sender,
+                investor: this.sender.getAndRequireSignature(),
                 amount: totalAmount,
                 actionType: Field(FundingActionEnum.FUND),
             })
         );
     }
 
-    @method refund(
+    @method async refund(
         fundingId: Field,
         campaignId: Field,
         amount: UInt64,
@@ -684,7 +695,7 @@ class FundingContractMock extends SmartContract {
     ) {
         const fundingInformation = new FundingInformation({
             campaignId: campaignId,
-            investor: this.sender,
+            investor: this.sender.getAndRequireSignature(),
             amount: amount.mul(MINIMAL_MINA_UNIT),
         });
         this.isFunded(
@@ -728,7 +739,7 @@ class FundingContractMock extends SmartContract {
         const treasuryManagerContract = new TreasuryManagerContractMock(
             treasuryManagerContractRef.address
         );
-        treasuryManagerContract.refund(
+        await treasuryManagerContract.refund(
             fundingInformation,
             campaignStateWitness,
             new ZkAppRef({
@@ -741,14 +752,14 @@ class FundingContractMock extends SmartContract {
             new FundingAction({
                 fundingId: fundingId,
                 campaignId: campaignId,
-                investor: this.sender,
+                investor: this.sender.getAndRequireSignature(),
                 amount: amount.mul(MINIMAL_MINA_UNIT),
                 actionType: Field(FundingActionEnum.REFUND),
             })
         );
     }
 
-    @method rollup(rollupFundingProof: RollupFundingProof) {
+    @method async rollup(rollupFundingProof: RollupFundingProof) {
         rollupFundingProof.verify();
         const nextFundingId = this.nextFundingId.getAndRequireEquals();
         const fundingInformationRoot =

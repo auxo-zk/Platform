@@ -145,12 +145,12 @@ type KeyIndexLeaf = {
 };
 
 class KeyIndexStorage extends CampaignStorage<KeyIndexLeaf> {
-    static calculateLeaf(rawLeaf: KeyIndexLeaf): Field {
-        return Poseidon.hash([rawLeaf.committeeId, rawLeaf.keyId]);
+    static calculateLeaf(keyIndex: KeyIndexLeaf): Field {
+        return Poseidon.hash([keyIndex.committeeId, keyIndex.keyId]);
     }
 
-    calculateLeaf(rawLeaf: KeyIndexLeaf): Field {
-        return KeyIndexStorage.calculateLeaf(rawLeaf);
+    calculateLeaf(keyIndex: KeyIndexLeaf): Field {
+        return KeyIndexStorage.calculateLeaf(keyIndex);
     }
 
     static calculateLevel1Index(campaignId: Field): Field {

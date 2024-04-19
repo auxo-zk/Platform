@@ -81,9 +81,9 @@
 //         this.actionState.set(Reducer.initialActionState);
 //     }
 
-//     @method vote() {
+//     @method async vote() {
 //         this.reducer.dispatch(new VestingAction({}));
 //     }
 
-//     @method claimMileStoneFund() {}
+//     @method async claimMileStoneFund() {}
 // }

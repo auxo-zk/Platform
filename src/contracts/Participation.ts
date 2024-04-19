@@ -87,12 +87,12 @@ const RollupParticipation = ZkProgram({
     methods: {
         firstStep: {
             privateInputs: [Field, Field, Field, Field],
-            method(
+            async method(
                 initialProjectIndexRoot: Field,
                 initialProjectCounterRoot: Field,
                 initialIpfsHashRoot: Field,
                 initialActionState: Field
-            ): RollupParticipationOutput {
+            ): Promise<RollupParticipationOutput> {
                 return new RollupParticipationOutput({
                     initialProjectIndexRoot: initialProjectIndexRoot,
                     initialProjectCounterRoot: initialProjectCounterRoot,
@@ -114,14 +114,14 @@ const RollupParticipation = ZkProgram({
                 ProjectCounterLevel1Witness,
                 IpfsHashLevel1Witness,
             ],
-            method(
+            async method(
                 earlierProof: SelfProof<Void, RollupParticipationOutput>,
                 participationAction: ParticipationAction,
                 projectCounter: Field,
                 projectIndexWitness: ProjectIndexLevel1Witness,
                 projectCounterWitness: ProjectCounterLevel1Witness,
                 ipfsHashWitness: IpfsHashLevel1Witness
-            ) {
+            ): Promise<RollupParticipationOutput> {
                 earlierProof.verify();
                 const campaignId = participationAction.campaignId;
                 const projectId = participationAction.projectId;
@@ -207,7 +207,7 @@ class ParticipationContract extends SmartContract {
         this.actionState.set(Reducer.initialActionState);
     }
 
-    @method participateCampaign(
+    @method async participateCampaign(
         campaignId: Field,
         projectId: Field,
         ipfsHash: IpfsHash,
@@ -307,7 +307,7 @@ class ParticipationContract extends SmartContract {
         this.reducer.dispatch(participationAction);
     }
 
-    @method rollup(rollupParticipationProof: RollupParticipationProof) {
+    @method async rollup(rollupParticipationProof: RollupParticipationProof) {
         rollupParticipationProof.verify();
         const projectIndexRoot = this.projectIndexRoot.getAndRequireEquals();
         const projectCounterRoot =
@@ -440,7 +440,7 @@ class ParticipationContractMock extends SmartContract {
         this.actionState.set(Reducer.initialActionState);
     }
 
-    @method participateCampaign(
+    @method async participateCampaign(
         campaignId: Field,
         projectId: Field,
         ipfsHash: IpfsHash,
@@ -540,7 +540,7 @@ class ParticipationContractMock extends SmartContract {
         this.reducer.dispatch(participationAction);
     }
 
-    @method rollup(rollupParticipationProof: RollupParticipationProof) {
+    @method async rollup(rollupParticipationProof: RollupParticipationProof) {
         rollupParticipationProof.verify();
         const projectIndexRoot = this.projectIndexRoot.getAndRequireEquals();
         const projectCounterRoot =

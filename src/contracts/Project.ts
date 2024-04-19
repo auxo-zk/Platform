@@ -68,13 +68,13 @@ const RollupProject = ZkProgram({
     methods: {
         firstStep: {
             privateInputs: [Field, Field, Field, Field, Field],
-            method(
+            async method(
                 initialProjectId: Field,
                 initialMemberRoot: Field,
                 initialIpfsHashRoot: Field,
                 initialTreasuryAddressRoot: Field,
                 initialActionState: Field
-            ): RollupProjectOutput {
+            ): Promise<RollupProjectOutput> {
                 return new RollupProjectOutput({
                     initialProjectId: initialProjectId,
                     initialMemberRoot: initialMemberRoot,
@@ -97,13 +97,13 @@ const RollupProject = ZkProgram({
                 IpfsHashLevel1Witness,
                 TreasuryAddressLevel1Witness,
             ],
-            method(
+            async method(
                 earlierProof: SelfProof<Void, RollupProjectOutput>,
                 projectAction: ProjectAction,
                 memberWitness: ProjectMemberLevel1Witness,
                 ipfsHashWitness: IpfsHashLevel1Witness,
                 treasuryAddressWitness: TreasuryAddressLevel1Witness
-            ) {
+            ): Promise<RollupProjectOutput> {
                 earlierProof.verify();
                 projectAction.actionType.assertEquals(
                     Field(ProjectActionEnum.CREATE_PROJECT)
@@ -187,12 +187,12 @@ const RollupProject = ZkProgram({
                 IpfsHash,
                 IpfsHashLevel1Witness,
             ],
-            method(
+            async method(
                 earlierProof: SelfProof<Void, RollupProjectOutput>,
                 projectAction: ProjectAction,
                 currentIpfsHash: IpfsHash,
                 ipfsHashWitness: IpfsHashLevel1Witness
-            ) {
+            ): Promise<RollupProjectOutput> {
                 earlierProof.verify();
                 projectAction.actionType.assertEquals(
                     Field(ProjectActionEnum.UPDATE_PROJECT)
@@ -255,7 +255,7 @@ class ProjectContract extends SmartContract {
         this.actionState.set(Reducer.initialActionState);
     }
 
-    @method createProject(
+    @method async createProject(
         members: MemberArray,
         ipfsHash: IpfsHash,
         treasuryAddress: PublicKey
@@ -271,7 +271,7 @@ class ProjectContract extends SmartContract {
         );
     }
 
-    @method updateProject(
+    @method async updateProject(
         projectId: Field,
         ipfsHash: IpfsHash,
         memberWitnessLevel1: ProjectMemberLevel1Witness,
@@ -293,7 +293,7 @@ class ProjectContract extends SmartContract {
         );
     }
 
-    @method rollup(rollupProjectProof: RollupProjectProof) {
+    @method async rollup(rollupProjectProof: RollupProjectProof) {
         const nextProjectId = this.nextProjectId.getAndRequireEquals();
         const memberRoot = this.memberRoot.getAndRequireEquals();
         const ipfsHashRoot = this.ipfsHashRoot.getAndRequireEquals();
@@ -341,7 +341,9 @@ class ProjectContract extends SmartContract {
                 memberWitnessLevel1
                     .calculateRoot(
                         memberWitnessLevel2.calculateRoot(
-                            ProjectMemberStorage.calculateLeaf(this.sender)
+                            ProjectMemberStorage.calculateLeaf(
+                                this.sender.getAndRequireSignature()
+                            )
                         )
                     )
                     .equals(this.memberRoot.getAndRequireEquals())

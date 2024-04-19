@@ -81,13 +81,13 @@ const RollupCampaign = ZkProgram({
     methods: {
         firstStep: {
             privateInputs: [Field, Field, Field, Field, Field],
-            method(
+            async method(
                 initialCampaignId: Field,
                 initialTimelineRoot: Field,
                 initialIpfsHashRoot: Field,
                 initialKeyIndexRoot: Field,
                 initialActionState: Field
-            ): RollupCampaignOutput {
+            ): Promise<RollupCampaignOutput> {
                 return new RollupCampaignOutput({
                     initialCampaignId,
                     initialTimelineRoot,
@@ -110,13 +110,13 @@ const RollupCampaign = ZkProgram({
                 IpfsHashLevel1Witness,
                 KeyIndexLevel1Witness,
             ],
-            method(
+            async method(
                 earlierProof: SelfProof<Void, RollupCampaignOutput>,
                 campaignAction: CampaignAction,
                 timelineWitness: TimelineLevel1Witness,
                 ipfsHashWitness: IpfsHashLevel1Witness,
                 keyIndexWitness: KeyIndexLevel1Witness
-            ) {
+            ): Promise<RollupCampaignOutput> {
                 earlierProof.verify();
                 // Verify empty timeline
                 timelineWitness
@@ -203,7 +203,7 @@ class CampaignContract extends SmartContract {
         this.actionState.set(Reducer.initialActionState);
     }
 
-    @method createCampaign(
+    @method async createCampaign(
         timeline: Timeline,
         ipfsHash: IpfsHash,
         committeeId: Field,
@@ -260,7 +260,7 @@ class CampaignContract extends SmartContract {
             new CampaignAction({
                 campaignId: Field(-1),
                 ipfsHash: ipfsHash,
-                owner: this.sender,
+                owner: this.sender.getAndRequireSignature(),
                 timeline: timeline,
                 committeeId: committeeId,
                 keyId: keyId,
@@ -268,7 +268,7 @@ class CampaignContract extends SmartContract {
         );
     }
 
-    @method rollup(rollupCampaignProof: RollupCampaignProof) {
+    @method async rollup(rollupCampaignProof: RollupCampaignProof) {
         rollupCampaignProof.verify();
         const nextCampaignId = this.nextCampaignId.getAndRequireEquals();
         const timelineRoot = this.timelineRoot.getAndRequireEquals();
@@ -375,7 +375,7 @@ class CampaignContractMock extends SmartContract {
         this.actionState.set(Reducer.initialActionState);
     }
 
-    @method createCampaign(
+    @method async createCampaign(
         timeline: Timeline,
         ipfsHash: IpfsHash,
         committeeId: Field,
@@ -432,7 +432,7 @@ class CampaignContractMock extends SmartContract {
             new CampaignAction({
                 campaignId: Field(-1),
                 ipfsHash: ipfsHash,
-                owner: this.sender,
+                owner: this.sender.getAndRequireSignature(),
                 timeline: timeline,
                 committeeId: committeeId,
                 keyId: keyId,
@@ -440,7 +440,7 @@ class CampaignContractMock extends SmartContract {
         );
     }
 
-    @method rollup(rollupCampaignProof: RollupCampaignProof) {
+    @method async rollup(rollupCampaignProof: RollupCampaignProof) {
         rollupCampaignProof.verify();
         const nextCampaignId = this.nextCampaignId.getAndRequireEquals();
         const timelineRoot = this.timelineRoot.getAndRequireEquals();

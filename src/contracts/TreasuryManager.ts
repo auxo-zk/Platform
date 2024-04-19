@@ -118,11 +118,11 @@ const RollupTreasuryManager = ZkProgram({
     methods: {
         firstStep: {
             privateInputs: [Field, Field, Field],
-            method(
+            async method(
                 initialCampaignStateRoot: Field,
                 initialClaimedIndexRoot: Field,
                 initialActionState: Field
-            ): RollupTreasuryManagerOutput {
+            ): Promise<RollupTreasuryManagerOutput> {
                 return new RollupTreasuryManagerOutput({
                     initialCampaignStateRoot: initialCampaignStateRoot,
                     initialClaimedIndexRoot: initialClaimedIndexRoot,
@@ -139,11 +139,11 @@ const RollupTreasuryManager = ZkProgram({
                 TreasuryManagerAction,
                 CampaignStateLevel1Witness,
             ],
-            method(
+            async method(
                 earlierProof: SelfProof<Void, RollupTreasuryManagerOutput>,
                 treasuryManagerAction: TreasuryManagerAction,
                 campaignStateWitness: CampaignStateLevel1Witness
-            ): RollupTreasuryManagerOutput {
+            ): Promise<RollupTreasuryManagerOutput> {
                 earlierProof.verify();
                 treasuryManagerAction.actionType.assertEquals(
                     Field(TreasuryManagerActionEnum.COMPLETE_CAMPAIGN)
@@ -185,11 +185,11 @@ const RollupTreasuryManager = ZkProgram({
                 TreasuryManagerAction,
                 CampaignStateLevel1Witness,
             ],
-            method(
+            async method(
                 earlierProof: SelfProof<Void, RollupTreasuryManagerOutput>,
                 treasuryManagerAction: TreasuryManagerAction,
                 campaignStateWitness: CampaignStateLevel1Witness
-            ) {
+            ): Promise<RollupTreasuryManagerOutput> {
                 earlierProof.verify();
                 treasuryManagerAction.actionType.assertEquals(
                     Field(TreasuryManagerActionEnum.ABORT_CAMPAIGN)
@@ -231,11 +231,11 @@ const RollupTreasuryManager = ZkProgram({
                 TreasuryManagerAction,
                 ClaimedIndexLevel1Witness,
             ],
-            method(
+            async method(
                 earlierProof: SelfProof<Void, RollupTreasuryManagerOutput>,
                 treasuryManagerAction: TreasuryManagerAction,
                 claimedIndexWitness: ClaimedIndexLevel1Witness
-            ) {
+            ): Promise<RollupTreasuryManagerOutput> {
                 earlierProof.verify();
                 treasuryManagerAction.actionType.assertEquals(
                     Field(TreasuryManagerActionEnum.CLAIM_FUND)
@@ -295,7 +295,7 @@ class TreasuryManagerContract extends SmartContract {
         this.actionState.set(Reducer.initialActionState);
     }
 
-    @method completeCampaign(
+    @method async completeCampaign(
         campaignId: Field,
         requestId: Field,
         timeline: Timeline,
@@ -383,7 +383,7 @@ class TreasuryManagerContract extends SmartContract {
         this.reducer.dispatch(treasuryManagerAction);
     }
 
-    @method abortCampaign(
+    @method async abortCampaign(
         campaignId: Field,
         requestId: Field,
         timeline: Timeline,
@@ -471,7 +471,7 @@ class TreasuryManagerContract extends SmartContract {
         this.reducer.dispatch(treasuryManagerAction);
     }
 
-    @method claimFund(
+    @method async claimFund(
         campaignId: Field,
         projectId: Field,
         projectIndex: Field,
@@ -595,7 +595,7 @@ class TreasuryManagerContract extends SmartContract {
         this.reducer.dispatch(treasuryManagerAction);
     }
 
-    @method refund(
+    @method async refund(
         fundingInformation: FundingInformation,
         campaignStateWitness: CampaignStateLevel1Witness,
         fundingContractRef: ZkAppRef
@@ -619,7 +619,9 @@ class TreasuryManagerContract extends SmartContract {
         });
     }
 
-    @method rollup(rollupTreasuryManagerProof: RollupTreasuryManagerProof) {
+    @method async rollup(
+        rollupTreasuryManagerProof: RollupTreasuryManagerProof
+    ) {
         const campaignStateRoot = this.campaignStateRoot.getAndRequireEquals();
         const claimedIndexRoot = this.claimedIndexRoot.getAndRequireEquals();
         const actionState = this.actionState.getAndRequireEquals();
@@ -730,7 +732,7 @@ class TreasuryManagerContractMock extends SmartContract {
         this.actionState.set(Reducer.initialActionState);
     }
 
-    @method completeCampaign(
+    @method async completeCampaign(
         campaignId: Field,
         requestId: Field,
         timeline: Timeline,
@@ -819,7 +821,7 @@ class TreasuryManagerContractMock extends SmartContract {
         this.reducer.dispatch(treasuryManagerAction);
     }
 
-    @method abortCampaign(
+    @method async abortCampaign(
         campaignId: Field,
         requestId: Field,
         timeline: Timeline,
@@ -908,7 +910,7 @@ class TreasuryManagerContractMock extends SmartContract {
         this.reducer.dispatch(treasuryManagerAction);
     }
 
-    @method claimFund(
+    @method async claimFund(
         campaignId: Field,
         projectId: Field,
         projectIndex: Field,
@@ -1032,7 +1034,7 @@ class TreasuryManagerContractMock extends SmartContract {
         this.reducer.dispatch(treasuryManagerAction);
     }
 
-    @method refund(
+    @method async refund(
         fundingInformation: FundingInformation,
         campaignStateWitness: CampaignStateLevel1Witness,
         fundingContractRef: ZkAppRef
@@ -1056,7 +1058,9 @@ class TreasuryManagerContractMock extends SmartContract {
         });
     }
 
-    @method rollup(rollupTreasuryManagerProof: RollupTreasuryManagerProof) {
+    @method async rollup(
+        rollupTreasuryManagerProof: RollupTreasuryManagerProof
+    ) {
         const campaignStateRoot = this.campaignStateRoot.getAndRequireEquals();
         const claimedIndexRoot = this.claimedIndexRoot.getAndRequireEquals();
         const actionState = this.actionState.getAndRequireEquals();
