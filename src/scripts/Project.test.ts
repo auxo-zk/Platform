@@ -29,7 +29,6 @@ import {
     TreasuryAddressStorage,
 } from '../storages/ProjectStorage';
 import { IpfsHash } from '@auxo-dev/auxo-libs';
-import { fetchActions } from 'o1js/dist/node/lib/mina';
 import { Action } from './interfaces/action.interface';
 import { Utilities } from './utils';
 import { INSTANCE_LIMITS } from '../Constants';
@@ -71,9 +70,9 @@ describe('Project', () => {
     });
 
     async function localDeploy() {
-        const tx = await Mina.transaction(deployerAccount, () => {
+        const tx = await Mina.transaction(deployerAccount, async () => {
             AccountUpdate.fundNewAccount(deployerAccount);
-            projectContract.deploy();
+            await projectContract.deploy();
         });
         await tx.prove();
         await tx.sign([deployerKey, projectContractPrivateKey]).send();
@@ -104,8 +103,8 @@ describe('Project', () => {
                     PublicKey.fromBase58(ProjectMockData[0].members[i])
                 );
             }
-            const tx = await Mina.transaction(senderAccount, () => {
-                projectContract.createProject(
+            const tx = await Mina.transaction(senderAccount, async () => {
+                await projectContract.createProject(
                     members,
                     IpfsHash.fromString(ProjectMockData[0].ipfsHash),
                     PublicKey.fromBase58(ProjectMockData[0].treasuryAddress)
@@ -113,14 +112,14 @@ describe('Project', () => {
             });
             await tx.prove();
             await tx.sign([senderKey]).send();
-            const actions: Action[] = (await fetchActions(
+            const actions: Action[] = (await Mina.fetchActions(
                 projectContractPublicKey
             )) as Action[];
             expect(actions.length).toEqual(1);
         });
 
         it('2. Rollup', async () => {
-            const actions: Action[] = (await fetchActions(
+            const actions: Action[] = (await Mina.fetchActions(
                 projectContractPublicKey
             )) as Action[];
             expect(actions.length).toEqual(1);
@@ -143,8 +142,8 @@ describe('Project', () => {
                 treasuryAddressTree.getLevel1Witness(nextProjectId)
             );
 
-            const tx = await Mina.transaction(senderAccount, () => {
-                projectContract.rollup(proof);
+            const tx = await Mina.transaction(senderAccount, async () => {
+                await projectContract.rollup(proof);
             });
             await tx.prove();
             await tx.sign([senderKey]).send();
@@ -186,8 +185,8 @@ describe('Project', () => {
         });
 
         it('3. Update project', async () => {
-            const tx = await Mina.transaction(senderAccount, () => {
-                projectContract.updateProject(
+            const tx = await Mina.transaction(senderAccount, async () => {
+                await projectContract.updateProject(
                     Field(0),
                     IpfsHash.fromString(ProjectMockData[1].ipfsHash),
                     memberTree.getLevel1Witness(Field(0)),
@@ -196,14 +195,14 @@ describe('Project', () => {
             });
             await tx.prove();
             await tx.sign([senderKey]).send();
-            const actions = (await fetchActions(
+            const actions = (await Mina.fetchActions(
                 projectContractPublicKey
             )) as Action[];
             expect(actions.length).toEqual(2);
         });
 
         it('4. Rollup', async () => {
-            const actions = (await fetchActions(
+            const actions = (await Mina.fetchActions(
                 projectContractPublicKey
             )) as Action[];
             expect(actions.length).toEqual(2);
@@ -225,8 +224,8 @@ describe('Project', () => {
                 ipfsHashTree.getLevel1Witness(Field(0))
             );
 
-            const tx = await Mina.transaction(senderAccount, () => {
-                projectContract.rollup(proof);
+            const tx = await Mina.transaction(senderAccount, async () => {
+                await projectContract.rollup(proof);
             });
             await tx.prove();
             await tx.sign([senderKey]).send();

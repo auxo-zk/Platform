@@ -42,7 +42,6 @@ import {
     EMPTY_LEVEL_2_PROJECT_MEMBER_TREE,
 } from '../storages/ProjectStorage';
 import { IpfsHash } from '@auxo-dev/auxo-libs';
-import { fetchActions, LocalBlockchain } from 'o1js/dist/node/lib/mina';
 import { CampaignMockData } from './mock/CampaignMockData';
 import { Action } from './interfaces/action.interface';
 import { Utilities } from './utils';
@@ -162,14 +161,14 @@ describe('Participation', () => {
     });
 
     async function localDeploy() {
-        const tx = await Mina.transaction(deployerAccount, () => {
+        const tx = await Mina.transaction(deployerAccount, async () => {
             AccountUpdate.fundNewAccount(deployerAccount);
-            campaignContract.deploy();
+            await campaignContract.deploy();
             campaignContract['zkAppRoot'].set(zkAppStorage.root);
             AccountUpdate.fundNewAccount(deployerAccount);
-            projectContract.deploy();
+            await projectContract.deploy();
             AccountUpdate.fundNewAccount(deployerAccount);
-            participationContract.deploy();
+            await participationContract.deploy();
             participationContract['zkAppRoot'].set(zkAppStorage.root);
         });
         await tx.prove();
@@ -230,8 +229,8 @@ describe('Participation', () => {
         });
 
         it('1. Create Campaign', async () => {
-            const tx = await Mina.transaction(senderAccount, () => {
-                campaignContract.createCampaign(
+            const tx = await Mina.transaction(senderAccount, async () => {
+                await campaignContract.createCampaign(
                     timeline,
                     IpfsHash.fromString(CampaignMockData[0].ipfsHash),
                     Field(CampaignMockData[0].committeeId),
@@ -250,14 +249,14 @@ describe('Participation', () => {
             });
             await tx.prove();
             await tx.sign([senderKey]).send();
-            const actions: Action[] = (await fetchActions(
+            const actions: Action[] = (await Mina.fetchActions(
                 campaignContractPublicKey
             )) as Action[];
             expect(actions.length).toEqual(1);
         });
 
         it('2. Rollup Campaign', async () => {
-            const actions: Action[] = (await fetchActions(
+            const actions: Action[] = (await Mina.fetchActions(
                 campaignContractPublicKey
             )) as Action[];
             const campaignAction = CampaignAction.fromFields(
@@ -277,8 +276,8 @@ describe('Participation', () => {
                 campaignTrees.ipfsHashTree.getLevel1Witness(nextCampaignId),
                 campaignTrees.keyIndexTree.getLevel1Witness(nextCampaignId)
             );
-            const tx = await Mina.transaction(senderAccount, () => {
-                campaignContract.rollup(proof);
+            const tx = await Mina.transaction(senderAccount, async () => {
+                await campaignContract.rollup(proof);
             });
             await tx.prove();
             await tx.sign([senderKey]).send();
@@ -327,8 +326,8 @@ describe('Participation', () => {
                     PublicKey.fromBase58(ProjectMockData[0].members[i])
                 );
             }
-            const tx = await Mina.transaction(senderAccount, () => {
-                projectContract.createProject(
+            const tx = await Mina.transaction(senderAccount, async () => {
+                await projectContract.createProject(
                     members,
                     IpfsHash.fromString(ProjectMockData[0].ipfsHash),
                     PublicKey.fromBase58(ProjectMockData[0].treasuryAddress)
@@ -336,7 +335,7 @@ describe('Participation', () => {
             });
             await tx.prove();
             await tx.sign([senderKey]).send();
-            const actions: Action[] = (await fetchActions(
+            const actions: Action[] = (await Mina.fetchActions(
                 projectContractPublicKey
             )) as Action[];
             expect(actions.length).toEqual(1);
@@ -350,8 +349,8 @@ describe('Participation', () => {
                     PublicKey.fromBase58(ProjectMockData[1].members[i])
                 );
             }
-            const tx = await Mina.transaction(senderAccount, () => {
-                projectContract.createProject(
+            const tx = await Mina.transaction(senderAccount, async () => {
+                await projectContract.createProject(
                     members,
                     IpfsHash.fromString(ProjectMockData[1].ipfsHash),
                     PublicKey.fromBase58(ProjectMockData[1].treasuryAddress)
@@ -359,14 +358,14 @@ describe('Participation', () => {
             });
             await tx.prove();
             await tx.sign([senderKey]).send();
-            const actions: Action[] = (await fetchActions(
+            const actions: Action[] = (await Mina.fetchActions(
                 projectContractPublicKey
             )) as Action[];
             expect(actions.length).toEqual(2);
         });
 
         it('6. Rollup Project', async () => {
-            const actions: Action[] = (await fetchActions(
+            const actions: Action[] = (await Mina.fetchActions(
                 projectContractPublicKey
             )) as Action[];
             expect(actions.length).toEqual(2);
@@ -422,8 +421,8 @@ describe('Participation', () => {
                 );
                 nextProjectId = nextProjectId.add(1);
             }
-            const tx = await Mina.transaction(senderAccount, () => {
-                projectContract.rollup(proof);
+            const tx = await Mina.transaction(senderAccount, async () => {
+                await projectContract.rollup(proof);
             });
             await tx.prove();
             await tx.sign([senderKey]).send();
@@ -454,8 +453,8 @@ describe('Participation', () => {
             const projectId = Field(0);
             const projectMemberId = Field(0);
 
-            const tx = await Mina.transaction(senderAccount, () => {
-                participationContract.participateCampaign(
+            const tx = await Mina.transaction(senderAccount, async () => {
+                await participationContract.participateCampaign(
                     campaignId,
                     projectId,
                     IpfsHash.fromString(ParticipationMockData[0].ipfsHash),
@@ -488,7 +487,7 @@ describe('Participation', () => {
             });
             await tx.prove();
             await tx.sign([senderKey]).send();
-            const actions: Action[] = (await fetchActions(
+            const actions: Action[] = (await Mina.fetchActions(
                 participationContractPublicKey
             )) as Action[];
             expect(actions.length).toEqual(1);
@@ -498,8 +497,8 @@ describe('Participation', () => {
             const projectId = Field(1);
             const projectMemberId = Field(0);
 
-            const tx = await Mina.transaction(senderAccount, () => {
-                participationContract.participateCampaign(
+            const tx = await Mina.transaction(senderAccount, async () => {
+                await participationContract.participateCampaign(
                     campaignId,
                     projectId,
                     IpfsHash.fromString(ParticipationMockData[1].ipfsHash),
@@ -532,14 +531,14 @@ describe('Participation', () => {
             });
             await tx.prove();
             await tx.sign([senderKey]).send();
-            const actions: Action[] = (await fetchActions(
+            const actions: Action[] = (await Mina.fetchActions(
                 participationContractPublicKey
             )) as Action[];
             expect(actions.length).toEqual(2);
         });
 
         it('9. Rollup Participation', async () => {
-            const actions: Action[] = (await fetchActions(
+            const actions: Action[] = (await Mina.fetchActions(
                 participationContractPublicKey
             )) as Action[];
             let proof = await RollupParticipation.firstStep(
@@ -595,8 +594,8 @@ describe('Participation', () => {
                     )
                 );
             }
-            const tx = await Mina.transaction(senderAccount, () => {
-                participationContract.rollup(proof);
+            const tx = await Mina.transaction(senderAccount, async () => {
+                await participationContract.rollup(proof);
             });
             await tx.prove();
             await tx.sign([senderKey]).send();

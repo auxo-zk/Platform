@@ -34,7 +34,6 @@ import {
     MemberArray,
 } from '../storages/ProjectStorage';
 import { IpfsHash } from '@auxo-dev/auxo-libs';
-import { fetchActions, LocalBlockchain } from 'o1js/dist/node/lib/mina';
 import { CampaignMockData } from './mock/CampaignMockData';
 import { Action } from './interfaces/action.interface';
 import { Utilities } from './utils';
@@ -104,9 +103,9 @@ describe('Campaign', () => {
     });
 
     async function localDeploy() {
-        const tx = await Mina.transaction(deployerAccount, () => {
+        const tx = await Mina.transaction(deployerAccount, async () => {
             AccountUpdate.fundNewAccount(deployerAccount);
-            campaignContract.deploy();
+            await campaignContract.deploy();
             campaignContract['zkAppRoot'].set(zkAppStorage.root);
         });
         await tx.prove();
@@ -156,8 +155,8 @@ describe('Campaign', () => {
         });
 
         it('1. Create campaign', async () => {
-            const tx = await Mina.transaction(senderAccount, () => {
-                campaignContract.createCampaign(
+            const tx = await Mina.transaction(senderAccount, async () => {
+                await campaignContract.createCampaign(
                     timeline,
                     IpfsHash.fromString(CampaignMockData[0].ipfsHash),
                     Field(CampaignMockData[0].committeeId),
@@ -185,14 +184,14 @@ describe('Campaign', () => {
             });
             await tx.prove();
             await tx.sign([senderKey]).send();
-            const actions: Action[] = (await fetchActions(
+            const actions: Action[] = (await Mina.fetchActions(
                 campaignContractPublicKey
             )) as Action[];
             expect(actions.length).toEqual(1);
         });
 
         it('2. Rollup', async () => {
-            const actions: Action[] = (await fetchActions(
+            const actions: Action[] = (await Mina.fetchActions(
                 campaignContractPublicKey
             )) as Action[];
             const campaignAction = CampaignAction.fromFields(
@@ -212,8 +211,8 @@ describe('Campaign', () => {
                 ipfsHashTree.getLevel1Witness(nextCampaignId),
                 keyIndexTree.getLevel1Witness(nextCampaignId)
             );
-            const tx = await Mina.transaction(senderAccount, () => {
-                campaignContract.rollup(proof);
+            const tx = await Mina.transaction(senderAccount, async () => {
+                await campaignContract.rollup(proof);
             });
             await tx.prove();
             await tx.sign([senderKey]).send();
