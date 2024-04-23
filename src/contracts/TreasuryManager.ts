@@ -19,6 +19,7 @@ import {
     UInt64,
     AccountUpdate,
     UInt8,
+    Permissions,
 } from 'o1js';
 import {
     DefaultRootForZkAppTree,
@@ -45,8 +46,8 @@ import {
     CampaignStateEnum,
     CampaignStateLevel1Witness,
     CampaignStateStorage,
-    ClaimedIndexLevel1Witness,
-    ClaimedIndexStorage,
+    ClaimedAmountLevel1Witness,
+    ClaimedAmountStorage,
     DefaultRootForTreasuryManagerTree,
     TreasuryManagerActionEnum,
 } from '../storages/TreasuryManagerStorage';
@@ -105,10 +106,10 @@ class TreasuryManagerAction extends Struct({
 
 class RollupTreasuryManagerOutput extends Struct({
     initialCampaignStateRoot: Field,
-    initialClaimedIndexRoot: Field,
+    initialClaimedAmountRoot: Field,
     initialActionState: Field,
     nextCampaignStateRoot: Field,
-    nextClaimedIndexRoot: Field,
+    nextClaimedAmountRoot: Field,
     nextActionState: Field,
 }) {}
 
@@ -120,15 +121,15 @@ const RollupTreasuryManager = ZkProgram({
             privateInputs: [Field, Field, Field],
             async method(
                 initialCampaignStateRoot: Field,
-                initialClaimedIndexRoot: Field,
+                initialClaimedAmountRoot: Field,
                 initialActionState: Field
             ): Promise<RollupTreasuryManagerOutput> {
                 return new RollupTreasuryManagerOutput({
                     initialCampaignStateRoot: initialCampaignStateRoot,
-                    initialClaimedIndexRoot: initialClaimedIndexRoot,
+                    initialClaimedAmountRoot: initialClaimedAmountRoot,
                     initialActionState: initialActionState,
                     nextCampaignStateRoot: initialCampaignStateRoot,
-                    nextClaimedIndexRoot: initialClaimedIndexRoot,
+                    nextClaimedAmountRoot: initialClaimedAmountRoot,
                     nextActionState: initialActionState,
                 });
             },
@@ -165,13 +166,13 @@ const RollupTreasuryManager = ZkProgram({
                 return new RollupTreasuryManagerOutput({
                     initialCampaignStateRoot:
                         earlierProof.publicOutput.initialCampaignStateRoot,
-                    initialClaimedIndexRoot:
-                        earlierProof.publicOutput.initialClaimedIndexRoot,
+                    initialClaimedAmountRoot:
+                        earlierProof.publicOutput.initialClaimedAmountRoot,
                     initialActionState:
                         earlierProof.publicOutput.initialActionState,
                     nextCampaignStateRoot: nextCampaignStateRoot,
-                    nextClaimedIndexRoot:
-                        earlierProof.publicOutput.nextClaimedIndexRoot,
+                    nextClaimedAmountRoot:
+                        earlierProof.publicOutput.nextClaimedAmountRoot,
                     nextActionState: Utils.updateActionState(
                         earlierProof.publicOutput.nextActionState,
                         [TreasuryManagerAction.toFields(treasuryManagerAction)]
@@ -211,13 +212,13 @@ const RollupTreasuryManager = ZkProgram({
                 return new RollupTreasuryManagerOutput({
                     initialCampaignStateRoot:
                         earlierProof.publicOutput.initialCampaignStateRoot,
-                    initialClaimedIndexRoot:
-                        earlierProof.publicOutput.initialClaimedIndexRoot,
+                    initialClaimedAmountRoot:
+                        earlierProof.publicOutput.initialClaimedAmountRoot,
                     initialActionState:
                         earlierProof.publicOutput.initialActionState,
                     nextCampaignStateRoot: nextCampaignStateRoot,
-                    nextClaimedIndexRoot:
-                        earlierProof.publicOutput.nextClaimedIndexRoot,
+                    nextClaimedAmountRoot:
+                        earlierProof.publicOutput.nextClaimedAmountRoot,
                     nextActionState: Utils.updateActionState(
                         earlierProof.publicOutput.nextActionState,
                         [TreasuryManagerAction.toFields(treasuryManagerAction)]
@@ -229,43 +230,46 @@ const RollupTreasuryManager = ZkProgram({
             privateInputs: [
                 SelfProof<Void, RollupTreasuryManagerOutput>,
                 TreasuryManagerAction,
-                ClaimedIndexLevel1Witness,
+                ClaimedAmountLevel1Witness,
             ],
             async method(
                 earlierProof: SelfProof<Void, RollupTreasuryManagerOutput>,
                 treasuryManagerAction: TreasuryManagerAction,
-                claimedIndexWitness: ClaimedIndexLevel1Witness
+                claimedAmountWitness: ClaimedAmountLevel1Witness
             ): Promise<RollupTreasuryManagerOutput> {
                 earlierProof.verify();
                 treasuryManagerAction.actionType.assertEquals(
                     Field(TreasuryManagerActionEnum.CLAIM_FUND)
                 );
-                claimedIndexWitness.calculateIndex().assertEquals(
-                    ClaimedIndexStorage.calculateLevel1Index({
+                claimedAmountWitness.calculateIndex().assertEquals(
+                    ClaimedAmountStorage.calculateLevel1Index({
                         campaignId: treasuryManagerAction.campaignId,
                         dimensionIndex: UInt8.from(
                             treasuryManagerAction.projectIndex.sub(1)
                         ),
                     })
                 );
-                claimedIndexWitness
+                claimedAmountWitness
                     .calculateRoot(Field(0))
                     .assertEquals(
-                        earlierProof.publicOutput.nextClaimedIndexRoot
+                        earlierProof.publicOutput.nextClaimedAmountRoot
                     );
-                const nextClaimedIndexRoot = claimedIndexWitness.calculateRoot(
-                    ClaimedIndexStorage.calculateLeaf(Bool(true))
-                );
+                const nextClaimedAmountRoot =
+                    claimedAmountWitness.calculateRoot(
+                        ClaimedAmountStorage.calculateLeaf(
+                            treasuryManagerAction.amount
+                        )
+                    );
                 return new RollupTreasuryManagerOutput({
                     initialCampaignStateRoot:
                         earlierProof.publicOutput.initialCampaignStateRoot,
-                    initialClaimedIndexRoot:
-                        earlierProof.publicOutput.initialClaimedIndexRoot,
+                    initialClaimedAmountRoot:
+                        earlierProof.publicOutput.initialClaimedAmountRoot,
                     initialActionState:
                         earlierProof.publicOutput.initialActionState,
                     nextCampaignStateRoot:
                         earlierProof.publicOutput.nextCampaignStateRoot,
-                    nextClaimedIndexRoot: nextClaimedIndexRoot,
+                    nextClaimedAmountRoot: nextClaimedAmountRoot,
                     nextActionState: Utils.updateActionState(
                         earlierProof.publicOutput.nextActionState,
                         [TreasuryManagerAction.toFields(treasuryManagerAction)]
@@ -281,7 +285,7 @@ class RollupTreasuryManagerProof extends ZkProgram.Proof(
 ) {}
 class TreasuryManagerContract extends SmartContract {
     @state(Field) campaignStateRoot = State<Field>();
-    @state(Field) claimedIndexRoot = State<Field>();
+    @state(Field) claimedAmountRoot = State<Field>();
     @state(Field) zkAppRoot = State<Field>();
     @state(Field) actionState = State<Field>();
 
@@ -290,7 +294,7 @@ class TreasuryManagerContract extends SmartContract {
     init(): void {
         super.init();
         this.campaignStateRoot.set(DefaultRootForCampaignTree);
-        this.claimedIndexRoot.set(DefaultRootForTreasuryManagerTree);
+        this.claimedAmountRoot.set(DefaultRootForTreasuryManagerTree);
         this.zkAppRoot.set(DefaultRootForZkAppTree);
         this.actionState.set(Reducer.initialActionState);
     }
@@ -482,7 +486,7 @@ class TreasuryManagerContract extends SmartContract {
         resultValueWitness: Storage.RequestStorage.RequestLevel2Witness,
         treasuryAddress: PublicKey,
         treasuryAddressWitness: TreasuryAddressLevel1Witness,
-        claimedIndexWitness: ClaimedIndexLevel1Witness,
+        claimedAmountWitness: ClaimedAmountLevel1Witness,
         amount: UInt64,
         participationContractRef: ZkAppRef,
         requestContractRef: ZkAppRef,
@@ -559,7 +563,7 @@ class TreasuryManagerContract extends SmartContract {
         this.isClaimed(
             campaignId,
             dimensionIndex,
-            claimedIndexWitness
+            claimedAmountWitness
         ).assertFalse();
 
         // Check not exist action claim of this project in this campaign
@@ -623,14 +627,14 @@ class TreasuryManagerContract extends SmartContract {
         rollupTreasuryManagerProof: RollupTreasuryManagerProof
     ) {
         const campaignStateRoot = this.campaignStateRoot.getAndRequireEquals();
-        const claimedIndexRoot = this.claimedIndexRoot.getAndRequireEquals();
+        const claimedAmountRoot = this.claimedAmountRoot.getAndRequireEquals();
         const actionState = this.actionState.getAndRequireEquals();
 
         campaignStateRoot.assertEquals(
             rollupTreasuryManagerProof.publicOutput.initialCampaignStateRoot
         );
-        claimedIndexRoot.assertEquals(
-            rollupTreasuryManagerProof.publicOutput.initialClaimedIndexRoot
+        claimedAmountRoot.assertEquals(
+            rollupTreasuryManagerProof.publicOutput.initialClaimedAmountRoot
         );
         actionState.assertEquals(
             rollupTreasuryManagerProof.publicOutput.initialActionState
@@ -643,8 +647,8 @@ class TreasuryManagerContract extends SmartContract {
         this.campaignStateRoot.set(
             rollupTreasuryManagerProof.publicOutput.nextCampaignStateRoot
         );
-        this.claimedIndexRoot.set(
-            rollupTreasuryManagerProof.publicOutput.nextClaimedIndexRoot
+        this.claimedAmountRoot.set(
+            rollupTreasuryManagerProof.publicOutput.nextClaimedAmountRoot
         );
         this.actionState.set(
             rollupTreasuryManagerProof.publicOutput.nextActionState
@@ -696,29 +700,30 @@ class TreasuryManagerContract extends SmartContract {
     isClaimed(
         campaignId: Field,
         dimensionIndex: UInt8,
-        claimedIndexWitness: ClaimedIndexLevel1Witness
+        claimedAmountWitness: ClaimedAmountLevel1Witness
     ): Bool {
-        return claimedIndexWitness
+        return claimedAmountWitness
             .calculateIndex()
             .equals(
-                ClaimedIndexStorage.calculateLevel1Index({
+                ClaimedAmountStorage.calculateLevel1Index({
                     campaignId,
                     dimensionIndex,
                 })
             )
             .and(
-                claimedIndexWitness
+                claimedAmountWitness
                     .calculateRoot(
-                        ClaimedIndexStorage.calculateLeaf(Bool(true))
+                        ClaimedAmountStorage.calculateLeaf(new UInt64(0))
                     )
-                    .equals(this.claimedIndexRoot.getAndRequireEquals())
+                    .equals(this.claimedAmountRoot.getAndRequireEquals())
+                    .not()
             );
     }
 }
 
 class TreasuryManagerContractMock extends SmartContract {
     @state(Field) campaignStateRoot = State<Field>();
-    @state(Field) claimedIndexRoot = State<Field>();
+    @state(Field) claimedAmountRoot = State<Field>();
     @state(Field) zkAppRoot = State<Field>();
     @state(Field) actionState = State<Field>();
 
@@ -727,9 +732,13 @@ class TreasuryManagerContractMock extends SmartContract {
     init(): void {
         super.init();
         this.campaignStateRoot.set(DefaultRootForCampaignTree);
-        this.claimedIndexRoot.set(DefaultRootForTreasuryManagerTree);
+        this.claimedAmountRoot.set(DefaultRootForTreasuryManagerTree);
         this.zkAppRoot.set(DefaultRootForZkAppTree);
         this.actionState.set(Reducer.initialActionState);
+        this.account.permissions.set({
+            ...Permissions.default(),
+            editState: Permissions.signature(),
+        });
     }
 
     @method async completeCampaign(
@@ -921,7 +930,7 @@ class TreasuryManagerContractMock extends SmartContract {
         // resultValueWitness: Storage.RequestStorage.RequestLevel2Witness,
         treasuryAddress: PublicKey,
         treasuryAddressWitness: TreasuryAddressLevel1Witness,
-        claimedIndexWitness: ClaimedIndexLevel1Witness,
+        claimedAmountWitness: ClaimedAmountLevel1Witness,
         amount: UInt64,
         participationContractRef: ZkAppRef,
         requestContractRef: ZkAppRef,
@@ -998,7 +1007,7 @@ class TreasuryManagerContractMock extends SmartContract {
         this.isClaimed(
             campaignId,
             dimensionIndex,
-            claimedIndexWitness
+            claimedAmountWitness
         ).assertFalse();
 
         // Check not exist action claim of this project in this campaign
@@ -1062,14 +1071,14 @@ class TreasuryManagerContractMock extends SmartContract {
         rollupTreasuryManagerProof: RollupTreasuryManagerProof
     ) {
         const campaignStateRoot = this.campaignStateRoot.getAndRequireEquals();
-        const claimedIndexRoot = this.claimedIndexRoot.getAndRequireEquals();
+        const claimedAmountRoot = this.claimedAmountRoot.getAndRequireEquals();
         const actionState = this.actionState.getAndRequireEquals();
 
         campaignStateRoot.assertEquals(
             rollupTreasuryManagerProof.publicOutput.initialCampaignStateRoot
         );
-        claimedIndexRoot.assertEquals(
-            rollupTreasuryManagerProof.publicOutput.initialClaimedIndexRoot
+        claimedAmountRoot.assertEquals(
+            rollupTreasuryManagerProof.publicOutput.initialClaimedAmountRoot
         );
         actionState.assertEquals(
             rollupTreasuryManagerProof.publicOutput.initialActionState
@@ -1082,8 +1091,8 @@ class TreasuryManagerContractMock extends SmartContract {
         this.campaignStateRoot.set(
             rollupTreasuryManagerProof.publicOutput.nextCampaignStateRoot
         );
-        this.claimedIndexRoot.set(
-            rollupTreasuryManagerProof.publicOutput.nextClaimedIndexRoot
+        this.claimedAmountRoot.set(
+            rollupTreasuryManagerProof.publicOutput.nextClaimedAmountRoot
         );
         this.actionState.set(
             rollupTreasuryManagerProof.publicOutput.nextActionState
@@ -1135,22 +1144,23 @@ class TreasuryManagerContractMock extends SmartContract {
     isClaimed(
         campaignId: Field,
         dimensionIndex: UInt8,
-        claimedIndexWitness: ClaimedIndexLevel1Witness
+        claimedAmountWitness: ClaimedAmountLevel1Witness
     ): Bool {
-        return claimedIndexWitness
+        return claimedAmountWitness
             .calculateIndex()
             .equals(
-                ClaimedIndexStorage.calculateLevel1Index({
+                ClaimedAmountStorage.calculateLevel1Index({
                     campaignId,
                     dimensionIndex,
                 })
             )
             .and(
-                claimedIndexWitness
+                claimedAmountWitness
                     .calculateRoot(
-                        ClaimedIndexStorage.calculateLeaf(Bool(true))
+                        ClaimedAmountStorage.calculateLeaf(new UInt64(0))
                     )
-                    .equals(this.claimedIndexRoot.getAndRequireEquals())
+                    .equals(this.claimedAmountRoot.getAndRequireEquals())
+                    .not()
             );
     }
 }

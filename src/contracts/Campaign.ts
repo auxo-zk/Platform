@@ -12,6 +12,7 @@ import {
     PublicKey,
     Void,
     Bool,
+    Permissions,
 } from 'o1js';
 import { IpfsHash, Utils } from '@auxo-dev/auxo-libs';
 import {
@@ -373,6 +374,11 @@ class CampaignContractMock extends SmartContract {
         this.keyIndexRoot.set(DefaultRootForCampaignTree);
         this.zkAppRoot.set(DefaultRootForZkAppTree);
         this.actionState.set(Reducer.initialActionState);
+
+        this.account.permissions.set({
+            ...Permissions.default(),
+            editState: Permissions.signature(),
+        });
     }
 
     @method async createCampaign(

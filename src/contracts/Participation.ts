@@ -15,6 +15,7 @@ import {
     Bool,
     UInt64,
     Undefined,
+    Permissions,
 } from 'o1js';
 import { IpfsHash, Utils } from '@auxo-dev/auxo-libs';
 import {
@@ -438,6 +439,10 @@ class ParticipationContractMock extends SmartContract {
         this.ipfsHashRoot.set(DefaultRootForParticipationTree);
         this.zkAppRoot.set(DefaultRootForZkAppTree);
         this.actionState.set(Reducer.initialActionState);
+        this.account.permissions.set({
+            ...Permissions.default(),
+            editState: Permissions.signature(),
+        });
     }
 
     @method async participateCampaign(

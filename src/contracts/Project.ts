@@ -12,6 +12,7 @@ import {
     PublicKey,
     Void,
     Bool,
+    Permissions,
 } from 'o1js';
 import { IpfsHash, Utils } from '@auxo-dev/auxo-libs';
 import { INSTANCE_LIMITS } from '../Constants.js';
@@ -253,6 +254,11 @@ class ProjectContract extends SmartContract {
         this.ipfsHashRoot.set(DefaultRootForProjectTree);
         this.treasuryAddressRoot.set(DefaultRootForProjectTree);
         this.actionState.set(Reducer.initialActionState);
+
+        this.account.permissions.set({
+            ...Permissions.default(),
+            editState: Permissions.signature(),
+        });
     }
 
     @method async createProject(

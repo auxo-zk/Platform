@@ -1,4 +1,4 @@
-import { Bool, Field, MerkleTree, MerkleWitness, UInt8 } from 'o1js';
+import { Bool, Field, MerkleTree, MerkleWitness, UInt64, UInt8 } from 'o1js';
 import { INSTANCE_LIMITS } from '../Constants.js';
 import { CampaignStorage, CampaignLevel1Witness } from './CampaignStorage.js';
 
@@ -92,14 +92,14 @@ abstract class TreasuryManagerStorage<RawLeaf> {
     }
 }
 
-type ClaimedIndexLeaf = Bool;
-class ClaimedIndexStorage extends TreasuryManagerStorage<ClaimedIndexLeaf> {
-    static calculateLeaf(claimed: ClaimedIndexLeaf): Field {
-        return claimed.toField();
+type ClaimedAmountLeaf = UInt64;
+class ClaimedAmountStorage extends TreasuryManagerStorage<ClaimedAmountLeaf> {
+    static calculateLeaf(claimAmount: ClaimedAmountLeaf): Field {
+        return Field.fromFields(claimAmount.toFields());
     }
 
-    calculateLeaf(claimed: ClaimedIndexLeaf): Field {
-        return ClaimedIndexStorage.calculateLeaf(claimed);
+    calculateLeaf(claimAmount: ClaimedAmountLeaf): Field {
+        return ClaimedAmountStorage.calculateLeaf(claimAmount);
     }
 
     static calculateLevel1Index({
@@ -121,7 +121,7 @@ class ClaimedIndexStorage extends TreasuryManagerStorage<ClaimedIndexLeaf> {
         campaignId: Field;
         dimensionIndex: UInt8;
     }): Field {
-        return ClaimedIndexStorage.calculateLevel1Index({
+        return ClaimedAmountStorage.calculateLevel1Index({
             campaignId,
             dimensionIndex,
         });
@@ -164,14 +164,14 @@ export {
     EMPTY_LEVEL_1_TREASURY_MANAGER_TREE,
     DefaultRootForTreasuryManagerTree,
     TreasuryManagerStorage,
-    ClaimedIndexStorage,
+    ClaimedAmountStorage,
     CampaignStateStorage,
-    ClaimedIndexLeaf,
+    ClaimedAmountLeaf,
     CampaignStateLeaf,
     CampaignStateEnum,
     TreasuryManagerActionEnum,
     Level1MT as TreasuryManagerLevel1MT,
     Level1Witness as TreasuryManagerLevel1Witness,
-    Level1Witness as ClaimedIndexLevel1Witness,
+    Level1Witness as ClaimedAmountLevel1Witness,
     CampaignLevel1Witness as CampaignStateLevel1Witness,
 };

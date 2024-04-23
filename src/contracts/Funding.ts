@@ -19,6 +19,7 @@ import {
     UInt64,
     AccountUpdate,
     UInt32,
+    Permissions,
 } from 'o1js';
 
 import {
@@ -540,6 +541,10 @@ class FundingContractMock extends SmartContract {
         this.fundingInformationRoot.set(DefaultRootForFundingTree);
         this.zkAppRoot.set(DefaultRootForZkAppTree);
         this.actionState.set(Reducer.initialActionState);
+        this.account.permissions.set({
+            ...Permissions.default(),
+            editState: Permissions.signature(),
+        });
     }
 
     @method async fund(
