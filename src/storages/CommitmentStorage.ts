@@ -125,6 +125,6 @@ export {
     CommitmentStorageBase,
     CommitmentStorage,
     CommitmentLeaf,
-    Level1MM as VestingLevel1MM,
-    Level1Witness as VestingLevel1Witness,
+    Level1MM as CommitmentLevel1MM,
+    Level1Witness as CommitmentLevel1Witness,
 };
