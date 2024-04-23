@@ -186,17 +186,15 @@ abstract class VestingStorageForCombineTree<RawLeaf> {
     }
 }
 
-type LastVestingRequestIdLeaf = Field;
+type LastVestingIdLeaf = Field;
 
-class VestingRequestStorage extends VestingStorage<LastVestingRequestIdLeaf> {
-    static calculateLeaf(
-        lastVestingRequestId: LastVestingRequestIdLeaf
-    ): Field {
-        return lastVestingRequestId;
+class VestingIdStorage extends VestingStorage<LastVestingIdLeaf> {
+    static calculateLeaf(lastVestingId: LastVestingIdLeaf): Field {
+        return lastVestingId;
     }
 
-    calculateLeaf(lastVestingRequestId: LastVestingRequestIdLeaf): Field {
-        return VestingRequestStorage.calculateLeaf(lastVestingRequestId);
+    calculateLeaf(lastVestingId: LastVestingIdLeaf): Field {
+        return VestingIdStorage.calculateLeaf(lastVestingId);
     }
 
     static calculateLevel1Index(campaignId: Field): Field {
@@ -204,7 +202,7 @@ class VestingRequestStorage extends VestingStorage<LastVestingRequestIdLeaf> {
     }
 
     calculateLevel1Index(campaignId: Field): Field {
-        return VestingRequestStorage.calculateLevel1Index(campaignId);
+        return VestingIdStorage.calculateLevel1Index(campaignId);
     }
 }
 
@@ -227,57 +225,49 @@ class VestingBalanceStorage extends VestingStorage<BalanceLeaf> {
     }
 }
 
-class VestingRequestInfo extends Struct({
+class VestingInfo extends Struct({
     campaignId: Field,
-    amount: Field,
+    amount: UInt64,
     deadline: UInt64,
     claimed: Bool,
 }) {
-    static fromFields(fields: Field[]): VestingRequestInfo {
-        return super.fromFields(fields) as VestingRequestInfo;
+    static fromFields(fields: Field[]): VestingInfo {
+        return super.fromFields(fields) as VestingInfo;
     }
 }
 
-type VestingRequestInfoLeaf = VestingRequestInfo;
-class VestingRequestInfoStorage extends VestingStorageForCombineTree<VestingRequestInfoLeaf> {
-    static calculateLeaf(vestingRequestInfo: VestingRequestInfoLeaf): Field {
-        return Poseidon.hash(VestingRequestInfo.toFields(vestingRequestInfo));
+type VestingInfoLeaf = VestingInfo;
+class VestingInfoStorage extends VestingStorageForCombineTree<VestingInfoLeaf> {
+    static calculateLeaf(vestingInfo: VestingInfoLeaf): Field {
+        return Poseidon.hash(VestingInfo.toFields(vestingInfo));
     }
 
-    calculateLeaf(vestingRequestInfo: VestingRequestInfoLeaf): Field {
-        return VestingRequestInfoStorage.calculateLeaf(vestingRequestInfo);
+    calculateLeaf(vestingInfo: VestingInfoLeaf): Field {
+        return VestingInfoStorage.calculateLeaf(vestingInfo);
     }
 
     static calculateLevel1Index({
         campaignId,
-        vestingRequestId,
+        vestingId,
     }: {
         campaignId: Field;
-        vestingRequestId: Field;
+        vestingId: Field;
     }): Field {
-        return campaignId
-            .mul(INSTANCE_LIMITS.VESTING_MAX_TIMES)
-            .add(vestingRequestId);
+        return campaignId.mul(INSTANCE_LIMITS.VESTING_MAX_TIMES).add(vestingId);
     }
 
     calculateLevel1Index({
         campaignId,
-        vestingRequestId,
+        vestingId,
     }: {
         campaignId: Field;
-        vestingRequestId: Field;
+        vestingId: Field;
     }): Field {
-        return VestingRequestInfoStorage.calculateLevel1Index({
+        return VestingInfoStorage.calculateLevel1Index({
             campaignId,
-            vestingRequestId,
+            vestingId,
         });
     }
-}
-
-enum VestingActionEnum {
-    CREATE_VESTING_REQUEST,
-    VOTING,
-    CLAIM_VESTING,
 }
 
 export {
@@ -289,14 +279,13 @@ export {
     DefaultRootForVestingCombineTree,
     VestingStorage,
     VestingStorageForCombineTree,
-    LastVestingRequestIdLeaf,
-    VestingRequestStorage,
+    LastVestingIdLeaf,
+    VestingIdStorage,
     BalanceLeaf,
     VestingBalanceStorage,
-    VestingRequestInfo,
-    VestingRequestInfoLeaf,
-    VestingRequestInfoStorage,
-    VestingActionEnum,
+    VestingInfo,
+    VestingInfoLeaf,
+    VestingInfoStorage,
     Level1MT as VestingLevel1MT,
     Level1Witness as VestingLevel1Witness,
     Level1CombineWitness as VestingLevel1CombineWitness,
