@@ -23,30 +23,18 @@ import {
 import { CustomScalar, ScalarDynamicArray, Utils } from '@auxo-dev/auxo-libs';
 
 import {
-    ZkApp as DkgZkApp,
-    Constants as DkgConstants,
-    DkgContract,
-    Storage,
-} from '@auxo-dev/dkg';
-
-import { INSTANCE_LIMITS, MINIMAL_MINA_UNIT, ZkAppEnum } from '../Constants.js';
-
-import {
     DefaultRootForCommitmentMap,
     CommitmentStorage,
     CommitmentLevel1Witness,
 } from '../storages/CommitmentStorage.js';
 
-import {
-    ZkAppRef,
-    DefaultRootForZkAppTree,
-    verifyZkApp,
-} from '../storages/SharedStorage.js';
-
-import { CampaignContract } from './Campaign.js';
-import { ParticipationContract } from './Participation.js';
-
-export { CommitmentContract };
+export {
+    CommitmentContract,
+    RollupCommitmentProof,
+    RollupCommitment,
+    RollupProjectOutput,
+    CommitmentAction,
+};
 
 class CommitmentAction extends Struct({
     commitment: Field,
@@ -137,12 +125,21 @@ class CommitmentContract extends SmartContract {
         this.actionState.set(Reducer.initialActionState);
     }
 
-    @method async commit(nullifier: Field, projectId: Field, vestingId: Field) {
+    @method async commit(
+        nullifier: Field,
+        projectId: Field,
+        vestingId: Field,
+        commitmentWitness: CommitmentLevel1Witness
+    ) {
         const commitment = CommitmentStorage.calculateLevel1Index({
             nullifier,
             projectId,
             vestingId,
         });
+
+        // is not yet committed
+        this.isCommitted(commitment, commitmentWitness).assertFalse();
+
         this.reducer.dispatch(new CommitmentAction({ commitment }));
     }
 

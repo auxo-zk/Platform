@@ -24,12 +24,14 @@ export enum ZkAppEnum {
     ROUND2,
     REQUEST,
     REQUESTER,
+    REQUESTER_2,
     RESPONSE,
     CAMPAIGN,
     PROJECT,
     PARTICIPATION,
     FUNDING,
     TREASURY_MANAGER,
+    COMMITMENT,
 }
 
 export enum ErrorEnum {
