@@ -29,6 +29,8 @@ import {
     RequesterContract,
     RequesterLevel1Witness,
     Libs as DkgLibs,
+    KeyStatusInput,
+    KeyStatus,
 } from '@auxo-dev/dkg';
 
 import { CustomScalar, ScalarDynamicArray, Utils } from '@auxo-dev/auxo-libs';
@@ -39,16 +41,19 @@ import {
     ZkAppRef,
     DefaultRootForZkAppTree,
     verifyZkApp,
+    AddressWitness,
 } from '../storages/SharedStorage.js';
 
 import {
+    CampaignLevel1Witness,
+    DefaultRootForCampaignTree,
+} from '../storages/CampaignStorage.js';
+
+import {
     VestingInfo,
-    VestingIdStorage,
     VestingInfoStorage,
     DefaultRootForVestingTree,
-    DefaultRootForVestingCombineTree,
     VestingLevel1Witness,
-    VestingLevel1CombineWitness,
 } from '../storages/VestingStorage.js';
 
 import {
@@ -59,91 +64,59 @@ import {
 
 import { ProjectContract } from './Project.js';
 import { CampaignContract } from './Campaign.js';
+import { CommitmentContract } from './Commitment.js';
 import { ParticipationContract } from './Participation.js';
 
 import { ProjectIndexLevel1Witness } from '../storages/ParticipationStorage.js';
-import { RequesterStorage } from '@auxo-dev/dkg/build/esm/src/storages/index.js';
+import { CommitmentLevel1Witness } from '../storages/CommitmentStorage.js';
+import { ExistedIndexFlag } from '../storages/FundingStorage.js';
 
 export { VestingContract };
 
 class VestingContract extends SmartContract {
-    @state(Field) vestingIdRoot = State<Field>();
     @state(Field) vestingInfoRoot = State<Field>();
     @state(Field) balanceRoot = State<Field>();
     @state(Field) receiveFundAddressHash = State<Field>();
-    @state(Field) requesterOfFundingAddressHash = State<Field>();
+    @state(Field) nextVestingId = State<Field>();
     @state(Field) zkAppRoot = State<Field>();
 
     init(): void {
         super.init();
-        this.vestingIdRoot.set(DefaultRootForVestingTree);
-        this.balanceRoot.set(DefaultRootForVestingTree);
-        this.vestingInfoRoot.set(DefaultRootForVestingCombineTree);
+        this.nextVestingId.set(Field(0));
+        this.balanceRoot.set(DefaultRootForCampaignTree);
+        this.vestingInfoRoot.set(DefaultRootForVestingTree);
         this.zkAppRoot.set(DefaultRootForZkAppTree);
     }
 
     @method async createVestingRequest(
         vestingInfo: VestingInfo,
-        campaignId: Field,
-        projectId: Field,
-        lastVestingId: Field,
-        memberWitnessLevel1: ProjectMemberLevel1Witness,
-        memberWitnessLevel2: ProjectMemberLevel2Witness,
-        treasuryAddressWitness: TreasuryAddressLevel1Witness,
-        vestingIdWitness: VestingLevel1Witness,
-        vestingInfoWitness: VestingLevel1CombineWitness,
-        projectContractRef: ZkAppRef
+        committeeId: Field,
+        keyId: Field,
+        vestingContractWitness: AddressWitness,
+        vestingInfoWitness: VestingLevel1Witness,
+        keyStatusWitness: DkgStorage.DKGStorage.DkgLevel1Witness,
+        requesterContractRef: ZkAppRef,
+        dkgContractRef: ZkAppRef
     ) {
         const zkAppRoot = this.zkAppRoot.getAndRequireEquals();
         verifyZkApp(
             VestingContract.name,
-            projectContractRef,
+            requesterContractRef,
             zkAppRoot,
-            Field(ZkAppEnum.PROJECT)
+            Field(ZkAppEnum.REQUESTER)
         );
 
-        const projectContract = new ProjectContract(projectContractRef.address);
+        // @todo check caller is project owner
 
-        // check owner is caller
-        projectContract.isOwner(
-            projectId,
-            memberWitnessLevel1,
-            memberWitnessLevel2
-        );
-
-        // check if the contract has correct projectId
-        projectContract.isValidTreasuryAddress(
-            projectId,
-            this.address,
-            treasuryAddressWitness
-        );
-
-        // check last vestingId
-        const onchainLastVestingId = this.vestingIdRoot.getAndRequireEquals();
-        const vestingIdIndex = vestingIdWitness.calculateIndex();
-        vestingIdIndex.assertEquals(
-            VestingIdStorage.calculateLevel1Index(campaignId)
-        );
-        onchainLastVestingId.assertEquals(
-            vestingIdWitness.calculateRoot(lastVestingId)
-        );
-        const newVestingId = lastVestingId.add(Field(1));
-        // update new value: vestingId++
-        this.vestingIdRoot.set(
-            vestingIdWitness.calculateRoot(
-                VestingIdStorage.calculateLeaf(newVestingId)
-            )
-        );
+        // new vesting id
+        const vestingId = this.nextVestingId.getAndRequireEquals();
 
         // check last vestingInfo
         const onchainLastVestingInfo =
             this.vestingInfoRoot.getAndRequireEquals();
-        const vestingInfoIndex = vestingIdWitness.calculateIndex();
+        const vestingInfoIndex = vestingInfoWitness.calculateIndex();
         vestingInfoIndex.assertEquals(
-            VestingInfoStorage.calculateLevel1Index({
-                campaignId,
-                vestingId: newVestingId,
-            })
+            VestingInfoStorage.calculateLevel1Index(vestingId)
         );
         onchainLastVestingInfo.assertEquals(
             vestingInfoWitness.calculateRoot(Field(0))
@@ -154,35 +127,118 @@ class VestingContract extends SmartContract {
                 VestingInfoStorage.calculateLeaf(vestingInfo)
             )
         );
+        // update next vesting id
+        this.nextVestingId.set(vestingId.add(1));
+
+        // verify key status
+        const dkgContract = new DkgZkApp.DKG.DkgContract(
+            dkgContractRef.address
+        );
+        dkgContract.verifyKeyStatus(
+            new KeyStatusInput({
+                committeeId: committeeId,
+                keyId: keyId,
+                status: Field(KeyStatus.ACTIVE),
+                witness: keyStatusWitness,
+            })
+        );
+
+        // create task requester
+        const requesterContract = new RequesterContract(
+            requesterContractRef.address
+        );
+
+        requesterContract.createTask(
+            DkgStorage.DKGStorage.calculateKeyIndex(committeeId, keyId),
+            vestingInfo.deadline, // @todo Check if this is starting or ending in requester contract
+            new ZkAppRef({
+                address: this.address,
+                witness: vestingContractWitness,
+            })
+        );
     }
 
     @method async vote(
-        campaignId: Field,
+        type: Field, // 0: No, 1: Yes
+        vestingInfo: VestingInfo,
         projectId: Field,
         projectIndex: Field,
         projectIndexWitness: ProjectIndexLevel1Witness,
         vestingId: Field,
-        amount: CustomScalar,
+        investedAmount: UInt64,
+        fundingIndex: Field,
         nullifier: Field,
-        requesterWitness: RequesterLevel1Witness,
+        committeeId: Field,
+        keyId: Field,
+        keyWitnessForRequester: DkgStorage.RequesterStorage.RequesterLevel1Witness,
+        key: PublicKey,
+        keyWitnessForDkg: DkgStorage.DKGStorage.DkgLevel1Witness,
         treasuryAddressWitness: TreasuryAddressLevel1Witness,
-        requesterOfFundingAddress: PublicKey,
+        vestingInfoWitness: VestingLevel1Witness,
+        commitmentWitness: CommitmentLevel1Witness,
+        commitmentInFundingWitness: RequesterLevel1Witness,
+        fundingContractWitness: AddressWitness,
+        dkgContractRef: ZkAppRef,
         projectContractRef: ZkAppRef,
         participationContractRef: ZkAppRef,
-        requesterContractRef: ZkAppRef
+        requesterContractRef: ZkAppRef,
+        requesterOfFundingContractRef: ZkAppRef,
+        commitmentContractRef: ZkAppRef
     ) {
+        // Only accept yes and no
+        type.assertLessThan(2, 'Only accept Y/N');
+
+        // check correct vesting info
+        this.verifyVestingInfo(
+            vestingId,
+            vestingInfo,
+            vestingInfoWitness
+        ).assertTrue();
+
         const zkAppRoot = this.zkAppRoot.getAndRequireEquals();
-        verifyZkApp(
-            VestingContract.name,
-            projectContractRef,
-            zkAppRoot,
-            Field(ZkAppEnum.PROJECT)
-        );
         verifyZkApp(
             VestingContract.name,
             participationContractRef,
             zkAppRoot,
             Field(ZkAppEnum.PARTICIPATION)
+        );
+        verifyZkApp(
+            VestingContract.name,
+            requesterOfFundingContractRef,
+            zkAppRoot,
+            Field(ZkAppEnum.REQUESTER_2)
+        );
+        verifyZkApp(
+            VestingContract.name,
+            requesterContractRef,
+            zkAppRoot,
+            Field(ZkAppEnum.REQUESTER)
+        );
+        verifyZkApp(
+            VestingContract.name,
+            commitmentContractRef,
+            zkAppRoot,
+            Field(ZkAppEnum.COMMITMENT)
+        );
+
+        const projectContract = new ProjectContract(projectContractRef.address);
+
+        // check if the contract has the correct projectId
+        projectContract.isValidTreasuryAddress(
+            projectId,
+            this.address,
+            treasuryAddressWitness
+        );
+
+        // send commit
+        const commitmentContract = new CommitmentContract(
+            commitmentContractRef.address
+        );
+        await commitmentContract.commit(
+            nullifier,
+            projectId,
+            vestingId,
+            commitmentWitness
         );
 
         // check project index in participation
@@ -191,7 +247,7 @@ class VestingContract extends SmartContract {
         );
         participationContract
             .isValidProjectIndex(
-                campaignId,
+                vestingInfo.campaignId,
                 projectId,
                 projectIndex,
                 projectIndexWitness
@@ -200,19 +256,90 @@ class VestingContract extends SmartContract {
 
         const dimensionIndex = UInt8.from(projectIndex.sub(1));
 
-        const requesterOfFundingAddressHash =
-            this.requesterOfFundingAddressHash.getAndRequireEquals();
-        requesterOfFundingAddressHash.assertEquals(
-            Poseidon.hash(requesterOfFundingAddress.toFields())
+        // verify if invested
+        const commitmentInFunding = DkgLibs.Requester.calculateCommitment(
+            nullifier,
+            UInt32.fromFields(vestingInfo.campaignId.toFields()),
+            dimensionIndex,
+            CustomScalar.fromUInt64(investedAmount)
+        );
+        const requesterOfFundingContract = new RequesterContract(
+            requesterOfFundingContractRef.address
+        );
+        requesterOfFundingContract.verifyCommitment(
+            fundingIndex,
+            commitmentInFunding,
+            commitmentInFundingWitness
         );
 
-        const commitment = DkgLibs.Requester.calculateCommitment(
-            nullifier,
-            UInt32.fromFields(campaignId.toFields()),
-            dimensionIndex,
-            amount
+        // vote
+        const requesterContract = new RequesterContract(
+            requesterContractRef.address
+        );
+        // create random vector and nullifier
+        const randomVector = Provable.witness(
+            DkgLibs.Requester.RandomVector,
+            () => {
+                // @todo create random
+                return new DkgLibs.Requester.RandomVector();
+            }
+        );
+        const nullifiers = Provable.witness(
+            DkgLibs.Requester.NullifierArray,
+            () => {
+                // @todo create random
+                return new DkgLibs.Requester.NullifierArray();
+            }
+        );
+
+        // only using the first element of the array: [investedAmount, ..., ...]
+        // so the dimensionIndex will be [type, ..., ...]
+        const secretVector = new DkgLibs.Requester.SecretVector();
+        secretVector.set(Field(0), CustomScalar.fromUInt64(investedAmount));
+        let dimensionIndexes = Provable.witness(Field, () => {
+            return Utils.packNumberArray([Number(type.toBigInt())], 8);
+        });
+        // only need to verify first element
+        Field.fromBits(dimensionIndexes.toBits().slice(0, 8)).assertEquals(
+            type
+        );
+
+        await requesterContract.submitEncryption(
+            UInt32.fromFields(vestingId.toFields()),
+            DkgStorage.DKGStorage.calculateKeyIndex(committeeId, keyId),
+            secretVector,
+            randomVector,
+            dimensionIndexes,
+            nullifiers,
+            key.toGroup(),
+            keyWitnessForDkg,
+            keyWitnessForRequester,
+            new ZkAppRef({
+                address: this.address,
+                witness: fundingContractWitness,
+            }),
+            dkgContractRef
         );
     }
 
     @method async claimMileStoneFund() {}
+
+    verifyVestingInfo(
+        vestingId: Field,
+        vestingInfo: VestingInfo,
+        vestingInfoWitness: VestingLevel1Witness
+    ): Bool {
+        // check last vestingInfo
+        const onchainLastVestingInfo =
+            this.vestingInfoRoot.getAndRequireEquals();
+        const vestingInfoIndex = vestingInfoWitness.calculateIndex();
+        vestingInfoIndex.assertEquals(
+            VestingInfoStorage.calculateLevel1Index(vestingId)
+        );
+        return onchainLastVestingInfo.equals(
+            vestingInfoWitness.calculateRoot(
+                VestingInfoStorage.calculateLeaf(vestingInfo)
+            )
+        );
+    }
 }

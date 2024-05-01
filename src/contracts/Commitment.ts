@@ -169,6 +169,8 @@ class CommitmentContract extends SmartContract {
         commitment: Field,
         commitmentWitness: CommitmentLevel1Witness
     ): Bool {
+        // TODO: check in reducer too
+
         const [root, key] = commitmentWitness.computeRootAndKey(Field(0));
         key.assertEquals(commitment);
 
