@@ -719,6 +719,30 @@ class TreasuryManagerContract extends SmartContract {
                     .not()
             );
     }
+
+    checkClaimedAmount(
+        campaignId: Field,
+        dimensionIndex: UInt8,
+        claimedAmount: UInt64,
+        claimedAmountWitness: ClaimedAmountLevel1Witness
+    ): Bool {
+        return claimedAmountWitness
+            .calculateIndex()
+            .equals(
+                ClaimedAmountStorage.calculateLevel1Index({
+                    campaignId,
+                    dimensionIndex,
+                })
+            )
+            .and(
+                claimedAmountWitness
+                    .calculateRoot(
+                        ClaimedAmountStorage.calculateLeaf(claimedAmount)
+                    )
+                    .equals(this.claimedAmountRoot.getAndRequireEquals())
+                    .not()
+            );
+    }
 }
 
 class TreasuryManagerContractMock extends SmartContract {

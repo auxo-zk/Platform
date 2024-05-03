@@ -238,6 +238,7 @@ const RollupProject = ZkProgram({
 
 class RollupProjectProof extends ZkProgram.Proof(RollupProject) {}
 
+// @todo have function to create project with treasury address is vesting contract
 class ProjectContract extends SmartContract {
     @state(Field) nextProjectId = State<Field>();
     @state(Field) memberRoot = State<Field>();

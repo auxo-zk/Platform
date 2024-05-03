@@ -35,7 +35,13 @@ import {
 
 import { CustomScalar, ScalarDynamicArray, Utils } from '@auxo-dev/auxo-libs';
 
-import { INSTANCE_LIMITS, MINIMAL_MINA_UNIT, ZkAppEnum } from '../Constants.js';
+import {
+    INSTANCE_LIMITS,
+    MINIMAL_MINA_UNIT,
+    ZkAppEnum,
+    THRESHOLD,
+    ErrorEnum,
+} from '../Constants.js';
 
 import {
     ZkAppRef,
@@ -52,6 +58,7 @@ import {
 import {
     VestingInfo,
     VestingInfoStorage,
+    VestedAmountStorage,
     DefaultRootForVestingTree,
     VestingLevel1Witness,
 } from '../storages/VestingStorage.js';
@@ -62,6 +69,8 @@ import {
     TreasuryAddressLevel1Witness,
 } from '../storages/ProjectStorage.js';
 
+import { ClaimedAmountLevel1Witness } from '../storages/TreasuryManagerStorage';
+
 import { ProjectContract } from './Project.js';
 import { CampaignContract } from './Campaign.js';
 import { CommitmentContract } from './Commitment.js';
@@ -69,13 +78,13 @@ import { ParticipationContract } from './Participation.js';
 
 import { ProjectIndexLevel1Witness } from '../storages/ParticipationStorage.js';
 import { CommitmentLevel1Witness } from '../storages/CommitmentStorage.js';
-import { ExistedIndexFlag } from '../storages/FundingStorage.js';
+import { TreasuryManagerContract } from './TreasuryManager.js';
 
 export { VestingContract };
 
 class VestingContract extends SmartContract {
     @state(Field) vestingInfoRoot = State<Field>();
-    @state(Field) balanceRoot = State<Field>();
+    @state(Field) vestingBalanceRoot = State<Field>();
     @state(Field) receiveFundAddressHash = State<Field>();
     @state(Field) nextVestingId = State<Field>();
     @state(Field) zkAppRoot = State<Field>();
@@ -83,7 +92,7 @@ class VestingContract extends SmartContract {
     init(): void {
         super.init();
         this.nextVestingId.set(Field(0));
-        this.balanceRoot.set(DefaultRootForCampaignTree);
+        this.vestingBalanceRoot.set(DefaultRootForCampaignTree);
         this.vestingInfoRoot.set(DefaultRootForVestingTree);
         this.zkAppRoot.set(DefaultRootForZkAppTree);
     }
@@ -322,14 +331,181 @@ class VestingContract extends SmartContract {
         );
     }
 
-    @method async claimMileStoneFund() {}
+    @method async claimMilestoneFund(
+        vestingInfo: VestingInfo,
+        projectId: Field,
+        vestingId: Field,
+        requestId: Field,
+        votedYesAmount: UInt64,
+        projectIndex: Field,
+        campaignClaimedAmount: UInt64,
+        receiveFundAddress: PublicKey,
+        vestedAmount: UInt64,
+        vestingBalanceWitness: CampaignLevel1Witness,
+        treasuryAddressWitness: TreasuryAddressLevel1Witness,
+        claimedAmountWitness: ClaimedAmountLevel1Witness,
+        projectIndexWitness: ProjectIndexLevel1Witness,
+        vestingInfoWitness: VestingLevel1Witness,
+        taskIdWitness: DkgStorage.RequestStorage.RequestLevel1Witness,
+        resultVectorWitness: DkgStorage.RequestStorage.RequestLevel1Witness,
+        resultValueWitness: DkgStorage.RequestStorage.RequestLevel2Witness,
+        projectContractRef: ZkAppRef,
+        participationContractRef: ZkAppRef,
+        requesterOfFundingContractRef: ZkAppRef,
+        requestContractRef: ZkAppRef,
+        treasuryManagerContractRef: ZkAppRef
+    ) {
+        // check correct vesting info
+        this.verifyVestingInfo(
+            vestingId,
+            vestingInfo,
+            vestingInfoWitness
+        ).assertTrue();
+
+        vestingInfo.claimed.assertTrue(ErrorEnum.VES_MILESTONE_CLAIMED);
+
+        const zkAppRoot = this.zkAppRoot.getAndRequireEquals();
+        verifyZkApp(
+            VestingContract.name,
+            participationContractRef,
+            zkAppRoot,
+            Field(ZkAppEnum.PARTICIPATION)
+        );
+        verifyZkApp(
+            VestingContract.name,
+            requesterOfFundingContractRef,
+            zkAppRoot,
+            Field(ZkAppEnum.REQUESTER_2)
+        );
+        verifyZkApp(
+            VestingContract.name,
+            requestContractRef,
+            zkAppRoot,
+            Field(ZkAppEnum.REQUEST)
+        );
+        verifyZkApp(
+            VestingContract.name,
+            treasuryManagerContractRef,
+            zkAppRoot,
+            Field(ZkAppEnum.TREASURY_MANAGER)
+        );
+
+        const projectContract = new ProjectContract(projectContractRef.address);
+
+        // check if the contract has the correct projectId
+        projectContract.isValidTreasuryAddress(
+            projectId,
+            this.address,
+            treasuryAddressWitness
+        );
+
+        // verify  result
+        const requestContract = new DkgZkApp.Request.RequestContract(
+            requestContractRef.address
+        );
+        // Verify result right here
+        requestContract.verifyTaskId(
+            requestId,
+            requesterOfFundingContractRef.address,
+            vestingId,
+            taskIdWitness
+        );
+        requestContract.verifyResult(
+            requestId,
+            UInt8.from(1), // yes
+            CustomScalar.fromUInt64(votedYesAmount).toScalar(),
+            resultVectorWitness,
+            resultValueWitness
+        );
+
+        // check project index in participation
+        const participationContract = new ParticipationContract(
+            participationContractRef.address
+        );
+        participationContract
+            .isValidProjectIndex(
+                vestingInfo.campaignId,
+                projectId,
+                projectIndex,
+                projectIndexWitness
+            )
+            .assertTrue();
+
+        const dimensionIndex = UInt8.from(projectIndex.sub(1));
+
+        // verify  campaignClaimedAmount
+        const treasuryManagerAddress = new TreasuryManagerContract(
+            treasuryManagerContractRef.address
+        );
+        treasuryManagerAddress.checkClaimedAmount(
+            vestingInfo.campaignId,
+            dimensionIndex,
+            campaignClaimedAmount,
+            claimedAmountWitness
+        );
+
+        let isMilestoneSuccess = votedYesAmount
+            .mul(MINIMAL_MINA_UNIT)
+            .mul(10000)
+            .div(campaignClaimedAmount)
+            .greaterThan(UInt64.from(THRESHOLD));
+
+        isMilestoneSuccess.assertTrue(ErrorEnum.VES_MILESTONE_FAILED);
+
+        // update vestingInfo
+        const newVestingInfo = new VestingInfo({
+            ...vestingInfo,
+            ...{ claimed: Bool(true) },
+        });
+        this.vestingInfoRoot.set(
+            vestingInfoWitness.calculateRoot(
+                VestingInfoStorage.calculateLeaf(newVestingInfo)
+            )
+        );
+
+        // check receive address
+        const receiveFundAddressHash =
+            this.receiveFundAddressHash.getAndRequireEquals();
+        receiveFundAddressHash.assertEquals(
+            Poseidon.hash(receiveFundAddress.toFields())
+        );
+        // check current balance
+        const vestingBalanceRoot =
+            this.vestingBalanceRoot.getAndRequireEquals();
+        const vestingBalanceIndex = vestingBalanceWitness.calculateIndex();
+        vestingBalanceIndex.assertEquals(
+            VestedAmountStorage.calculateLevel1Index(vestingInfo.campaignId)
+        );
+        vestingBalanceRoot.assertEquals(
+            vestingBalanceWitness.calculateRoot(
+                VestedAmountStorage.calculateLeaf(vestedAmount)
+            )
+        );
+        const newVestedAmount = vestedAmount.add(vestingInfo.amount);
+        // check vestedAmount amount must be smaller than campaignClaimedAmount
+        campaignClaimedAmount.assertGreaterThanOrEqual(
+            newVestedAmount,
+            ErrorEnum.VES_INSUFFICIENT_BALANCE
+        );
+        // update vestingBalanceRoot
+        this.vestingBalanceRoot.set(
+            vestingBalanceWitness.calculateRoot(
+                VestedAmountStorage.calculateLeaf(newVestedAmount)
+            )
+        );
+        // transfer money
+        this.send({
+            to: AccountUpdate.create(receiveFundAddress),
+            amount: vestingInfo.amount,
+        });
+    }
 
     verifyVestingInfo(
         vestingId: Field,
         vestingInfo: VestingInfo,
         vestingInfoWitness: VestingLevel1Witness
     ): Bool {
-        // check last vestingInfo
+        // check last vestingInfogit
         const onchainLastVestingInfo =
             this.vestingInfoRoot.getAndRequireEquals();
         const vestingInfoIndex = vestingInfoWitness.calculateIndex();
