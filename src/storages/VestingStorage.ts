@@ -96,14 +96,14 @@ abstract class VestingStorage<RawLeaf> {
     }
 }
 
-type BalanceLeaf = Field;
-class VestingBalanceStorage extends CampaignStorage<BalanceLeaf> {
-    static calculateLeaf(balance: BalanceLeaf): Field {
-        return balance;
+type VestedLeaf = UInt64;
+class VestedAmountStorage extends CampaignStorage<VestedLeaf> {
+    static calculateLeaf(amount: VestedLeaf): Field {
+        return Field.fromFields(amount.toFields());
     }
 
-    calculateLeaf(balance: BalanceLeaf): Field {
-        return VestingBalanceStorage.calculateLeaf(balance);
+    calculateLeaf(amount: VestedLeaf): Field {
+        return VestedAmountStorage.calculateLeaf(amount);
     }
 
     static calculateLevel1Index(campaignId: Field): Field {
@@ -111,7 +111,7 @@ class VestingBalanceStorage extends CampaignStorage<BalanceLeaf> {
     }
 
     calculateLevel1Index(campaignId: Field): Field {
-        return VestingBalanceStorage.calculateLevel1Index(campaignId);
+        return VestedAmountStorage.calculateLevel1Index(campaignId);
     }
 }
 
@@ -150,8 +150,8 @@ export {
     EMPTY_LEVEL_1_VESTING_TREE,
     DefaultRootForVestingTree,
     VestingStorage,
-    BalanceLeaf,
-    VestingBalanceStorage,
+    VestedLeaf,
+    VestedAmountStorage,
     VestingInfo,
     VestingInfoLeaf,
     VestingInfoStorage,
