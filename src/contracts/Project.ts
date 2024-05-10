@@ -29,6 +29,8 @@ import {
     IpfsHashLevel1Witness,
     TreasuryAddressLevel1Witness,
 } from '../storages/ProjectStorage.js';
+import { VestingContract } from './Vesting.js';
+import { CommitmentContract } from './Commitment.js';
 
 export {
     ProjectAction,
@@ -245,6 +247,9 @@ class ProjectContract extends SmartContract {
     @state(Field) ipfsHashRoot = State<Field>();
     @state(Field) treasuryAddressRoot = State<Field>();
     @state(Field) actionState = State<Field>();
+    @state(Field) vkHashVestingContract = State<Field>();
+    @state(Field) vkHashRequesterContract = State<Field>();
+    @state(Field) zkAppRoot = State<Field>();
 
     reducer = Reducer({ actionType: ProjectAction });
 
@@ -267,6 +272,30 @@ class ProjectContract extends SmartContract {
         ipfsHash: IpfsHash,
         treasuryAddress: PublicKey
     ) {
+        this.reducer.dispatch(
+            new ProjectAction({
+                actionType: Field(ProjectActionEnum.CREATE_PROJECT),
+                projectId: Field(-1),
+                members: members,
+                ipfsHash: ipfsHash,
+                treasuryAddress: treasuryAddress,
+            })
+        );
+    }
+
+    @method async createProjectWithVesting(
+        members: MemberArray,
+        ipfsHash: IpfsHash,
+        vestingAddress: PublicKey,
+        requesterAddress: PublicKey,
+        treasuryAddress: PublicKey
+    ) {
+        const vkHashVestingContract =
+            this.vkHashVestingContract.getAndRequireEquals();
+        const vkHashRequesterContract =
+            this.vkHashRequesterContract.getAndRequireEquals();
+        const zkAppRoot = this.zkAppRoot.getAndRequireEquals();
+
         this.reducer.dispatch(
             new ProjectAction({
                 actionType: Field(ProjectActionEnum.CREATE_PROJECT),

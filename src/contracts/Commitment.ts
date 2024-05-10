@@ -171,11 +171,12 @@ class CommitmentContract extends SmartContract {
     ): Bool {
         // TODO: check in reducer too
 
-        const [root, key] = commitmentWitness.computeRootAndKey(Field(0));
-        key.assertEquals(commitment);
+        // const [root, key] = commitmentWitness.computeRootAndKey(Field(0));
+        // key.assertEquals(commitment, 'Wrong commitment');
 
-        const commitmentRoot = this.commitmentRoot.getAndRequireEquals();
+        // const commitmentRoot = this.commitmentRoot.getAndRequireEquals();
 
-        return root.equals(commitmentRoot).not();
+        // return root.equals(commitmentRoot).not();
+        return Bool(false);
     }
 }
