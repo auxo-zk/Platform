@@ -16,19 +16,21 @@ export const INSTANCE_LIMITS = {
 
 export const MINIMAL_MINA_UNIT = 100000000;
 
-export enum ZkAppEnum {
+export enum ZkAppIndex {
+    ROLLUP,
     COMMITTEE,
     DKG,
     ROUND1,
     ROUND2,
-    REQUEST,
-    REQUESTER,
     RESPONSE,
-    CAMPAIGN,
+    REQUEST,
     PROJECT,
+    CAMPAIGN,
     PARTICIPATION,
     FUNDING,
     TREASURY_MANAGER,
+    FUNDING_REQUESTER,
+    __LENGTH,
 }
 
 export enum ErrorEnum {

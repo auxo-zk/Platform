@@ -31,7 +31,7 @@ import {
     verifyZkApp,
     ZkAppRef,
 } from '../storages/SharedStorage.js';
-import { INSTANCE_LIMITS, ZkAppEnum } from '../Constants.js';
+import { INSTANCE_LIMITS, ZkAppIndex } from '../Constants.js';
 import { CampaignContract, CampaignContractMock } from './Campaign.js';
 import {
     CampaignTimelineStateEnum,
@@ -283,14 +283,14 @@ class ParticipationContract extends SmartContract {
             ParticipationContract.name,
             campaignContractRef,
             zkAppRoot,
-            Field(ZkAppEnum.CAMPAIGN)
+            Field(ZkAppIndex.CAMPAIGN)
         );
         // Check that Project contract reference is valid
         verifyZkApp(
             ParticipationContract.name,
             projectContractRef,
             zkAppRoot,
-            Field(ZkAppEnum.PROJECT)
+            Field(ZkAppIndex.PROJECT)
         );
         // Check valid timeline
         const campaignContract = new CampaignContract(
@@ -520,14 +520,14 @@ class ParticipationContractMock extends SmartContract {
             ParticipationContract.name,
             campaignContractRef,
             zkAppRoot,
-            Field(ZkAppEnum.CAMPAIGN)
+            Field(ZkAppIndex.CAMPAIGN)
         );
         // Check that Project contract reference is valid
         verifyZkApp(
             ParticipationContract.name,
             projectContractRef,
             zkAppRoot,
-            Field(ZkAppEnum.PROJECT)
+            Field(ZkAppIndex.PROJECT)
         );
         // Check valid timeline
         const campaignContract = new CampaignContractMock(

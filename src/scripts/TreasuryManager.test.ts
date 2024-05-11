@@ -35,7 +35,7 @@ import {
 import { IpfsHash, Utils } from '@auxo-dev/auxo-libs';
 import { Action } from './interfaces/action.interface';
 import { Utilities } from './utils';
-import { INSTANCE_LIMITS, MINIMAL_MINA_UNIT, ZkAppEnum } from '../Constants';
+import { INSTANCE_LIMITS, MINIMAL_MINA_UNIT, ZkAppIndex } from '../Constants';
 import { Libs as DkgLibs, Storage } from '@auxo-dev/dkg';
 import {
     ProjectCounterStorage,
@@ -358,13 +358,13 @@ describe('TreasuryManager', () => {
                         Field(CampaignMockData[0].committeeId),
                         Field(CampaignMockData[0].keyId),
                         // keyStatusTree.getWitness(Field(0)),
-                        zkAppStorage.getWitness(Field(ZkAppEnum.CAMPAIGN)),
+                        zkAppStorage.getWitness(Field(ZkAppIndex.CAMPAIGN)),
                         zkAppStorage.getZkAppRef(
-                            ZkAppEnum.DKG,
+                            ZkAppIndex.DKG,
                             dkgContractPublicKey
                         ),
                         zkAppStorage.getZkAppRef(
-                            ZkAppEnum.REQUESTER,
+                            ZkAppIndex.FUNDING_REQUESTER,
                             requesterContractPublicKey
                         )
                     );
@@ -622,11 +622,11 @@ describe('TreasuryManager', () => {
                             )
                         ),
                         zkAppStorage.getZkAppRef(
-                            ZkAppEnum.CAMPAIGN,
+                            ZkAppIndex.CAMPAIGN,
                             campaignContractPublicKey
                         ),
                         zkAppStorage.getZkAppRef(
-                            ZkAppEnum.PROJECT,
+                            ZkAppIndex.PROJECT,
                             projectContractPublicKey
                         )
                     );
@@ -668,11 +668,11 @@ describe('TreasuryManager', () => {
                             )
                         ),
                         zkAppStorage.getZkAppRef(
-                            ZkAppEnum.CAMPAIGN,
+                            ZkAppIndex.CAMPAIGN,
                             campaignContractPublicKey
                         ),
                         zkAppStorage.getZkAppRef(
-                            ZkAppEnum.PROJECT,
+                            ZkAppIndex.PROJECT,
                             projectContractPublicKey
                         )
                     );
@@ -860,26 +860,26 @@ describe('TreasuryManager', () => {
                                 new DkgLibs.Requester.RandomVector(),
                                 new DkgLibs.Requester.NullifierArray(),
                                 zkAppStorage.getWitness(
-                                    Field(ZkAppEnum.FUNDING)
+                                    Field(ZkAppIndex.FUNDING)
                                 ),
                                 zkAppStorage.getZkAppRef(
-                                    Field(ZkAppEnum.CAMPAIGN),
+                                    Field(ZkAppIndex.CAMPAIGN),
                                     campaignContractPublicKey
                                 ),
                                 zkAppStorage.getZkAppRef(
-                                    Field(ZkAppEnum.PARTICIPATION),
+                                    Field(ZkAppIndex.PARTICIPATION),
                                     participationContractPublicKey
                                 ),
                                 zkAppStorage.getZkAppRef(
-                                    Field(ZkAppEnum.DKG),
+                                    Field(ZkAppIndex.DKG),
                                     dkgContractPublicKey
                                 ),
                                 zkAppStorage.getZkAppRef(
-                                    Field(ZkAppEnum.TREASURY_MANAGER),
+                                    Field(ZkAppIndex.TREASURY_MANAGER),
                                     treasuryManagerContractPublicKey
                                 ),
                                 zkAppStorage.getZkAppRef(
-                                    Field(ZkAppEnum.REQUESTER),
+                                    Field(ZkAppIndex.FUNDING_REQUESTER),
                                     requesterContractPublicKey
                                 )
                             );
@@ -984,15 +984,15 @@ describe('TreasuryManager', () => {
                         // requestTrees.expirationTree.getLevel1Witness(Field(0)),
                         // requestTrees.resultTree.getLevel1Witness(Field(0)),
                         zkAppStorage.getZkAppRef(
-                            Field(ZkAppEnum.CAMPAIGN),
+                            Field(ZkAppIndex.CAMPAIGN),
                             campaignContractPublicKey
                         ),
                         zkAppStorage.getZkAppRef(
-                            Field(ZkAppEnum.REQUESTER),
+                            Field(ZkAppIndex.FUNDING_REQUESTER),
                             requesterContractPublicKey
                         ),
                         zkAppStorage.getZkAppRef(
-                            Field(ZkAppEnum.REQUEST),
+                            Field(ZkAppIndex.REQUEST),
                             requestContractPublicKey
                         )
                     );
@@ -1086,19 +1086,19 @@ describe('TreasuryManager', () => {
                         ),
                         totalAmounts[0],
                         zkAppStorage.getZkAppRef(
-                            Field(ZkAppEnum.PARTICIPATION),
+                            Field(ZkAppIndex.PARTICIPATION),
                             participationContractPublicKey
                         ),
                         zkAppStorage.getZkAppRef(
-                            Field(ZkAppEnum.REQUEST),
+                            Field(ZkAppIndex.REQUEST),
                             requestContractPublicKey
                         ),
                         zkAppStorage.getZkAppRef(
-                            Field(ZkAppEnum.REQUESTER),
+                            Field(ZkAppIndex.FUNDING_REQUESTER),
                             requesterContractPublicKey
                         ),
                         zkAppStorage.getZkAppRef(
-                            Field(ZkAppEnum.PROJECT),
+                            Field(ZkAppIndex.PROJECT),
                             projectContractPublicKey
                         )
                     );
@@ -1148,19 +1148,19 @@ describe('TreasuryManager', () => {
                         ),
                         totalAmounts[1],
                         zkAppStorage.getZkAppRef(
-                            Field(ZkAppEnum.PARTICIPATION),
+                            Field(ZkAppIndex.PARTICIPATION),
                             participationContractPublicKey
                         ),
                         zkAppStorage.getZkAppRef(
-                            Field(ZkAppEnum.REQUEST),
+                            Field(ZkAppIndex.REQUEST),
                             requestContractPublicKey
                         ),
                         zkAppStorage.getZkAppRef(
-                            Field(ZkAppEnum.REQUESTER),
+                            Field(ZkAppIndex.FUNDING_REQUESTER),
                             requesterContractPublicKey
                         ),
                         zkAppStorage.getZkAppRef(
-                            Field(ZkAppEnum.PROJECT),
+                            Field(ZkAppIndex.PROJECT),
                             projectContractPublicKey
                         )
                     );
@@ -1285,13 +1285,13 @@ describe('TreasuryManager', () => {
                         Field(CampaignMockData[0].committeeId),
                         Field(CampaignMockData[0].keyId),
                         // keyStatusTree.getWitness(Field(0)),
-                        zkAppStorage.getWitness(Field(ZkAppEnum.CAMPAIGN)),
+                        zkAppStorage.getWitness(Field(ZkAppIndex.CAMPAIGN)),
                         zkAppStorage.getZkAppRef(
-                            ZkAppEnum.DKG,
+                            ZkAppIndex.DKG,
                             dkgContractPublicKey
                         ),
                         zkAppStorage.getZkAppRef(
-                            ZkAppEnum.REQUESTER,
+                            ZkAppIndex.FUNDING_REQUESTER,
                             requesterContractPublicKey
                         )
                     );
@@ -1542,11 +1542,11 @@ describe('TreasuryManager', () => {
                             )
                         ),
                         zkAppStorage.getZkAppRef(
-                            ZkAppEnum.CAMPAIGN,
+                            ZkAppIndex.CAMPAIGN,
                             campaignContractPublicKey
                         ),
                         zkAppStorage.getZkAppRef(
-                            ZkAppEnum.PROJECT,
+                            ZkAppIndex.PROJECT,
                             projectContractPublicKey
                         )
                     );
@@ -1588,11 +1588,11 @@ describe('TreasuryManager', () => {
                             )
                         ),
                         zkAppStorage.getZkAppRef(
-                            ZkAppEnum.CAMPAIGN,
+                            ZkAppIndex.CAMPAIGN,
                             campaignContractPublicKey
                         ),
                         zkAppStorage.getZkAppRef(
-                            ZkAppEnum.PROJECT,
+                            ZkAppIndex.PROJECT,
                             projectContractPublicKey
                         )
                     );
@@ -1791,26 +1791,26 @@ describe('TreasuryManager', () => {
                                 new DkgLibs.Requester.RandomVector(),
                                 new DkgLibs.Requester.NullifierArray(),
                                 zkAppStorage.getWitness(
-                                    Field(ZkAppEnum.FUNDING)
+                                    Field(ZkAppIndex.FUNDING)
                                 ),
                                 zkAppStorage.getZkAppRef(
-                                    Field(ZkAppEnum.CAMPAIGN),
+                                    Field(ZkAppIndex.CAMPAIGN),
                                     campaignContractPublicKey
                                 ),
                                 zkAppStorage.getZkAppRef(
-                                    Field(ZkAppEnum.PARTICIPATION),
+                                    Field(ZkAppIndex.PARTICIPATION),
                                     participationContractPublicKey
                                 ),
                                 zkAppStorage.getZkAppRef(
-                                    Field(ZkAppEnum.DKG),
+                                    Field(ZkAppIndex.DKG),
                                     dkgContractPublicKey
                                 ),
                                 zkAppStorage.getZkAppRef(
-                                    Field(ZkAppEnum.TREASURY_MANAGER),
+                                    Field(ZkAppIndex.TREASURY_MANAGER),
                                     treasuryManagerContractPublicKey
                                 ),
                                 zkAppStorage.getZkAppRef(
-                                    Field(ZkAppEnum.REQUESTER),
+                                    Field(ZkAppIndex.FUNDING_REQUESTER),
                                     requesterContractPublicKey
                                 )
                             );
@@ -1920,15 +1920,15 @@ describe('TreasuryManager', () => {
                         // requestTrees.expirationTree.getLevel1Witness(Field(0)),
                         // requestTrees.resultTree.getLevel1Witness(Field(0)),
                         zkAppStorage.getZkAppRef(
-                            Field(ZkAppEnum.CAMPAIGN),
+                            Field(ZkAppIndex.CAMPAIGN),
                             campaignContractPublicKey
                         ),
                         zkAppStorage.getZkAppRef(
-                            Field(ZkAppEnum.REQUESTER),
+                            Field(ZkAppIndex.FUNDING_REQUESTER),
                             requesterContractPublicKey
                         ),
                         zkAppStorage.getZkAppRef(
-                            Field(ZkAppEnum.REQUEST),
+                            Field(ZkAppIndex.REQUEST),
                             requestContractPublicKey
                         )
                     );
@@ -2023,19 +2023,19 @@ describe('TreasuryManager', () => {
                         ),
                         totalAmounts[0],
                         zkAppStorage.getZkAppRef(
-                            Field(ZkAppEnum.PARTICIPATION),
+                            Field(ZkAppIndex.PARTICIPATION),
                             participationContractPublicKey
                         ),
                         zkAppStorage.getZkAppRef(
-                            Field(ZkAppEnum.REQUEST),
+                            Field(ZkAppIndex.REQUEST),
                             requestContractPublicKey
                         ),
                         zkAppStorage.getZkAppRef(
-                            Field(ZkAppEnum.REQUESTER),
+                            Field(ZkAppIndex.FUNDING_REQUESTER),
                             requesterContractPublicKey
                         ),
                         zkAppStorage.getZkAppRef(
-                            Field(ZkAppEnum.PROJECT),
+                            Field(ZkAppIndex.PROJECT),
                             projectContractPublicKey
                         )
                     );
@@ -2085,19 +2085,19 @@ describe('TreasuryManager', () => {
                         ),
                         totalAmounts[1],
                         zkAppStorage.getZkAppRef(
-                            Field(ZkAppEnum.PARTICIPATION),
+                            Field(ZkAppIndex.PARTICIPATION),
                             participationContractPublicKey
                         ),
                         zkAppStorage.getZkAppRef(
-                            Field(ZkAppEnum.REQUEST),
+                            Field(ZkAppIndex.REQUEST),
                             requestContractPublicKey
                         ),
                         zkAppStorage.getZkAppRef(
-                            Field(ZkAppEnum.REQUESTER),
+                            Field(ZkAppIndex.FUNDING_REQUESTER),
                             requesterContractPublicKey
                         ),
                         zkAppStorage.getZkAppRef(
-                            Field(ZkAppEnum.PROJECT),
+                            Field(ZkAppIndex.PROJECT),
                             projectContractPublicKey
                         )
                     );

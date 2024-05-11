@@ -32,12 +32,13 @@ import {
     verifyZkApp,
     ZkAppRef,
 } from '../storages/SharedStorage.js';
-import { ZkAppEnum } from '../Constants.js';
+import { ZkAppIndex } from '../Constants.js';
 import {
     KeyStatus,
     KeyStatusInput,
-    ZkApp as DkgZkApp,
     Storage,
+    RequesterContract,
+    DkgContract,
 } from '@auxo-dev/dkg';
 
 export {
@@ -223,11 +224,9 @@ class CampaignContract extends SmartContract {
             CampaignContract.name,
             dkgContractRef,
             this.zkAppRoot.getAndRequireEquals(),
-            Field(ZkAppEnum.DKG)
+            Field(ZkAppIndex.DKG)
         );
-        const dkgContract = new DkgZkApp.DKG.DkgContract(
-            dkgContractRef.address
-        );
+        const dkgContract = new DkgContract(dkgContractRef.address);
         dkgContract.verifyKeyStatus(
             new KeyStatusInput({
                 committeeId: committeeId,
@@ -242,9 +241,9 @@ class CampaignContract extends SmartContract {
             CampaignContract.name,
             requesterContractRef,
             this.zkAppRoot.getAndRequireEquals(),
-            Field(ZkAppEnum.REQUESTER)
+            Field(ZkAppIndex.FUNDING_REQUESTER)
         );
-        const requesterContract = new DkgZkApp.Requester.RequesterContract(
+        const requesterContract = new RequesterContract(
             requesterContractRef.address
         );
         requesterContract.createTask(
@@ -400,7 +399,7 @@ class CampaignContractMock extends SmartContract {
             CampaignContract.name,
             dkgContractRef,
             this.zkAppRoot.getAndRequireEquals(),
-            Field(ZkAppEnum.DKG)
+            Field(ZkAppIndex.DKG)
         );
         // const dkgContract = new DkgZkApp.DKG.DkgContract(
         //     dkgContractRef.address
@@ -419,7 +418,7 @@ class CampaignContractMock extends SmartContract {
             CampaignContract.name,
             requesterContractRef,
             this.zkAppRoot.getAndRequireEquals(),
-            Field(ZkAppEnum.REQUESTER)
+            Field(ZkAppIndex.FUNDING_REQUESTER)
         );
         // const requesterContract = new DkgZkApp.Requester.RequesterContract(
         //     requesterContractRef.address

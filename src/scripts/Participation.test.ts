@@ -59,7 +59,7 @@ import {
     ProjectIndexStorage,
 } from '../storages/ParticipationStorage';
 import { Storage } from '@auxo-dev/dkg';
-import { ZkAppEnum } from '../Constants';
+import { ZkAppIndex } from '../Constants';
 import { ParticipationMockData } from './mock/ParticipationMockData';
 
 let proofsEnabled = true;
@@ -236,13 +236,13 @@ describe('Participation', () => {
                     Field(CampaignMockData[0].committeeId),
                     Field(CampaignMockData[0].keyId),
                     // keyStatusTree.getWitness(Field(0)),
-                    zkAppStorage.getWitness(Field(ZkAppEnum.CAMPAIGN)),
+                    zkAppStorage.getWitness(Field(ZkAppIndex.CAMPAIGN)),
                     zkAppStorage.getZkAppRef(
-                        ZkAppEnum.DKG,
+                        ZkAppIndex.DKG,
                         dkgContractPublicKey
                     ),
                     zkAppStorage.getZkAppRef(
-                        ZkAppEnum.REQUESTER,
+                        ZkAppIndex.FUNDING_REQUESTER,
                         requesterContractPublicKey
                     )
                 );
@@ -476,11 +476,11 @@ describe('Participation', () => {
                         ProjectCounterStorage.calculateLevel1Index(campaignId)
                     ),
                     zkAppStorage.getZkAppRef(
-                        ZkAppEnum.CAMPAIGN,
+                        ZkAppIndex.CAMPAIGN,
                         campaignContractPublicKey
                     ),
                     zkAppStorage.getZkAppRef(
-                        ZkAppEnum.PROJECT,
+                        ZkAppIndex.PROJECT,
                         projectContractPublicKey
                     )
                 );
@@ -520,11 +520,11 @@ describe('Participation', () => {
                         ProjectCounterStorage.calculateLevel1Index(campaignId)
                     ),
                     zkAppStorage.getZkAppRef(
-                        ZkAppEnum.CAMPAIGN,
+                        ZkAppIndex.CAMPAIGN,
                         campaignContractPublicKey
                     ),
                     zkAppStorage.getZkAppRef(
-                        ZkAppEnum.PROJECT,
+                        ZkAppIndex.PROJECT,
                         projectContractPublicKey
                     )
                 );

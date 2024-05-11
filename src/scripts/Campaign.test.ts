@@ -43,7 +43,7 @@ import {
     ZkAppStorage,
 } from '../storages/SharedStorage';
 import { Storage } from '@auxo-dev/dkg';
-import { ZkAppEnum } from '../Constants';
+import { ZkAppIndex } from '../Constants';
 
 let proofsEnabled = true;
 
@@ -171,13 +171,13 @@ describe('Campaign', () => {
                     //         }
                     //     )
                     // ),
-                    zkAppStorage.getWitness(Field(ZkAppEnum.CAMPAIGN)),
+                    zkAppStorage.getWitness(Field(ZkAppIndex.CAMPAIGN)),
                     zkAppStorage.getZkAppRef(
-                        ZkAppEnum.DKG,
+                        ZkAppIndex.DKG,
                         dkgContractPublicKey
                     ),
                     zkAppStorage.getZkAppRef(
-                        ZkAppEnum.REQUESTER,
+                        ZkAppIndex.FUNDING_REQUESTER,
                         requesterContractPublicKey
                     )
                 );
