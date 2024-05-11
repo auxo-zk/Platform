@@ -80,8 +80,6 @@ class VestingContract extends SmartContract {
     init(): void {
         super.init();
         this.nextVestingId.set(Field(0));
-        this.receiveFundAddressHash.set(Field(0));
-        this.requesterForVestingAddressHash.set(Field(0));
         this.vestingBalanceRoot.set(DefaultRootForCampaignTree);
         this.vestingInfoRoot.set(DefaultRootForVestingTree);
         this.zkAppRoot.set(DefaultRootForZkAppTree);
@@ -521,6 +519,7 @@ class VestingContractMock extends SmartContract {
     @state(Field) vestingInfoRoot = State<Field>();
     @state(Field) vestingBalanceRoot = State<Field>();
     @state(Field) receiveFundAddressHash = State<Field>();
+    @state(Field) requesterForVestingAddressHash = State<Field>();
     @state(Field) nextVestingId = State<Field>();
     @state(Field) zkAppRoot = State<Field>();
 
@@ -530,10 +529,6 @@ class VestingContractMock extends SmartContract {
         this.vestingBalanceRoot.set(DefaultRootForCampaignTree);
         this.vestingInfoRoot.set(DefaultRootForVestingTree);
         this.zkAppRoot.set(DefaultRootForZkAppTree);
-        this.account.permissions.set({
-            ...Permissions.default(),
-            editState: Permissions.proof(), // can only be changed by proof
-        });
     }
 
     @method async createVestingRequest(
