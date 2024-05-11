@@ -18,6 +18,7 @@ import {
     UInt8,
     Poseidon,
     Account,
+    VerificationKey,
 } from 'o1js';
 import {
     ProjectAction,
@@ -146,10 +147,13 @@ describe('TreasuryManager', () => {
         dkgContractPublicKey: PublicKey,
         requesterContractPrivateKey: PrivateKey,
         requesterContractPublicKey: PublicKey,
+        requesterForVestingContractPrivateKey: PrivateKey,
+        requesterForVestingContractPublicKey: PublicKey,
         requestContractPrivateKey: PrivateKey,
         requestContractPublicKey: PublicKey,
         treasuryPrivateKey: PrivateKey,
-        treasuryPublicKey: PublicKey;
+        treasuryPublicKey: PublicKey,
+        vkVestingContact: VerificationKey;
 
     const Local = Mina.LocalBlockchain({ proofsEnabled });
 
@@ -219,13 +223,16 @@ describe('TreasuryManager', () => {
         await RollupFunding.compile({ cache });
         await RollupTreasuryManager.compile({ cache });
         await RollupCommitment.compile({ cache });
+
+        vkVestingContact = (await VestingContractMock.compile({ cache }))
+            .verificationKey;
+
         if (proofsEnabled) {
             await CampaignContractMock.compile({ cache });
             await ProjectContract.compile({ cache });
             await ParticipationContractMock.compile({ cache });
             await FundingContractMock.compile({ cache });
             await TreasuryManagerContractMock.compile({ cache });
-            await VestingContractMock.compile({ cache });
             await CommitmentContract.compile({ cache });
         }
 
@@ -278,6 +285,10 @@ describe('TreasuryManager', () => {
         requesterContractPrivateKey = PrivateKey.random();
         requesterContractPublicKey = requesterContractPrivateKey.toPublicKey();
 
+        requesterForVestingContractPrivateKey = PrivateKey.random();
+        requesterForVestingContractPublicKey =
+            requesterForVestingContractPrivateKey.toPublicKey();
+
         requestContractPrivateKey = PrivateKey.random();
         requestContractPublicKey = requestContractPrivateKey.toPublicKey();
 
@@ -310,11 +321,13 @@ describe('TreasuryManager', () => {
 
     async function localDeploy() {
         const tx = await Mina.transaction(deployerAccount, async () => {
-            AccountUpdate.fundNewAccount(deployerAccount, 8);
+            AccountUpdate.fundNewAccount(deployerAccount, 7);
             await campaignContract.deploy();
             campaignContract['zkAppRoot'].set(zkAppStorage.root);
 
             await projectContract.deploy();
+            projectContract['zkAppRoot'].set(zkAppStorage.root);
+            projectContract['vkHashVestingContract'].set(vkVestingContact.hash);
 
             await participationContract.deploy();
             participationContract['zkAppRoot'].set(zkAppStorage.root);
@@ -329,11 +342,7 @@ describe('TreasuryManager', () => {
 
             fundingContract.approve(treasuryManagerTokenContract.self);
 
-            await vestingContract.deploy();
-            vestingContract['zkAppRoot'].set(zkAppStorage.root);
-            vestingContract['receiveFundAddressHash'].set(
-                Poseidon.hash(treasuryPublicKey.toFields())
-            );
+            // await vestingContract.deploy(); // not matter
 
             await commitmentContract.deploy();
         });
@@ -351,21 +360,6 @@ describe('TreasuryManager', () => {
             ])
             .send();
     }
-
-    it('Default root should be correct', async () => {
-        expect(vestingContract.vestingBalanceRoot.get()).toEqual(
-            DefaultRootForCampaignTree
-        );
-        expect(vestingContract.vestingInfoRoot.get()).toEqual(
-            DefaultRootForVestingTree
-        );
-        expect(commitmentContract.actionState.get()).toEqual(
-            Reducer.initialActionState
-        );
-        expect(commitmentContract.commitmentRoot.get()).toEqual(
-            DefaultRootForCommitmentMap
-        );
-    });
 
     describe('Test claim vesting', () => {
         let start: number,
@@ -524,18 +518,38 @@ describe('TreasuryManager', () => {
                 );
             }
             const tx = await Mina.transaction(senderAccount, async () => {
-                await projectContract.createProject(
+                AccountUpdate.fundNewAccount(senderAccount, 1);
+                await projectContract.createProjectWithVesting(
                     members,
                     IpfsHash.fromString(ProjectMockData[0].ipfsHash),
-                    vestingContractPublicKey
+                    vestingContractPublicKey,
+                    requesterForVestingContractPublicKey,
+                    treasuryPublicKey,
+                    vkVestingContact
                 );
             });
             await tx.prove();
-            await tx.sign([senderKey]).send();
+            await tx.sign([senderKey, vestingContractPrivateKey]).send();
             const actions: Action[] = (await Mina.fetchActions(
                 projectContractPublicKey
             )) as Action[];
             expect(actions.length).toEqual(1);
+        });
+
+        it('4.5. Default root should be correct', async () => {
+            expect(vestingContract.vestingBalanceRoot.get()).toEqual(
+                DefaultRootForCampaignTree
+            );
+            expect(vestingContract.vestingInfoRoot.get()).toEqual(
+                DefaultRootForVestingTree
+            );
+            expect(vestingContract.nextVestingId.get()).toEqual(Field(0));
+            expect(commitmentContract.actionState.get()).toEqual(
+                Reducer.initialActionState
+            );
+            expect(commitmentContract.commitmentRoot.get()).toEqual(
+                DefaultRootForCommitmentMap
+            );
         });
 
         it('5. Create second project', async () => {
