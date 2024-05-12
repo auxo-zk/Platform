@@ -16,6 +16,8 @@ export const INSTANCE_LIMITS = {
 
 export const MINIMAL_MINA_UNIT = 100000000;
 
+export const THRESHOLD = 5000; // 50%
+
 export enum ZkAppIndex {
     ROLLUP,
     COMMITTEE,
@@ -30,6 +32,8 @@ export enum ZkAppIndex {
     FUNDING,
     TREASURY_MANAGER,
     FUNDING_REQUESTER,
+    VESTING,
+    COMMITMENT,
     __LENGTH,
 }
 
@@ -123,4 +127,9 @@ export enum ErrorEnum {
     // RollupContract errors
     ACTION_COUNTER_ROOT = 'Incorrect rollup counter MT root',
     ACTION_COUNTER_INDEX = 'Incorrect rollup counter MT index',
+
+    // VestingContract errors
+    VES_MILESTONE_FAILED = 'Milestone failed',
+    VES_MILESTONE_CLAIMED = 'Milestone claimed',
+    VES_INSUFFICIENT_BALANCE = 'Campaign insufficient fund',
 }

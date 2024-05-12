@@ -343,9 +343,7 @@ class TreasuryManagerContract extends SmartContract {
             .getCampaignTimelineState(campaignId, timeline, timelineWitness)
             .assertEquals(Field(CampaignTimelineStateEnum.REQUESTING));
 
-        const requestContract = new RequestContract(
-            requestContractRef.address
-        );
+        const requestContract = new RequestContract(requestContractRef.address);
         requestContract.verifyTaskId(
             requestId,
             requesterContractRef.address,
@@ -431,9 +429,7 @@ class TreasuryManagerContract extends SmartContract {
             .getCampaignTimelineState(campaignId, timeline, timelineWitness)
             .assertEquals(Field(CampaignTimelineStateEnum.REQUESTING));
 
-        const requestContract = new RequestContract(
-            requestContractRef.address
-        );
+        const requestContract = new RequestContract(requestContractRef.address);
         requestContract.verifyTaskId(
             requestId,
             requesterContractRef.address,
@@ -531,9 +527,7 @@ class TreasuryManagerContract extends SmartContract {
                 projectIndexWitness
             )
             .assertTrue();
-        const requestContract = new RequestContract(
-            requestContractRef.address
-        );
+        const requestContract = new RequestContract(requestContractRef.address);
         const dimensionIndex = UInt8.from(projectIndex.sub(1));
 
         const result = CustomScalar.fromUInt64(amount).toScalar();
@@ -718,6 +712,29 @@ class TreasuryManagerContract extends SmartContract {
                     )
                     .equals(this.claimedAmountRoot.getAndRequireEquals())
                     .not()
+            );
+    }
+
+    checkClaimedAmount(
+        campaignId: Field,
+        dimensionIndex: UInt8,
+        claimedAmount: UInt64,
+        claimedAmountWitness: ClaimedAmountLevel1Witness
+    ): Bool {
+        return claimedAmountWitness
+            .calculateIndex()
+            .equals(
+                ClaimedAmountStorage.calculateLevel1Index({
+                    campaignId,
+                    dimensionIndex,
+                })
+            )
+            .and(
+                claimedAmountWitness
+                    .calculateRoot(
+                        ClaimedAmountStorage.calculateLeaf(claimedAmount)
+                    )
+                    .equals(this.claimedAmountRoot.getAndRequireEquals())
             );
     }
 }
