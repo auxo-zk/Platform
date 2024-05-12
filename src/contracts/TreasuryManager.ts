@@ -25,23 +25,24 @@ import {
     DefaultRootForZkAppTree,
     verifyZkApp,
     ZkAppRef,
-} from '../storages/SharedStorage';
-import { MINIMAL_MINA_UNIT, ZkAppEnum } from '../Constants';
+} from '../storages/SharedStorage.js';
+import { MINIMAL_MINA_UNIT, ZkAppIndex } from '../Constants.js';
 import { CustomScalar, Utils } from '@auxo-dev/auxo-libs';
-import { FundingInformation } from '../storages/FundingStorage';
+import { FundingInformation } from '../storages/FundingStorage.js';
 import {
     Storage,
     ZkApp as DkgZkApp,
     Constants as DkgConstants,
     RequestStatus,
+    RequestContract,
 } from '@auxo-dev/dkg';
 import {
     Timeline,
     CampaignTimelineStateEnum,
     TimelineLevel1Witness,
     DefaultRootForCampaignTree,
-} from '../storages/CampaignStorage';
-import { CampaignContract, CampaignContractMock } from './Campaign';
+} from '../storages/CampaignStorage.js';
+import { CampaignContract, CampaignContractMock } from './Campaign.js';
 import {
     CampaignStateEnum,
     CampaignStateLevel1Witness,
@@ -50,14 +51,14 @@ import {
     ClaimedAmountStorage,
     DefaultRootForTreasuryManagerTree,
     TreasuryManagerActionEnum,
-} from '../storages/TreasuryManagerStorage';
-import { ProjectIndexLevel1Witness } from '../storages/ParticipationStorage';
-import { TreasuryAddressLevel1Witness } from '../storages/ProjectStorage';
+} from '../storages/TreasuryManagerStorage.js';
+import { ProjectIndexLevel1Witness } from '../storages/ParticipationStorage.js';
+import { TreasuryAddressLevel1Witness } from '../storages/ProjectStorage.js';
 import {
     ParticipationContract,
     ParticipationContractMock,
-} from './Participation';
-import { ProjectContract } from './Project';
+} from './Participation.js';
+import { ProjectContract } from './Project.js';
 
 export {
     TreasuryManagerContract,
@@ -320,19 +321,19 @@ class TreasuryManagerContract extends SmartContract {
             TreasuryManagerContract.name,
             campaignContractRef,
             zkAppRoot,
-            Field(ZkAppEnum.CAMPAIGN)
+            Field(ZkAppIndex.CAMPAIGN)
         );
         verifyZkApp(
             TreasuryManagerContract.name,
             requesterContractRef,
             zkAppRoot,
-            Field(ZkAppEnum.REQUESTER)
+            Field(ZkAppIndex.FUNDING_REQUESTER)
         );
         verifyZkApp(
             TreasuryManagerContract.name,
             requestContractRef,
             zkAppRoot,
-            Field(ZkAppEnum.REQUEST)
+            Field(ZkAppIndex.REQUEST)
         );
 
         const campaignContract = new CampaignContract(
@@ -342,9 +343,7 @@ class TreasuryManagerContract extends SmartContract {
             .getCampaignTimelineState(campaignId, timeline, timelineWitness)
             .assertEquals(Field(CampaignTimelineStateEnum.REQUESTING));
 
-        const requestContract = new DkgZkApp.Request.RequestContract(
-            requestContractRef.address
-        );
+        const requestContract = new RequestContract(requestContractRef.address);
         requestContract.verifyTaskId(
             requestId,
             requesterContractRef.address,
@@ -408,19 +407,19 @@ class TreasuryManagerContract extends SmartContract {
             TreasuryManagerContract.name,
             campaignContractRef,
             zkAppRoot,
-            Field(ZkAppEnum.CAMPAIGN)
+            Field(ZkAppIndex.CAMPAIGN)
         );
         verifyZkApp(
             TreasuryManagerContract.name,
             requesterContractRef,
             zkAppRoot,
-            Field(ZkAppEnum.REQUESTER)
+            Field(ZkAppIndex.FUNDING_REQUESTER)
         );
         verifyZkApp(
             TreasuryManagerContract.name,
             requestContractRef,
             zkAppRoot,
-            Field(ZkAppEnum.REQUEST)
+            Field(ZkAppIndex.REQUEST)
         );
 
         const campaignContract = new CampaignContract(
@@ -430,9 +429,7 @@ class TreasuryManagerContract extends SmartContract {
             .getCampaignTimelineState(campaignId, timeline, timelineWitness)
             .assertEquals(Field(CampaignTimelineStateEnum.REQUESTING));
 
-        const requestContract = new DkgZkApp.Request.RequestContract(
-            requestContractRef.address
-        );
+        const requestContract = new RequestContract(requestContractRef.address);
         requestContract.verifyTaskId(
             requestId,
             requesterContractRef.address,
@@ -498,25 +495,25 @@ class TreasuryManagerContract extends SmartContract {
             TreasuryManagerContract.name,
             participationContractRef,
             zkAppRoot,
-            Field(ZkAppEnum.PARTICIPATION)
+            Field(ZkAppIndex.PARTICIPATION)
         );
         verifyZkApp(
             TreasuryManagerContract.name,
             requestContractRef,
             zkAppRoot,
-            Field(ZkAppEnum.REQUEST)
+            Field(ZkAppIndex.REQUEST)
         );
         verifyZkApp(
             TreasuryManagerContract.name,
             requesterContractRef,
             zkAppRoot,
-            Field(ZkAppEnum.REQUESTER)
+            Field(ZkAppIndex.FUNDING_REQUESTER)
         );
         verifyZkApp(
             TreasuryManagerContract.name,
             projectContractRef,
             zkAppRoot,
-            Field(ZkAppEnum.PROJECT)
+            Field(ZkAppIndex.PROJECT)
         );
 
         const participationContract = new ParticipationContract(
@@ -530,9 +527,7 @@ class TreasuryManagerContract extends SmartContract {
                 projectIndexWitness
             )
             .assertTrue();
-        const requestContract = new DkgZkApp.Request.RequestContract(
-            requestContractRef.address
-        );
+        const requestContract = new RequestContract(requestContractRef.address);
         const dimensionIndex = UInt8.from(projectIndex.sub(1));
 
         const result = CustomScalar.fromUInt64(amount).toScalar();
@@ -615,7 +610,7 @@ class TreasuryManagerContract extends SmartContract {
             TreasuryManagerContract.name,
             fundingContractRef,
             zkAppRoot,
-            Field(ZkAppEnum.FUNDING)
+            Field(ZkAppIndex.FUNDING)
         );
         this.send({
             to: AccountUpdate.create(fundingInformation.investor),
@@ -719,6 +714,29 @@ class TreasuryManagerContract extends SmartContract {
                     .not()
             );
     }
+
+    checkClaimedAmount(
+        campaignId: Field,
+        dimensionIndex: UInt8,
+        claimedAmount: UInt64,
+        claimedAmountWitness: ClaimedAmountLevel1Witness
+    ): Bool {
+        return claimedAmountWitness
+            .calculateIndex()
+            .equals(
+                ClaimedAmountStorage.calculateLevel1Index({
+                    campaignId,
+                    dimensionIndex,
+                })
+            )
+            .and(
+                claimedAmountWitness
+                    .calculateRoot(
+                        ClaimedAmountStorage.calculateLeaf(claimedAmount)
+                    )
+                    .equals(this.claimedAmountRoot.getAndRequireEquals())
+            );
+    }
 }
 
 class TreasuryManagerContractMock extends SmartContract {
@@ -762,19 +780,19 @@ class TreasuryManagerContractMock extends SmartContract {
             TreasuryManagerContract.name,
             campaignContractRef,
             zkAppRoot,
-            Field(ZkAppEnum.CAMPAIGN)
+            Field(ZkAppIndex.CAMPAIGN)
         );
         verifyZkApp(
             TreasuryManagerContract.name,
             requesterContractRef,
             zkAppRoot,
-            Field(ZkAppEnum.REQUESTER)
+            Field(ZkAppIndex.FUNDING_REQUESTER)
         );
         verifyZkApp(
             TreasuryManagerContract.name,
             requestContractRef,
             zkAppRoot,
-            Field(ZkAppEnum.REQUEST)
+            Field(ZkAppIndex.REQUEST)
         );
 
         const campaignContract = new CampaignContractMock(
@@ -851,19 +869,19 @@ class TreasuryManagerContractMock extends SmartContract {
             TreasuryManagerContract.name,
             campaignContractRef,
             zkAppRoot,
-            Field(ZkAppEnum.CAMPAIGN)
+            Field(ZkAppIndex.CAMPAIGN)
         );
         verifyZkApp(
             TreasuryManagerContract.name,
             requesterContractRef,
             zkAppRoot,
-            Field(ZkAppEnum.REQUESTER)
+            Field(ZkAppIndex.FUNDING_REQUESTER)
         );
         verifyZkApp(
             TreasuryManagerContract.name,
             requestContractRef,
             zkAppRoot,
-            Field(ZkAppEnum.REQUEST)
+            Field(ZkAppIndex.REQUEST)
         );
 
         const campaignContract = new CampaignContractMock(
@@ -942,25 +960,25 @@ class TreasuryManagerContractMock extends SmartContract {
             TreasuryManagerContract.name,
             participationContractRef,
             zkAppRoot,
-            Field(ZkAppEnum.PARTICIPATION)
+            Field(ZkAppIndex.PARTICIPATION)
         );
         verifyZkApp(
             TreasuryManagerContract.name,
             requestContractRef,
             zkAppRoot,
-            Field(ZkAppEnum.REQUEST)
+            Field(ZkAppIndex.REQUEST)
         );
         verifyZkApp(
             TreasuryManagerContract.name,
             requesterContractRef,
             zkAppRoot,
-            Field(ZkAppEnum.REQUESTER)
+            Field(ZkAppIndex.FUNDING_REQUESTER)
         );
         verifyZkApp(
             TreasuryManagerContract.name,
             projectContractRef,
             zkAppRoot,
-            Field(ZkAppEnum.PROJECT)
+            Field(ZkAppIndex.PROJECT)
         );
 
         const participationContract = new ParticipationContractMock(
@@ -1059,7 +1077,7 @@ class TreasuryManagerContractMock extends SmartContract {
             TreasuryManagerContract.name,
             fundingContractRef,
             zkAppRoot,
-            Field(ZkAppEnum.FUNDING)
+            Field(ZkAppIndex.FUNDING)
         );
         this.send({
             to: AccountUpdate.create(fundingInformation.investor),

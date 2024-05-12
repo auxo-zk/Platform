@@ -1,6 +1,7 @@
 import { Field, PublicKey } from 'o1js';
-import { ZkAppStorage } from '../storages/SharedStorage';
-import { ZkAppEnum } from '../Constants';
+import { ZkAppStorage } from '../storages/SharedStorage.js';
+import { ZkAppIndex } from '../Constants.js';
+import { Storage as DkgStorage, ZkApp } from '@auxo-dev/dkg';
 
 export class Utilities {
     static stringArrayToFields(input: string[]): Field[] {
@@ -24,81 +25,121 @@ export class Utilities {
         participationAddress?: PublicKey;
         fundingAddress?: PublicKey;
         treasuryManagerAddress?: PublicKey;
+        vestingAddress?: PublicKey;
+        commitmentAddress?: PublicKey;
     }): ZkAppStorage {
         const zkAppStorage = new ZkAppStorage();
         if (addresses.committeeAddress) {
             zkAppStorage.updateAddress(
-                Field(ZkAppEnum.COMMITTEE),
+                Field(ZkAppIndex.COMMITTEE),
                 addresses.committeeAddress
             );
         }
         if (addresses.dkgAddress) {
             zkAppStorage.updateAddress(
-                Field(ZkAppEnum.DKG),
+                Field(ZkAppIndex.DKG),
                 addresses.dkgAddress
             );
         }
         if (addresses.round1Address) {
             zkAppStorage.updateAddress(
-                Field(ZkAppEnum.ROUND1),
+                Field(ZkAppIndex.ROUND1),
                 addresses.round1Address
             );
         }
         if (addresses.round2Address) {
             zkAppStorage.updateAddress(
-                Field(ZkAppEnum.ROUND2),
+                Field(ZkAppIndex.ROUND2),
                 addresses.round2Address
             );
         }
         if (addresses.requestAddress) {
             zkAppStorage.updateAddress(
-                Field(ZkAppEnum.REQUEST),
+                Field(ZkAppIndex.REQUEST),
                 addresses.requestAddress
             );
         }
         if (addresses.requesterAddress) {
             zkAppStorage.updateAddress(
-                Field(ZkAppEnum.REQUESTER),
+                Field(ZkAppIndex.FUNDING_REQUESTER),
                 addresses.requesterAddress
             );
         }
         if (addresses.responseAddress) {
             zkAppStorage.updateAddress(
-                Field(ZkAppEnum.RESPONSE),
+                Field(ZkAppIndex.RESPONSE),
                 addresses.responseAddress
             );
         }
         if (addresses.campaignAddress) {
             zkAppStorage.updateAddress(
-                Field(ZkAppEnum.CAMPAIGN),
+                Field(ZkAppIndex.CAMPAIGN),
                 addresses.campaignAddress
             );
         }
         if (addresses.projectAddress) {
             zkAppStorage.updateAddress(
-                Field(ZkAppEnum.PROJECT),
+                Field(ZkAppIndex.PROJECT),
                 addresses.projectAddress
             );
         }
         if (addresses.participationAddress) {
             zkAppStorage.updateAddress(
-                Field(ZkAppEnum.PARTICIPATION),
+                Field(ZkAppIndex.PARTICIPATION),
                 addresses.participationAddress
             );
         }
         if (addresses.fundingAddress) {
             zkAppStorage.updateAddress(
-                Field(ZkAppEnum.FUNDING),
+                Field(ZkAppIndex.FUNDING),
                 addresses.fundingAddress
             );
         }
         if (addresses.treasuryManagerAddress) {
             zkAppStorage.updateAddress(
-                Field(ZkAppEnum.TREASURY_MANAGER),
+                Field(ZkAppIndex.TREASURY_MANAGER),
                 addresses.treasuryManagerAddress
             );
         }
+        if (addresses.commitmentAddress) {
+            zkAppStorage.updateAddress(
+                Field(ZkAppIndex.COMMITMENT),
+                addresses.commitmentAddress
+            );
+        }
+        if (addresses.vestingAddress) {
+            zkAppStorage.updateAddress(
+                Field(ZkAppIndex.VESTING),
+                addresses.vestingAddress
+            );
+        }
 
+        return zkAppStorage;
+    }
+
+    static getZkAppStorageForRequester(
+        taskManager: string,
+        submission: string,
+        dkgAddress: string,
+        requestAddress: string
+    ): DkgStorage.AddressStorage.AddressStorage {
+        const zkAppStorage = new DkgStorage.AddressStorage.AddressStorage();
+        zkAppStorage.updateAddress(
+            Field(ZkApp.Requester.RequesterAddressBook.TASK_MANAGER),
+            PublicKey.fromBase58(taskManager)
+        );
+        zkAppStorage.updateAddress(
+            Field(ZkApp.Requester.RequesterAddressBook.SUBMISSION),
+            PublicKey.fromBase58(submission)
+        );
+        zkAppStorage.updateAddress(
+            Field(ZkApp.Requester.RequesterAddressBook.DKG),
+            PublicKey.fromBase58(dkgAddress)
+        );
+        zkAppStorage.updateAddress(
+            Field(ZkApp.Requester.RequesterAddressBook.REQUEST),
+            PublicKey.fromBase58(requestAddress)
+        );
         return zkAppStorage;
     }
 }

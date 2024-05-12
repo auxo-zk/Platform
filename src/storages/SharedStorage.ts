@@ -8,7 +8,7 @@ import {
     PublicKey,
     Struct,
 } from 'o1js';
-import { ErrorEnum, INSTANCE_LIMITS, ZkAppEnum } from '../Constants.js';
+import { ErrorEnum, INSTANCE_LIMITS, ZkAppIndex } from '../Constants.js';
 import { Utils } from '@auxo-dev/auxo-libs';
 // import { buildAssertMessage } from '../libs/utils.js';
 
@@ -118,7 +118,7 @@ export const enum ActionStatus {
 
 export function getZkAppRef(
     map: AddressMT,
-    index: ZkAppEnum | number,
+    index: ZkAppIndex | number,
     address: PublicKey
 ) {
     return new ZkAppRef({

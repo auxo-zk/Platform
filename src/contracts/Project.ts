@@ -13,6 +13,10 @@ import {
     Void,
     Bool,
     Permissions,
+    Account,
+    AccountUpdate,
+    VerificationKey,
+    Poseidon,
 } from 'o1js';
 import { IpfsHash, Utils } from '@auxo-dev/auxo-libs';
 import { INSTANCE_LIMITS } from '../Constants.js';
@@ -29,6 +33,11 @@ import {
     IpfsHashLevel1Witness,
     TreasuryAddressLevel1Witness,
 } from '../storages/ProjectStorage.js';
+import { DefaultRootForVestingTree } from '../storages/VestingStorage.js';
+import { DefaultRootForCampaignTree } from '../storages/CampaignStorage.js';
+
+import { VestingContract } from './Vesting.js';
+import { CommitmentContract } from './Commitment.js';
 
 export {
     ProjectAction,
@@ -238,12 +247,16 @@ const RollupProject = ZkProgram({
 
 class RollupProjectProof extends ZkProgram.Proof(RollupProject) {}
 
+// @todo have function to create project with treasury address is vesting contract
 class ProjectContract extends SmartContract {
     @state(Field) nextProjectId = State<Field>();
     @state(Field) memberRoot = State<Field>();
     @state(Field) ipfsHashRoot = State<Field>();
     @state(Field) treasuryAddressRoot = State<Field>();
     @state(Field) actionState = State<Field>();
+    @state(Field) vkHashVestingContract = State<Field>();
+    @state(Field) vkHashRequesterContract = State<Field>();
+    @state(Field) zkAppRoot = State<Field>();
 
     reducer = Reducer({ actionType: ProjectAction });
 
@@ -273,6 +286,67 @@ class ProjectContract extends SmartContract {
                 members: members,
                 ipfsHash: ipfsHash,
                 treasuryAddress: treasuryAddress,
+            })
+        );
+    }
+
+    @method async createProjectWithVesting(
+        members: MemberArray,
+        ipfsHash: IpfsHash,
+        vestingAddress: PublicKey,
+        requesterAddress: PublicKey,
+        treasuryAddress: PublicKey,
+        vkVestingContract: VerificationKey
+    ) {
+        const zkAppRoot = this.zkAppRoot.getAndRequireEquals();
+        const vkHashVestingContract =
+            this.vkHashVestingContract.getAndRequireEquals();
+
+        // Verify on-chain vk hash
+        // @todo check if VerificationKey allow to have dif hash with the data
+        vkHashVestingContract.assertEquals(vkVestingContract.hash);
+
+        // Deploy contract vesting:
+        const accountUpdateVesting = AccountUpdate.createSigned(vestingAddress);
+
+        accountUpdateVesting.body.update.appState = [
+            { isSome: Bool(true), value: DefaultRootForVestingTree }, // vestingInfoRoot
+            { isSome: Bool(true), value: DefaultRootForCampaignTree }, // vestingBalanceRoot
+            {
+                isSome: Bool(true),
+                value: Poseidon.hash(treasuryAddress.toFields()),
+            }, // receiveFundAddressHash
+            {
+                isSome: Bool(true),
+                value: Poseidon.hash(requesterAddress.toFields()),
+            }, // requesterForVestingAddressHash
+            { isSome: Bool(true), value: Field(0) }, // nextVestingId
+            { isSome: Bool(true), value: zkAppRoot }, // zkAppRoot
+            { isSome: Bool(true), value: Field(0) }, // empty
+            { isSome: Bool(true), value: Field(0) }, // empty
+        ];
+
+        accountUpdateVesting.body.update.verificationKey = {
+            isSome: Bool(true),
+            value: vkVestingContract,
+        };
+
+        accountUpdateVesting.body.update.permissions = {
+            isSome: Bool(true),
+            value: {
+                ...Permissions.default(),
+                editState: Permissions.proof(),
+                // @todo add setVerificationKey
+            },
+        };
+
+        this.reducer.dispatch(
+            new ProjectAction({
+                actionType: Field(ProjectActionEnum.CREATE_PROJECT),
+                projectId: Field(-1),
+                members: members,
+                ipfsHash: ipfsHash,
+                treasuryAddress: vestingAddress,
             })
         );
     }

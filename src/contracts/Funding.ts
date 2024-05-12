@@ -30,13 +30,16 @@ import {
 } from '@auxo-dev/auxo-libs';
 
 import {
-    ZkApp as DkgZkApp,
     Constants as DkgConstants,
     Storage as DkgStorage,
-    RequesterContract,
     Libs as DkgLibs,
+    RequesterContract,
 } from '@auxo-dev/dkg';
-import { INSTANCE_LIMITS, MINIMAL_MINA_UNIT, ZkAppEnum } from '../Constants.js';
+import {
+    INSTANCE_LIMITS,
+    MINIMAL_MINA_UNIT,
+    ZkAppIndex,
+} from '../Constants.js';
 import {
     ZkAppRef,
     DefaultRootForZkAppTree,
@@ -286,7 +289,7 @@ class FundingContract extends SmartContract {
             FundingContract.name,
             campaignContractRef,
             zkAppRoot,
-            Field(ZkAppEnum.CAMPAIGN)
+            Field(ZkAppIndex.CAMPAIGN)
         );
         const campaignContract = new CampaignContract(
             campaignContractRef.address
@@ -300,7 +303,7 @@ class FundingContract extends SmartContract {
             FundingContract.name,
             participationContractRef,
             zkAppRoot,
-            Field(ZkAppEnum.PARTICIPATION)
+            Field(ZkAppIndex.PARTICIPATION)
         );
         const participationContract = new ParticipationContract(
             participationContractRef.address
@@ -349,7 +352,7 @@ class FundingContract extends SmartContract {
             FundingContract.name,
             treasuryManagerContractRef,
             zkAppRoot,
-            Field(ZkAppEnum.TREASURY_MANAGER)
+            Field(ZkAppIndex.TREASURY_MANAGER)
         );
 
         // Check Requester contract
@@ -357,7 +360,7 @@ class FundingContract extends SmartContract {
             FundingContract.name,
             requesterContractRef,
             zkAppRoot,
-            Field(ZkAppEnum.REQUESTER)
+            Field(ZkAppIndex.FUNDING_REQUESTER)
         );
 
         const requesterContract = new RequesterContract(
@@ -450,7 +453,7 @@ class FundingContract extends SmartContract {
             FundingContract.name,
             treasuryManagerContractRef,
             this.zkAppRoot.getAndRequireEquals(),
-            Field(ZkAppEnum.TREASURY_MANAGER)
+            Field(ZkAppIndex.TREASURY_MANAGER)
         );
         const treasuryManagerContract = new TreasuryManagerContract(
             treasuryManagerContractRef.address
@@ -576,7 +579,7 @@ class FundingContractMock extends SmartContract {
             FundingContract.name,
             campaignContractRef,
             zkAppRoot,
-            Field(ZkAppEnum.CAMPAIGN)
+            Field(ZkAppIndex.CAMPAIGN)
         );
         const campaignContract = new CampaignContractMock(
             campaignContractRef.address
@@ -590,7 +593,7 @@ class FundingContractMock extends SmartContract {
             FundingContract.name,
             participationContractRef,
             zkAppRoot,
-            Field(ZkAppEnum.PARTICIPATION)
+            Field(ZkAppIndex.PARTICIPATION)
         );
         const participationContract = new ParticipationContractMock(
             participationContractRef.address
@@ -639,7 +642,7 @@ class FundingContractMock extends SmartContract {
             FundingContract.name,
             treasuryManagerContractRef,
             zkAppRoot,
-            Field(ZkAppEnum.TREASURY_MANAGER)
+            Field(ZkAppIndex.TREASURY_MANAGER)
         );
 
         // Check Requester contract
@@ -647,7 +650,7 @@ class FundingContractMock extends SmartContract {
             FundingContract.name,
             requesterContractRef,
             zkAppRoot,
-            Field(ZkAppEnum.REQUESTER)
+            Field(ZkAppIndex.FUNDING_REQUESTER)
         );
 
         const requesterContract = new RequesterContract(
@@ -739,7 +742,7 @@ class FundingContractMock extends SmartContract {
             FundingContract.name,
             treasuryManagerContractRef,
             this.zkAppRoot.getAndRequireEquals(),
-            Field(ZkAppEnum.TREASURY_MANAGER)
+            Field(ZkAppIndex.TREASURY_MANAGER)
         );
         const treasuryManagerContract = new TreasuryManagerContractMock(
             treasuryManagerContractRef.address
