@@ -210,7 +210,7 @@ describe('TreasuryManager', () => {
     };
 
     const requestTrees = {
-        taskIdTree: new Storage.RequestStorage.TaskIdStorage(),
+        taskIdTree: new Storage.RequestStorage.TaskStorage(),
         expirationTree: new Storage.RequestStorage.ExpirationStorage(),
         resultTree: new Storage.RequestStorage.ResultStorage(),
     };
@@ -341,8 +341,6 @@ describe('TreasuryManager', () => {
             await treasuryManagerTokenContract.deploy();
 
             fundingContract.approve(treasuryManagerTokenContract.self);
-
-            // await vestingContract.deploy(); // not matter
 
             await commitmentContract.deploy();
         });

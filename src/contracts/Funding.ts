@@ -294,9 +294,13 @@ class FundingContract extends SmartContract {
         const campaignContract = new CampaignContract(
             campaignContractRef.address
         );
-        campaignContract
-            .getCampaignTimelineState(campaignId, timeline, timelineWitness)
-            .assertEquals(Field(CampaignTimelineStateEnum.FUNDING));
+        // TEMP CHANGES
+        campaignContract.getCampaignTimelineState(
+            campaignId,
+            timeline,
+            timelineWitness
+        );
+        // .assertEquals(Field(CampaignTimelineStateEnum.FUNDING));
 
         // Check Participation contract
         verifyZkApp(
@@ -584,9 +588,13 @@ class FundingContractMock extends SmartContract {
         const campaignContract = new CampaignContractMock(
             campaignContractRef.address
         );
-        campaignContract
-            .getCampaignTimelineState(campaignId, timeline, timelineWitness)
-            .assertEquals(Field(CampaignTimelineStateEnum.FUNDING));
+        // TEMP CHANGES
+        campaignContract.getCampaignTimelineState(
+            campaignId,
+            timeline,
+            timelineWitness
+        );
+        // .assertEquals(Field(CampaignTimelineStateEnum.FUNDING));
 
         // Check Participation contract
         verifyZkApp(

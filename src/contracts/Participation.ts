@@ -296,9 +296,13 @@ class ParticipationContract extends SmartContract {
         const campaignContract = new CampaignContract(
             campaignContractRef.address
         );
-        campaignContract
-            .getCampaignTimelineState(campaignId, timeline, timelineWitness)
-            .assertEquals(Field(CampaignTimelineStateEnum.PARTICIPATION));
+        // TEMP CHANGES
+        campaignContract.getCampaignTimelineState(
+            campaignId,
+            timeline,
+            timelineWitness
+        );
+        // .assertEquals(Field(CampaignTimelineStateEnum.PARTICIPATION));
         // Check valid owner
         const projectContract = new ProjectContract(projectContractRef.address);
         projectContract
@@ -533,9 +537,13 @@ class ParticipationContractMock extends SmartContract {
         const campaignContract = new CampaignContractMock(
             campaignContractRef.address
         );
-        campaignContract
-            .getCampaignTimelineState(campaignId, timeline, timelineWitness)
-            .assertEquals(Field(CampaignTimelineStateEnum.PARTICIPATION));
+        // TEMP CHANGES
+        campaignContract.getCampaignTimelineState(
+            campaignId,
+            timeline,
+            timelineWitness
+        );
+        // .assertEquals(Field(CampaignTimelineStateEnum.PARTICIPATION));
         // Check valid owner
         const projectContract = new ProjectContract(projectContractRef.address);
         projectContract

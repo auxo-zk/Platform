@@ -8,15 +8,15 @@ export type Config = {
             url: string;
             keyPath: string;
             fee: string;
-            feepayerKeyPath: string;
-            feepayerAlias: string;
+            feePayerKeyPath: string;
+            feePayerAlias: string;
         }
     >;
 };
 
 export type JSONKey = {
-  privateKey: string;
-  publicKey: string;
+    privateKey: string;
+    publicKey: string;
 };
 
 export type Key = {
@@ -29,3 +29,10 @@ export type Contract = {
     contract: SmartContract;
     actionStates: Field[];
 };
+
+export enum Network {
+    Local,
+    Lightnet,
+    Testnet,
+    Mainnet,
+}

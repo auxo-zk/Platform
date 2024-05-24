@@ -58,7 +58,7 @@ import {
 
 import { TreasuryAddressLevel1Witness } from '../storages/ProjectStorage.js';
 
-import { ClaimedAmountLevel1Witness } from '../storages/TreasuryManagerStorage';
+import { ClaimedAmountLevel1Witness } from '../storages/TreasuryManagerStorage.js';
 
 import { ProjectContract } from './Project.js';
 import { CommitmentContract } from './Commitment.js';
@@ -152,7 +152,7 @@ class VestingContract extends SmartContract {
             requesterForVestingAddress
         );
 
-        requesterForVestingContract.createTask(
+        await requesterForVestingContract.createTask(
             DkgStorage.DKGStorage.calculateKeyIndex(committeeId, keyId),
             vestingInfo.deadline, // @todo Check if this is starting or ending in requester contract
             new ZkAppRef({
@@ -401,7 +401,7 @@ class VestingContract extends SmartContract {
         requestContract.verifyTaskId(
             requestId,
             requesterForVestingAddress,
-            vestingId,
+            UInt32.fromFields(vestingId.toFields()),
             taskIdWitness
         );
         requestContract.verifyResult(
@@ -592,7 +592,7 @@ class VestingContractMock extends SmartContract {
         //     requesterContractRef.address
         // );
 
-        // requesterContract.createTask(
+        // await requesterContract.createTask(
         //     DkgStorage.DKGStorage.calculateKeyIndex(committeeId, keyId),
         //     vestingInfo.deadline, // @todo Check if this is starting or ending in requester contract
         //     new ZkAppRef({
@@ -842,7 +842,7 @@ class VestingContractMock extends SmartContract {
         // requestContract.verifyTaskId(
         //     requestId,
         //     requesterOfFundingContractRef.address,
-        //     vestingId,
+        //     UInt32.fromFields(vestingId.toFields()),
         //     taskIdWitness
         // );
         // requestContract.verifyResult(

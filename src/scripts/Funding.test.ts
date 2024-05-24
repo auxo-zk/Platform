@@ -162,7 +162,7 @@ describe('Funding', () => {
     };
 
     const requestTrees = {
-        taskIdTree: new Storage.RequestStorage.TaskIdStorage(),
+        taskIdTree: new Storage.RequestStorage.TaskStorage(),
         expirationTree: new Storage.RequestStorage.ExpirationStorage(),
         resultTree: new Storage.RequestStorage.ResultStorage(),
     };

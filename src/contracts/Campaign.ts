@@ -39,6 +39,7 @@ import {
     Storage,
     RequesterContract,
     DkgContract,
+    ZkApp,
 } from '@auxo-dev/dkg';
 
 export {
@@ -243,10 +244,10 @@ class CampaignContract extends SmartContract {
             this.zkAppRoot.getAndRequireEquals(),
             Field(ZkAppIndex.FUNDING_REQUESTER)
         );
-        const requesterContract = new RequesterContract(
+        const requesterContract = new ZkApp.Requester.RequesterContract(
             requesterContractRef.address
         );
-        requesterContract.createTask(
+        await requesterContract.createTask(
             Storage.DKGStorage.calculateKeyIndex(committeeId, keyId),
             timeline.startRequesting,
             new ZkAppRef({
@@ -423,7 +424,7 @@ class CampaignContractMock extends SmartContract {
         // const requesterContract = new DkgZkApp.Requester.RequesterContract(
         //     requesterContractRef.address
         // );
-        // requesterContract.createTask(
+        // await requesterContract.createTask(
         //     Storage.DKGStorage.calculateKeyIndex(committeeId, keyId),
         //     timeline.startRequesting,
         //     new ZkAppRef({

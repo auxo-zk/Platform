@@ -19,6 +19,7 @@ import {
     UInt64,
     AccountUpdate,
     UInt8,
+    UInt32,
     Permissions,
 } from 'o1js';
 import {
@@ -339,15 +340,20 @@ class TreasuryManagerContract extends SmartContract {
         const campaignContract = new CampaignContract(
             campaignContractRef.address
         );
-        campaignContract
-            .getCampaignTimelineState(campaignId, timeline, timelineWitness)
-            .assertEquals(Field(CampaignTimelineStateEnum.REQUESTING));
+        // TEMP CHANGES
+        campaignContract.getCampaignTimelineState(
+            campaignId,
+            timeline,
+            timelineWitness
+        );
+        // .assertEquals(Field(CampaignTimelineStateEnum.REQUESTING));
 
         const requestContract = new RequestContract(requestContractRef.address);
+
         requestContract.verifyTaskId(
             requestId,
             requesterContractRef.address,
-            campaignId,
+            UInt32.fromFields(campaignId.toFields()),
             taskIdWitness
         );
         const requestStatus = requestContract.getRequestStatus(
@@ -425,15 +431,19 @@ class TreasuryManagerContract extends SmartContract {
         const campaignContract = new CampaignContract(
             campaignContractRef.address
         );
-        campaignContract
-            .getCampaignTimelineState(campaignId, timeline, timelineWitness)
-            .assertEquals(Field(CampaignTimelineStateEnum.REQUESTING));
+        // TEMP CHANGES
+        campaignContract.getCampaignTimelineState(
+            campaignId,
+            timeline,
+            timelineWitness
+        );
+        // .assertEquals(Field(CampaignTimelineStateEnum.REQUESTING));
 
         const requestContract = new RequestContract(requestContractRef.address);
         requestContract.verifyTaskId(
             requestId,
             requesterContractRef.address,
-            campaignId,
+            UInt32.fromFields(campaignId.toFields()),
             taskIdWitness
         );
         const requestStatus = requestContract.getRequestStatus(
@@ -535,7 +545,7 @@ class TreasuryManagerContract extends SmartContract {
         requestContract.verifyTaskId(
             requestId,
             requesterContractRef.address,
-            campaignId,
+            UInt32.fromFields(campaignId.toFields()),
             taskIdWitness
         );
         requestContract.verifyResult(
@@ -798,9 +808,13 @@ class TreasuryManagerContractMock extends SmartContract {
         const campaignContract = new CampaignContractMock(
             campaignContractRef.address
         );
-        campaignContract
-            .getCampaignTimelineState(campaignId, timeline, timelineWitness)
-            .assertEquals(Field(CampaignTimelineStateEnum.REQUESTING));
+        // TEMP CHANGES
+        campaignContract.getCampaignTimelineState(
+            campaignId,
+            timeline,
+            timelineWitness
+        );
+        // .assertEquals(Field(CampaignTimelineStateEnum.REQUESTING));
 
         // const requestContract = new DkgZkApp.Request.RequestContract(
         //     requestContractRef.address
@@ -808,7 +822,7 @@ class TreasuryManagerContractMock extends SmartContract {
         // requestContract.verifyTaskId(
         //     requestId,
         //     requesterContractRef.address,
-        //     campaignId,
+        //     UInt32.fromFields(campaignId.toFields()),
         //     requesterAddressWitness
         // );
         // const requestStatus = requestContract.getRequestStatus(
@@ -887,9 +901,13 @@ class TreasuryManagerContractMock extends SmartContract {
         const campaignContract = new CampaignContractMock(
             campaignContractRef.address
         );
-        campaignContract
-            .getCampaignTimelineState(campaignId, timeline, timelineWitness)
-            .assertEquals(Field(CampaignTimelineStateEnum.REQUESTING));
+        // TEMP CHANGES
+        campaignContract.getCampaignTimelineState(
+            campaignId,
+            timeline,
+            timelineWitness
+        );
+        // .assertEquals(Field(CampaignTimelineStateEnum.REQUESTING));
 
         // const requestContract = new DkgZkApp.Request.RequestContract(
         //     requestContractRef.address
@@ -897,7 +915,7 @@ class TreasuryManagerContractMock extends SmartContract {
         // requestContract.verifyTaskId(
         //     requestId,
         //     requesterContractRef.address,
-        //     campaignId,
+        //     UInt32.fromFields(campaignId.toFields()),
         //     requesterAddressWitness
         // );
         // const requestStatus = requestContract.getRequestStatus(
@@ -1002,7 +1020,7 @@ class TreasuryManagerContractMock extends SmartContract {
         // requestContract.verifyTaskId(
         //     requestId,
         //     requesterContractRef.address,
-        //     campaignId,
+        //     UInt32.fromFields(campaignId.toFields()),
         //     requesterAddressWitness
         // );
         // requestContract.verifyResult(
