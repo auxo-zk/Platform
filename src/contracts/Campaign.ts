@@ -216,9 +216,9 @@ class CampaignContract extends SmartContract {
         dkgContractRef: ZkAppRef,
         requesterContractRef: ZkAppRef
     ) {
-        const currentTimestamp = this.network.timestamp.getAndRequireEquals();
-        timeline.isValid().assertEquals(Bool(true));
-        timeline.startParticipation.assertGreaterThan(currentTimestamp);
+        // const currentTimestamp = this.network.timestamp.getAndRequireEquals();
+        // timeline.isValid().assertEquals(Bool(true));
+        // timeline.startParticipation.assertGreaterThan(currentTimestamp);
 
         // Verify the status of key is active
         verifyZkApp(

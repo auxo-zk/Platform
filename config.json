@@ -1,4 +1,158 @@
 {
   "version": 1,
-  "deployAliases": {}
+  "deployAliases": {
+    "rollup": {
+      "url": "https://proxy.berkeley.minaexplorer.com/graphql",
+      "keyPath": "keys/dkg.json",
+      "feepayerKeyPath": "/home/huyminh/.cache/zkapp-cli/keys/myaccount.json",
+      "feepayerAlias": "myaccount",
+      "fee": "0.1"
+    },
+    "dkg": {
+      "url": "https://proxy.berkeley.minaexplorer.com/graphql",
+      "keyPath": "keys/dkg.json",
+      "feepayerKeyPath": "/home/huyminh/.cache/zkapp-cli/keys/myaccount.json",
+      "feepayerAlias": "myaccount",
+      "fee": "0.1"
+    },
+    "committee": {
+      "url": "https://proxy.berkeley.minaexplorer.com/graphql",
+      "keyPath": "keys/committee.json",
+      "feepayerKeyPath": "/home/huyminh/.cache/zkapp-cli/keys/myaccount.json",
+      "feepayerAlias": "myaccount",
+      "fee": "0.1"
+    },
+    "round1": {
+      "url": "https://proxy.berkeley.minaexplorer.com/graphql",
+      "keyPath": "keys/round1.json",
+      "feepayerKeyPath": "/home/huyminh/.cache/zkapp-cli/keys/myaccount.json",
+      "feepayerAlias": "myaccount",
+      "fee": "0.1"
+    },
+    "round2": {
+      "url": "https://proxy.berkeley.minaexplorer.com/graphql",
+      "keyPath": "keys/round2.json",
+      "feepayerKeyPath": "/home/huyminh/.cache/zkapp-cli/keys/myaccount.json",
+      "feepayerAlias": "myaccount",
+      "fee": "0.1"
+    },
+    "response": {
+      "url": "https://proxy.berkeley.minaexplorer.com/graphql",
+      "keyPath": "keys/response.json",
+      "feepayerKeyPath": "/home/huyminh/.cache/zkapp-cli/keys/myaccount.json",
+      "feepayerAlias": "myaccount",
+      "fee": "0.1"
+    },
+    "request": {
+      "url": "https://proxy.berkeley.minaexplorer.com/graphql",
+      "keyPath": "keys/request.json",
+      "feepayerKeyPath": "/home/huyminh/.cache/zkapp-cli/keys/myaccount.json",
+      "feepayerAlias": "myaccount",
+      "fee": "0.1"
+    },
+    "requester": {
+      "networkId": "testnet",
+      "url": "https://proxy.berkeley.minaexplorer.com/graphql",
+      "keyPath": "keys/requester.json",
+      "feepayerKeyPath": "/home/ubuntu/.cache/zkapp-cli/keys/deployer.json",
+      "feepayerAlias": "deployer",
+      "fee": "0.01"
+    },
+    "lightnet0": {
+      "networkId": "testnet",
+      "url": "https://proxy.berkeley.minaexplorer.com/graphql",
+      "keyPath": "keys/lightnet0.json",
+      "feepayerKeyPath": "/home/ubuntu/.cache/zkapp-cli/keys/deployer.json",
+      "feepayerAlias": "deployer",
+      "fee": "0.001"
+    },
+    "lightnet1": {
+      "networkId": "testnet",
+      "url": "https://proxy.berkeley.minaexplorer.com/graphql",
+      "keyPath": "keys/lightnet1.json",
+      "feepayerKeyPath": "/home/ubuntu/.cache/zkapp-cli/keys/deployer.json",
+      "feepayerAlias": "deployer",
+      "fee": "0.001"
+    },
+    "lightnet2": {
+      "networkId": "testnet",
+      "url": "https://proxy.berkeley.minaexplorer.com/graphql",
+      "keyPath": "keys/lightnet2.json",
+      "feepayerKeyPath": "/home/ubuntu/.cache/zkapp-cli/keys/deployer.json",
+      "feepayerAlias": "deployer",
+      "fee": "0.001"
+    },
+    "lightnet3": {
+      "networkId": "testnet",
+      "url": "https://proxy.berkeley.minaexplorer.com/graphql",
+      "keyPath": "keys/lightnet3.json",
+      "feepayerKeyPath": "/home/ubuntu/.cache/zkapp-cli/keys/deployer.json",
+      "feepayerAlias": "deployer",
+      "fee": "0.001"
+    },
+    "lightnet4": {
+      "networkId": "testnet",
+      "url": "https://proxy.berkeley.minaexplorer.com/graphql",
+      "keyPath": "keys/lightnet4.json",
+      "feepayerKeyPath": "/home/ubuntu/.cache/zkapp-cli/keys/deployer.json",
+      "feepayerAlias": "deployer",
+      "fee": "0.001"
+    },
+    "project": {
+      "url": "https://proxy.berkeley.minaexplorer.com/graphql",
+      "keyPath": "keys/project.json",
+      "feepayerKeyPath": "/home/huyminh/.cache/zkapp-cli/keys/myaccount.json",
+      "feepayerAlias": "myaccount",
+      "fee": "0.1"
+    },
+    "commitment": {
+      "url": "https://proxy.berkeley.minaexplorer.com/graphql",
+      "keyPath": "keys/commitment.json",
+      "feepayerKeyPath": "/home/huyminh/.cache/zkapp-cli/keys/myaccount.json",
+      "feepayerAlias": "myaccount",
+      "fee": "0.1"
+    },
+    "campaign": {
+      "url": "https://proxy.berkeley.minaexplorer.com/graphql",
+      "keyPath": "keys/campaign.json",
+      "feepayerKeyPath": "/home/huyminh/.cache/zkapp-cli/keys/myaccount.json",
+      "feepayerAlias": "myaccount",
+      "fee": "0.1"
+    },
+    "participation": {
+      "url": "https://proxy.berkeley.minaexplorer.com/graphql",
+      "keyPath": "keys/participation.json",
+      "feepayerKeyPath": "/home/huyminh/.cache/zkapp-cli/keys/myaccount.json",
+      "feepayerAlias": "myaccount",
+      "fee": "0.1"
+    },
+    "treasury_manager": {
+      "url": "https://proxy.berkeley.minaexplorer.com/graphql",
+      "keyPath": "keys/treasury_manager.json",
+      "feepayerKeyPath": "/home/huyminh/.cache/zkapp-cli/keys/myaccount.json",
+      "feepayerAlias": "myaccount",
+      "fee": "0.1"
+    },
+    "vesting_requester": {
+      "url": "https://proxy.berkeley.minaexplorer.com/graphql",
+      "keyPath": "keys/vesting_requester.json",
+      "feepayerKeyPath": "/home/huyminh/.cache/zkapp-cli/keys/myaccount.json",
+      "feepayerAlias": "myaccount",
+      "fee": "0.1"
+    },
+    "funding": {
+      "url": "https://proxy.berkeley.minaexplorer.com/graphql",
+      "keyPath": "keys/funding.json",
+      "feepayerKeyPath": "/home/huyminh/.cache/zkapp-cli/keys/myaccount.json",
+      "feepayerAlias": "myaccount",
+      "fee": "0.1"
+    },
+    "funding_requester": {
+      "url": "https://proxy.berkeley.minaexplorer.com/graphql",
+      "keyPath": "keys/funding_requester.json",
+      "feepayerKeyPath": "/home/huyminh/.cache/zkapp-cli/keys/myaccount.json",
+      "feepayerAlias": "myaccount",
+      "fee": "0.1"
+    }
+  }
 }

@@ -97,59 +97,53 @@ export async function prepare(
     }
 
     if (networkOptions.type == Network.Lightnet) {
-        // let acquiredAccounts = ((await Lightnet.listAcquiredKeyPairs({})) ||
-        //     []) as Key[];
-        // if (acquiredAccounts.length < DEFAULT_ACCOUNTS) {
-
-        // for (let i = 0; i < DEFAULT_ACCOUNTS; i++) {
-        //     let accountData: JSONKey = JSON.parse(
-        //         fs.readFileSync(
-        //             configJson.deployAliases[`lightnet${i}`].keyPath,
-        //             'utf8'
-        //         )
-        //     );
-        //     Object.assign(accounts, {
-        //         [i]: {
-        //             privateKey: PrivateKey.fromBase58(accountData.privateKey),
-        //             publicKey: PublicKey.fromBase58(accountData.publicKey),
-        //         },
-        //     });
-        // }
-
-        // }
-
-        let config = {
-            method: 'get',
-            maxBodyLength: Infinity,
-            url: 'http://localhost:8181/acquire-account',
-            headers: {},
-        };
-
-        let accountPromise = [];
-
         for (let i = 0; i < DEFAULT_ACCOUNTS; i++) {
-            const promise = new Promise(async (resolve, reject) => {
-                try {
-                    let data = await axios.request(config);
-                    resolve(data.data);
-                } catch (error) {
-                    reject(error);
-                }
-            });
-            accountPromise.push(promise);
-        }
-
-        let fetchedAccountData: { used: boolean; pk: string; sk: string }[] =
-            (await Promise.all(accountPromise)) as any;
-
-        for (let i = 0; i < fetchedAccountData.length; i++) {
+            let accountData: JSONKey = JSON.parse(
+                fs.readFileSync(
+                    configJson.deployAliases[`lightnet${i}`].keyPath,
+                    'utf8'
+                )
+            );
             Object.assign(accounts, {
                 [i]: {
-                    privateKey: PrivateKey.fromBase58(fetchedAccountData[i].sk),
-                    publicKey: PublicKey.fromBase58(fetchedAccountData[i].pk),
+                    privateKey: PrivateKey.fromBase58(accountData.privateKey),
+                    publicKey: PublicKey.fromBase58(accountData.publicKey),
                 },
             });
         }
+
+        // let config = {
+        //     method: 'get',
+        //     maxBodyLength: Infinity,
+        //     url: 'http://localhost:8181/acquire-account',
+        //     headers: {},
+        // };
+
+        // let accountPromise = [];
+
+        // for (let i = 0; i < DEFAULT_ACCOUNTS; i++) {
+        //     const promise = new Promise(async (resolve, reject) => {
+        //         try {
+        //             let data = await axios.request(config);
+        //             resolve(data.data);
+        //         } catch (error) {
+        //             reject(error);
+        //         }
+        //     });
+        //     accountPromise.push(promise);
+        // }
+
+        // let fetchedAccountData: { used: boolean; pk: string; sk: string }[] =
+        //     (await Promise.all(accountPromise)) as any;
+
+        // for (let i = 0; i < fetchedAccountData.length; i++) {
+        //     Object.assign(accounts, {
+        //         [i]: {
+        //             privateKey: PrivateKey.fromBase58(fetchedAccountData[i].sk),
+        //             publicKey: PublicKey.fromBase58(fetchedAccountData[i].pk),
+        //         },
+        //     });
+        // }
     } else if (networkOptions.type == Network.Local) {
         accounts = {
             ...accounts,

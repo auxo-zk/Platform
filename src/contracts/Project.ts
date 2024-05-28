@@ -270,7 +270,7 @@ class ProjectContract extends SmartContract {
 
         this.account.permissions.set({
             ...Permissions.default(),
-            editState: Permissions.signature(),
+            editState: Permissions.proofOrSignature(),
         });
     }
 

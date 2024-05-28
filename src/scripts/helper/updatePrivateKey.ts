@@ -11,15 +11,15 @@ let filesData: key[] = [];
 
 // Define the file names as an array
 const fileNames = [
-    // 'rollup.json',
-    // 'committee.json',
-    // 'dkg.json',
-    // 'round1.json',
-    // 'round2.json',
-    'response.json',
-    'request.json',
-    'taskmanager.json',
-    'submission.json',
+    'project.json',
+    'campaign.json',
+    'commitment.json',
+    'funding.json',
+    'funding_requester.json',
+    'vesting.json',
+    'vesting_requester.json',
+    'participation.json',
+    'treasury_manager.json',
 ];
 
 function createFileData() {
