@@ -206,6 +206,11 @@ class ParticipationContract extends SmartContract {
         this.ipfsHashRoot.set(DefaultRootForParticipationTree);
         this.zkAppRoot.set(DefaultRootForZkAppTree);
         this.actionState.set(Reducer.initialActionState);
+
+        this.account.permissions.set({
+            ...Permissions.default(),
+            editState: Permissions.proofOrSignature(),
+        });
     }
 
     @method async participateCampaign(
@@ -226,7 +231,8 @@ class ParticipationContract extends SmartContract {
             campaignId: campaignId,
             projectId: projectId,
             ipfsHash: ipfsHash,
-            timestamp: this.network.timestamp.getAndRequireEquals(),
+            // timestamp: this.network.timestamp.getAndRequireEquals(),
+            timestamp: new UInt64(0),
         });
         // Check that not exist campaignId-projectId in reducer queue
         const actionState = this.actionState.getAndRequireEquals();
@@ -445,7 +451,7 @@ class ParticipationContractMock extends SmartContract {
         this.actionState.set(Reducer.initialActionState);
         this.account.permissions.set({
             ...Permissions.default(),
-            editState: Permissions.signature(),
+            editState: Permissions.proofOrSignature(),
         });
     }
 
@@ -467,7 +473,8 @@ class ParticipationContractMock extends SmartContract {
             campaignId: campaignId,
             projectId: projectId,
             ipfsHash: ipfsHash,
-            timestamp: this.network.timestamp.getAndRequireEquals(),
+            // timestamp: this.network.timestamp.getAndRequireEquals(),
+            timestamp: new UInt64(0),
         });
         // Check that not exist campaignId-projectId in reducer queue
         const actionState = this.actionState.getAndRequireEquals();

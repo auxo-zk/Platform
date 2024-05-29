@@ -18,6 +18,7 @@ import {
     Bool,
     UInt64,
     AccountUpdate,
+    Permissions,
 } from 'o1js';
 
 import { CustomScalar, ScalarDynamicArray, Utils } from '@auxo-dev/auxo-libs';
@@ -123,6 +124,11 @@ class CommitmentContract extends SmartContract {
         super.init();
         this.commitmentRoot.set(DefaultRootForCommitmentMap);
         this.actionState.set(Reducer.initialActionState);
+
+        this.account.permissions.set({
+            ...Permissions.default(),
+            editState: Permissions.proofOrSignature(),
+        });
     }
 
     @method async commit(

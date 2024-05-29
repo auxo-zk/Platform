@@ -153,6 +153,14 @@
       "feepayerKeyPath": "/home/huyminh/.cache/zkapp-cli/keys/myaccount.json",
       "feepayerAlias": "myaccount",
       "fee": "0.1"
+    },
+    "vesting": {
+      "networkId": "testnet",
+      "url": "https://proxy.berkeley.minaexplorer.com/graphql",
+      "keyPath": "keys/vesting.json",
+      "feepayerKeyPath": "/home/ubuntu/.cache/zkapp-cli/keys/deployer.json",
+      "feepayerAlias": "deployer",
+      "fee": "0.01"
     }
   }
 }

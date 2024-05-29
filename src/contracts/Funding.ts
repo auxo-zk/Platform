@@ -258,6 +258,11 @@ class FundingContract extends SmartContract {
         this.fundingInformationRoot.set(DefaultRootForFundingTree);
         this.zkAppRoot.set(DefaultRootForZkAppTree);
         this.actionState.set(Reducer.initialActionState);
+
+        this.account.permissions.set({
+            ...Permissions.default(),
+            editState: Permissions.proofOrSignature(),
+        });
     }
 
     @method async fund(
@@ -550,7 +555,7 @@ class FundingContractMock extends SmartContract {
         this.actionState.set(Reducer.initialActionState);
         this.account.permissions.set({
             ...Permissions.default(),
-            editState: Permissions.signature(),
+            editState: Permissions.proofOrSignature(),
         });
     }
 

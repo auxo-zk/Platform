@@ -299,6 +299,11 @@ class TreasuryManagerContract extends SmartContract {
         this.claimedAmountRoot.set(DefaultRootForTreasuryManagerTree);
         this.zkAppRoot.set(DefaultRootForZkAppTree);
         this.actionState.set(Reducer.initialActionState);
+
+        this.account.permissions.set({
+            ...Permissions.default(),
+            editState: Permissions.proofOrSignature(),
+        });
     }
 
     @method async completeCampaign(
@@ -763,9 +768,10 @@ class TreasuryManagerContractMock extends SmartContract {
         this.claimedAmountRoot.set(DefaultRootForTreasuryManagerTree);
         this.zkAppRoot.set(DefaultRootForZkAppTree);
         this.actionState.set(Reducer.initialActionState);
+
         this.account.permissions.set({
             ...Permissions.default(),
-            editState: Permissions.signature(),
+            editState: Permissions.proofOrSignature(),
         });
     }
 

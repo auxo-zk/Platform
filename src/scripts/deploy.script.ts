@@ -147,12 +147,12 @@ const Lightnet = Mina.Network({
     archive: process.env.LIGHTNET_ARCHIVE as string,
 });
 
-const DEPLOY = false;
-const CREATE_CAMPAIGN = false;
-const ROLLUP_CAMPAIGN = false;
-const CREATE_FIRST_PROJECT = false;
-const CREATE_SECOND_PROJECT = false;
-const ROLLUP_PROJECT = false;
+const DEPLOY = true;
+const CREATE_CAMPAIGN = true;
+const ROLLUP_CAMPAIGN = true;
+const CREATE_FIRST_PROJECT = true;
+const CREATE_SECOND_PROJECT = true;
+const ROLLUP_PROJECT = true;
 const FIRST_PROJECT_JOIN = true;
 const SECOND_PROJECT_JOIN = true;
 const ROLLUP_PARTICIPATION = true;
@@ -1110,6 +1110,9 @@ async function main() {
             undefined,
             logger
         );
+    }
+
+    if (FUND_PROJECT) {
     }
 }
 

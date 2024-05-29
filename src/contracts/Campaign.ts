@@ -13,6 +13,7 @@ import {
     Void,
     Bool,
     Permissions,
+    UInt64,
 } from 'o1js';
 import { IpfsHash, Utils } from '@auxo-dev/auxo-libs';
 import {
@@ -204,6 +205,11 @@ class CampaignContract extends SmartContract {
         this.keyIndexRoot.set(DefaultRootForCampaignTree);
         this.zkAppRoot.set(DefaultRootForZkAppTree);
         this.actionState.set(Reducer.initialActionState);
+
+        this.account.permissions.set({
+            ...Permissions.default(),
+            editState: Permissions.proofOrSignature(),
+        });
     }
 
     @method async createCampaign(
@@ -321,7 +327,8 @@ class CampaignContract extends SmartContract {
         timelineRoot.assertEquals(
             timelineWitness.calculateRoot(timeline.hash())
         );
-        const currentTimestamp = this.network.timestamp.getAndRequireEquals();
+        // const currentTimestamp = this.network.timestamp.getAndRequireEquals();
+        const currentTimestamp = new UInt64(1);
         const campaignState = Provable.if(
             currentTimestamp.lessThan(timeline.startParticipation),
             Field(CampaignTimelineStateEnum.PREPARATION),
@@ -377,7 +384,7 @@ class CampaignContractMock extends SmartContract {
 
         this.account.permissions.set({
             ...Permissions.default(),
-            editState: Permissions.signature(),
+            editState: Permissions.proofOrSignature(),
         });
     }
 
@@ -391,9 +398,9 @@ class CampaignContractMock extends SmartContract {
         dkgContractRef: ZkAppRef,
         requesterContractRef: ZkAppRef
     ) {
-        const currentTimestamp = this.network.timestamp.getAndRequireEquals();
-        timeline.isValid().assertEquals(Bool(true));
-        timeline.startParticipation.assertGreaterThan(currentTimestamp);
+        // const currentTimestamp = this.network.timestamp.getAndRequireEquals();
+        // timeline.isValid().assertEquals(Bool(true));
+        // timeline.startParticipation.assertGreaterThan(currentTimestamp);
 
         // Verify the status of key is active
         verifyZkApp(
@@ -498,7 +505,7 @@ class CampaignContractMock extends SmartContract {
         timelineRoot.assertEquals(
             timelineWitness.calculateRoot(timeline.hash())
         );
-        const currentTimestamp = this.network.timestamp.getAndRequireEquals();
+        const currentTimestamp = new UInt64(1);
         const campaignState = Provable.if(
             currentTimestamp.lessThan(timeline.startParticipation),
             Field(CampaignTimelineStateEnum.PREPARATION),

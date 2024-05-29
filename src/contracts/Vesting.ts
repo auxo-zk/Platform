@@ -84,6 +84,11 @@ class VestingContract extends SmartContract {
         this.vestingBalanceRoot.set(DefaultRootForCampaignTree);
         this.vestingInfoRoot.set(DefaultRootForVestingTree);
         this.zkAppRoot.set(DefaultRootForZkAppTree);
+
+        this.account.permissions.set({
+            ...Permissions.default(),
+            editState: Permissions.proofOrSignature(),
+        });
     }
 
     @method async createVestingRequest(
@@ -530,6 +535,11 @@ class VestingContractMock extends SmartContract {
         this.vestingBalanceRoot.set(DefaultRootForCampaignTree);
         this.vestingInfoRoot.set(DefaultRootForVestingTree);
         this.zkAppRoot.set(DefaultRootForZkAppTree);
+
+        this.account.permissions.set({
+            ...Permissions.default(),
+            editState: Permissions.proofOrSignature(),
+        });
     }
 
     @method async createVestingRequest(
