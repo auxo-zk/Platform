@@ -837,8 +837,6 @@ class TreasuryManagerContractMock extends SmartContract {
         //     expirationWitness,
         //     resultWitness
         // );
-        const requestStatus = Field(RequestStatus.RESOLVED);
-        requestStatus.assertEquals(Field(RequestStatus.RESOLVED));
 
         // Check not exist complete action of this campaign
         const treasuryManagerAction = new TreasuryManagerAction({

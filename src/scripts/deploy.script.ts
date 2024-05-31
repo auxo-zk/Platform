@@ -34,7 +34,7 @@ import {
     ProjectActionEnum,
     TreasuryAddressStorage,
 } from '../storages/ProjectStorage.js';
-import { IpfsHash, Utils } from '@auxo-dev/auxo-libs';
+import { IpfsHash, Utils, CustomScalar } from '@auxo-dev/auxo-libs';
 import { Utilities } from './utils.js';
 import {
     INSTANCE_LIMITS,
@@ -45,6 +45,7 @@ import {
     CommitteeContract,
     Libs as DkgLibs,
     RequesterAddressBook,
+    Round2ContributionStorage,
     Storage,
 } from '@auxo-dev/dkg';
 import {
@@ -130,6 +131,10 @@ import {
     calculatePublicKeyFromContribution,
     getRound2Contribution,
     KeyStatus,
+    KeyStorage,
+    PublicKeyStorage,
+    Round1ContributionStorage,
+    EncryptionStorage,
 } from '@auxo-dev/dkg';
 
 import { prepare } from './helper/prepare.js';
@@ -140,25 +145,19 @@ import { fetchAccounts } from './helper/index.js';
 import { Action } from './interfaces/action.interface.js';
 
 import 'dotenv/config';
-import { Participation } from '../contracts/index.js';
 
-const Lightnet = Mina.Network({
-    mina: process.env.LIGHTNET_MINA as string,
-    archive: process.env.LIGHTNET_ARCHIVE as string,
-});
-
-const DEPLOY = true;
-const CREATE_CAMPAIGN = true;
-const ROLLUP_CAMPAIGN = true;
-const CREATE_FIRST_PROJECT = true;
-const CREATE_SECOND_PROJECT = true;
-const ROLLUP_PROJECT = true;
-const FIRST_PROJECT_JOIN = true;
-const SECOND_PROJECT_JOIN = true;
-const ROLLUP_PARTICIPATION = true;
+const DEPLOY = false;
+const CREATE_CAMPAIGN = false;
+const ROLLUP_CAMPAIGN = false;
+const CREATE_FIRST_PROJECT = false;
+const CREATE_SECOND_PROJECT = false;
+const ROLLUP_PROJECT = false;
+const FIRST_PROJECT_JOIN = false;
+const SECOND_PROJECT_JOIN = false;
+const ROLLUP_PARTICIPATION = false;
 const FUND_PROJECT = true;
 const ROLLUP_FUNDING = true;
-const COMPLETE_CAMPAIGN = true;
+const COMPLETE_CAMPAIGN = false;
 const ROLLUP_TREASURY_MANAGER = false;
 const CLAIM_FUND_PR1 = false;
 const CLAIM_FUND_PR2 = false;
@@ -487,6 +486,9 @@ async function main() {
     };
 
     const dkgTrees = {
+        encryptionTree: new EncryptionStorage(),
+        round1ContributionTree: new Round1ContributionStorage(),
+        round2ContributionTree: new Round2ContributionStorage(),
         publicKeyTree: new Storage.DKGStorage.PublicKeyStorage(),
         keyStatusTree: new Storage.DKGStorage.KeyStatusStorage(),
         keyTree: new Storage.DKGStorage.KeyStorage(),
@@ -544,7 +546,6 @@ async function main() {
     const requestId = Field(0);
     const committeeId = Field(CampaignMockData[0].committeeId);
     const keyId = Field(CampaignMockData[0].keyId);
-    const key = PrivateKey.random().toPublicKey();
     const totalAmounts: UInt64[] = [];
     let nextCampaignId = Field(0);
     let nextFundingId = Field(0);
@@ -627,13 +628,6 @@ async function main() {
                 'QmdZyvZxREgPctoRguikD1PTqsXJH3Mg2M3hhRhVNSx4tn'
             ),
         },
-        {
-            members: new MemberArray([users[0].publicKey, users[1].publicKey]),
-            threshold: Field(3),
-            ipfsHash: IpfsHash.fromString(
-                'QmdZyvZxREgPctoRguikD1PTqsXJH3Mg2M3hhRhVNSx4tn'
-            ),
-        },
     ];
     keys = [
         {
@@ -669,7 +663,7 @@ async function main() {
     let N = Number(committee.members.length);
     keys[0].round1Contributions = [];
     keys[0].round2Contributions = [];
-    let filename = `mock/secrets-${T}-${N}.json`;
+    let filename = `src/scripts/mock/secrets-${T}-${N}.json`;
     let isMockSecretsUsed = fs.existsSync(filename);
     if (isMockSecretsUsed) {
         mockSecret = JSON.parse(fs.readFileSync(filename, 'utf8'));
@@ -687,6 +681,28 @@ async function main() {
         committeeSecrets.push(secret);
         let round1Contribution = getRound1Contribution(secret);
         keys[0].round1Contributions.push(round1Contribution);
+        dkgTrees.round1ContributionTree.updateRawLeaf(
+            {
+                level1Index: Round1ContributionStorage.calculateLevel1Index({
+                    committeeId,
+                    keyId,
+                }),
+                level2Index: Round1ContributionStorage.calculateLevel2Index(
+                    Field(j)
+                ),
+            },
+            round1Contribution
+        );
+        dkgTrees.publicKeyTree.updateRawLeaf(
+            {
+                level1Index: PublicKeyStorage.calculateLevel1Index({
+                    committeeId,
+                    keyId,
+                }),
+                level2Index: PublicKeyStorage.calculateLevel2Index(Field(j)),
+            },
+            secret.C[0]
+        );
     }
     keys[0].key = calculatePublicKeyFromContribution(
         keys[0].round1Contributions
@@ -702,6 +718,34 @@ async function main() {
             randoms.map((e: string) => Scalar.from(e))
         );
         keys[0].round2Contributions.push(round2Contribution);
+
+        dkgTrees.round2ContributionTree.updateRawLeaf(
+            {
+                level1Index: Round2ContributionStorage.calculateLevel1Index({
+                    committeeId,
+                    keyId,
+                }),
+                level2Index: Round2ContributionStorage.calculateLevel2Index(
+                    Field(j)
+                ),
+            },
+            round2Contribution
+        );
+    }
+    for (let j = 0; j < N; j++) {
+        dkgTrees.encryptionTree.updateRawLeaf(
+            {
+                level1Index: EncryptionStorage.calculateLevel1Index({
+                    committeeId,
+                    keyId,
+                }),
+                level2Index: EncryptionStorage.calculateLevel2Index(Field(j)),
+            },
+            {
+                contributions: keys[0].round2Contributions,
+                memberId: Field(j),
+            }
+        );
     }
     dkgTrees.keyStatusTree.updateRawLeaf(
         {
@@ -1037,6 +1081,7 @@ async function main() {
     actions = (await Mina.fetchActions(
         _.accounts.participation.publicKey
     )) as Action[];
+    await fetchAccounts([_.accounts.participation.publicKey]);
 
     proof = await RollupParticipation.firstStep(
         participationTrees.projectIndexTree.root,
@@ -1113,6 +1158,220 @@ async function main() {
     }
 
     if (FUND_PROJECT) {
+        await fetchAccounts([
+            _.accounts.funding.publicKey,
+            _.accounts.dkg.publicKey,
+            _.accounts.funding_requester.publicKey,
+        ]);
+        for (let i = 0; i < FundingMockData.length; i++) {
+            const amountVector = new AmountVector();
+            let totalAmount = new UInt64(0);
+
+            for (let j = 0; j < FundingMockData[i].amounts.length; j++) {
+                const amount = new UInt64(FundingMockData[i].amounts[j]);
+                amountVector.push(amount);
+                totalAmount = totalAmount.add(amount);
+            }
+            totalAmounts.push(totalAmount);
+
+            Provable.log('campaignId: ', campaignId);
+            Provable.log('committeeId: ', committeeId);
+            Provable.log('keyId: ', keyId);
+            Provable.log(
+                'campaignTrees.timelineTree.getLevel1Witness(campaignId),',
+                campaignTrees.timelineTree.getLevel1Witness(campaignId)
+            );
+            Provable.log('projectCounter', projectCounter);
+            Provable.log(
+                'participationTrees.projectCounterTree: ',
+                participationTrees.projectCounterTree.getLevel1Witness(
+                    campaignId
+                )
+            );
+            Provable.log(
+                'fundingRequesterTrees.requesterKeyIndexTree: ',
+                fundingRequesterTrees.requesterKeyIndexTree.getLevel1Witness(
+                    RequesterKeyIndexStorage.calculateLevel1Index(campaignId)
+                )
+            );
+            Provable.log(
+                'keys[Number(committeeId)].key: ',
+                keys[Number(committeeId)].key
+            );
+            Provable.log(
+                'dkgTrees.publicKeyTree: ',
+                dkgTrees.publicKeyTree.getLevel1Witness(
+                    KeyStorage.calculateLevel1Index({
+                        committeeId,
+                        keyId,
+                    })
+                )
+            );
+            Provable.log(
+                'RequesterAddressBook.SUBMISSION: ',
+                zkAppStorageForFundingRequester.getWitness(
+                    Field(RequesterAddressBook.SUBMISSION)
+                )
+            );
+
+            await Utils.proveAndSendTx(
+                FundingContract.name,
+                'fund',
+                async () => {
+                    await fundingZkApp.contract.fund(
+                        campaignId,
+                        timeline,
+                        campaignTrees.timelineTree.getLevel1Witness(campaignId),
+                        Utils.packNumberArray(
+                            FundingMockData[i].dimensionIndexes,
+                            8
+                        ),
+                        projectCounter,
+                        participationTrees.projectCounterTree.getLevel1Witness(
+                            campaignId
+                        ),
+                        committeeId,
+                        keyId,
+                        fundingRequesterTrees.requesterKeyIndexTree.getLevel1Witness(
+                            RequesterKeyIndexStorage.calculateLevel1Index(
+                                campaignId
+                            )
+                        ),
+                        keys[Number(committeeId)].key,
+                        dkgTrees.publicKeyTree.getLevel1Witness(
+                            KeyStorage.calculateLevel1Index({
+                                committeeId,
+                                keyId,
+                            })
+                        ),
+                        amountVector,
+                        new DkgLibs.Requester.RandomVector(
+                            FundingMockData[i].randoms.map((value) =>
+                                CustomScalar.fromUInt64(new UInt64(value))
+                            )
+                        ),
+                        new DkgLibs.Requester.NullifierArray(
+                            FundingMockData[i].nullifiers.map((value) =>
+                                Field(value)
+                            )
+                        ),
+                        zkAppStorageForFundingRequester.getWitness(
+                            Field(RequesterAddressBook.SUBMISSION)
+                        ),
+                        sharedAddressStorage.getZkAppRef(
+                            ZkAppIndex.CAMPAIGN,
+                            _.accounts.campaign.publicKey
+                        ),
+                        sharedAddressStorage.getZkAppRef(
+                            ZkAppIndex.PARTICIPATION,
+                            _.accounts.participation.publicKey
+                        ),
+                        zkAppStorageForFundingRequester.getZkAppRef(
+                            RequesterAddressBook.DKG,
+                            _.accounts.dkg.publicKey
+                        ),
+                        sharedAddressStorage.getZkAppRef(
+                            ZkAppIndex.TREASURY_MANAGER,
+                            _.accounts.treasury_manager.publicKey
+                        ),
+                        sharedAddressStorage.getZkAppRef(
+                            ZkAppIndex.FUNDING_REQUESTER,
+                            _.accounts.funding_requester.publicKey
+                        )
+                    );
+                },
+                _.feePayer,
+                true,
+                undefined,
+                logger
+            );
+        }
+    }
+
+    await fetchAccounts([_.accounts.funding.publicKey]);
+    actions = (await Mina.fetchActions(
+        _.accounts.funding.publicKey
+    )) as Action[];
+
+    proof = await RollupFunding.firstStep(
+        nextFundingId,
+        fundingTrees.fundingInformationTree.root,
+        fundingZkApp.contract.actionState.get()
+    );
+
+    for (let i = 0; i < actions.length; i++) {
+        const fundingAction = FundingAction.fromFields(
+            Utilities.stringArrayToFields(actions[i].actions[0])
+        );
+        proof = await RollupFunding.fundStep(
+            proof,
+            fundingAction,
+            fundingTrees.fundingInformationTree.getLevel1Witness(nextFundingId)
+        );
+
+        fundingTrees.fundingInformationTree.updateLeaf(
+            nextFundingId,
+            FundingInformationStorage.calculateLeaf(
+                new FundingInformation({
+                    campaignId: fundingAction.campaignId,
+                    investor: fundingAction.investor,
+                    amount: fundingAction.amount,
+                })
+            )
+        );
+        nextFundingId = nextFundingId.add(1);
+    }
+
+    if (ROLLUP_FUNDING) {
+        await Utils.proveAndSendTx(
+            FundingContract.name,
+            'rollup',
+            async () => {
+                await fundingZkApp.contract.rollup(proof);
+            },
+            _.feePayer,
+            true,
+            undefined,
+            logger
+        );
+    }
+
+    if (COMPLETE_CAMPAIGN) {
+        await Utils.proveAndSendTx(
+            TreasuryManagerContract.name,
+            'completeCampaign',
+            async () => {
+                await treasuryManagerZkApp.contract.completeCampaign(
+                    campaignId,
+                    requestId,
+                    timeline,
+                    campaignTrees.timelineTree.getLevel1Witness(campaignId),
+                    treasuryManagerTrees.campaignStateTree.getLevel1Witness(
+                        campaignId
+                    ),
+                    requestTrees.taskIdTree.getLevel1Witness(Field(0)), // update từ api
+                    new UInt64(0), // expirationTimestamp
+                    requestTrees.expirationTree.getLevel1Witness(Field(0)), // update từ api
+                    requestTrees.resultTree.getLevel1Witness(Field(0)), // update từ api
+                    sharedAddressStorage.getZkAppRef(
+                        ZkAppIndex.CAMPAIGN,
+                        _.accounts.campaign.publicKey
+                    ),
+                    sharedAddressStorage.getZkAppRef(
+                        ZkAppIndex.FUNDING_REQUESTER,
+                        _.accounts.requester.publicKey
+                    ),
+                    sharedAddressStorage.getZkAppRef(
+                        ZkAppIndex.REQUEST,
+                        _.accounts.request.publicKey
+                    )
+                );
+            },
+            _.feePayer,
+            true,
+            undefined,
+            logger
+        );
     }
 }
 
