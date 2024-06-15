@@ -45,7 +45,7 @@ async function main() {
                 'response',
                 'project',
                 'campaign',
-                'commitment',
+                'nullifier',
                 'funding',
                 'funding_requester',
                 'vesting',

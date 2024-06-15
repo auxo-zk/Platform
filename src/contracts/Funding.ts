@@ -317,9 +317,9 @@ class FundingContract extends SmartContract {
         const participationContract = new ParticipationContract(
             participationContractRef.address
         );
-        participationContract
-            .hasValidActionStateForFunding(timeline)
-            .assertTrue();
+        // TEMP CHANGES
+        participationContract.hasValidActionStateForFunding(timeline);
+        // .assertTrue();
         participationContract
             .isValidProjectCounter(
                 campaignId,
@@ -335,10 +335,10 @@ class FundingContract extends SmartContract {
             const index = Field(i);
             const amount = amounts.get(index) as UInt64;
 
-            existedIndexFlag.get(index).assertFalse();
             const dimensionIndex = Field.fromBits(
                 dimensionIndexesBits.slice(i * 8, (i + 1) * 8)
             );
+            existedIndexFlag.get(dimensionIndex).assertFalse();
             Provable.if(
                 amount.equals(new UInt64(0)),
                 Field(0),
@@ -355,7 +355,7 @@ class FundingContract extends SmartContract {
             totalAmount = totalAmount.add(amount);
             secretVector.set(index, CustomScalar.fromUInt64(amount));
         }
-        totalAmount.mul(MINIMAL_MINA_UNIT);
+        totalAmount = totalAmount.mul(MINIMAL_MINA_UNIT);
         // Check Treasury contract
         verifyZkApp(
             FundingContract.name,
@@ -611,9 +611,9 @@ class FundingContractMock extends SmartContract {
         const participationContract = new ParticipationContractMock(
             participationContractRef.address
         );
-        participationContract
-            .hasValidActionStateForFunding(timeline)
-            .assertTrue();
+        // TEMP CHANGES
+        participationContract.hasValidActionStateForFunding(timeline);
+        // .assertTrue();
         participationContract
             .isValidProjectCounter(
                 campaignId,

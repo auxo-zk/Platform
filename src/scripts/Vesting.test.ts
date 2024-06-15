@@ -99,15 +99,15 @@ import {
     DefaultRootForVestingTree,
 } from '../storages/VestingStorage';
 import {
-    CommitmentContract,
-    RollupCommitment,
-    RollupCommitmentProof,
-} from '../contracts/Commitment';
+    NullifierContract,
+    RollupNullifier,
+    RollupNullifierProof,
+} from '../contracts/Nullifier';
 import {
-    CommitmentStorage,
-    CommitmentLeaf,
-    DefaultRootForCommitmentMap,
-} from '../storages/CommitmentStorage';
+    NullifierStorage,
+    NullifierLeaf,
+    DefaultRootForNullifierMap,
+} from '../storages/NullifierStorage';
 import { ParticipationStorage } from '../storages';
 
 let proofsEnabled = false;
@@ -140,9 +140,9 @@ describe('TreasuryManager', () => {
         vestingContractPrivateKey: PrivateKey,
         vestingContractPublicKey: PublicKey,
         vestingContract: VestingContractMock,
-        commitmentContractPrivateKey: PrivateKey,
-        commitmentContractPublicKey: PublicKey,
-        commitmentContract: CommitmentContract,
+        nullifierContractPrivateKey: PrivateKey,
+        nullifierContractPublicKey: PublicKey,
+        nullifierContract: NullifierContract,
         dkgContractPrivateKey: PrivateKey,
         dkgContractPublicKey: PublicKey,
         requesterContractPrivateKey: PrivateKey,
@@ -193,8 +193,8 @@ describe('TreasuryManager', () => {
         vestingInfoTree: new VestingInfoStorage(),
     };
 
-    const commitmentTrees = {
-        commitmentTree: new CommitmentStorage(),
+    const nullifierTrees = {
+        nullifierTree: new NullifierStorage(),
     };
 
     const dkgTrees = {
@@ -222,7 +222,7 @@ describe('TreasuryManager', () => {
         await RollupParticipation.compile({ cache });
         await RollupFunding.compile({ cache });
         await RollupTreasuryManager.compile({ cache });
-        await RollupCommitment.compile({ cache });
+        await RollupNullifier.compile({ cache });
 
         vkVestingContact = (await VestingContractMock.compile({ cache }))
             .verificationKey;
@@ -233,7 +233,7 @@ describe('TreasuryManager', () => {
             await ParticipationContractMock.compile({ cache });
             await FundingContractMock.compile({ cache });
             await TreasuryManagerContractMock.compile({ cache });
-            await CommitmentContract.compile({ cache });
+            await NullifierContract.compile({ cache });
         }
 
         ({ privateKey: deployerKey, publicKey: deployerAccount } =
@@ -296,12 +296,9 @@ describe('TreasuryManager', () => {
         vestingContractPublicKey = vestingContractPrivateKey.toPublicKey();
         vestingContract = new VestingContractMock(vestingContractPublicKey);
 
-        commitmentContractPrivateKey = PrivateKey.random();
-        commitmentContractPublicKey =
-            commitmentContractPrivateKey.toPublicKey();
-        commitmentContract = new CommitmentContract(
-            commitmentContractPublicKey
-        );
+        nullifierContractPrivateKey = PrivateKey.random();
+        nullifierContractPublicKey = nullifierContractPrivateKey.toPublicKey();
+        nullifierContract = new NullifierContract(nullifierContractPublicKey);
 
         zkAppStorage = Utilities.getZkAppStorage({
             campaignAddress: campaignContractPublicKey,
@@ -312,8 +309,7 @@ describe('TreasuryManager', () => {
             dkgAddress: dkgContractPublicKey,
             requesterAddress: requesterContractPublicKey,
             requestAddress: requestContractPublicKey,
-            vestingAddress: vestingContractPublicKey,
-            commitmentAddress: commitmentContractPublicKey,
+            nullifierAddress: nullifierContractPublicKey,
         });
 
         await localDeploy();
@@ -342,7 +338,7 @@ describe('TreasuryManager', () => {
 
             fundingContract.approve(treasuryManagerTokenContract.self);
 
-            await commitmentContract.deploy();
+            await nullifierContract.deploy();
         });
         await tx.prove();
         await tx
@@ -354,7 +350,7 @@ describe('TreasuryManager', () => {
                 fundingContractPrivateKey,
                 treasuryManagerContractPrivateKey,
                 vestingContractPrivateKey,
-                commitmentContractPrivateKey,
+                nullifierContractPrivateKey,
             ])
             .send();
     }
@@ -542,11 +538,11 @@ describe('TreasuryManager', () => {
                 DefaultRootForVestingTree
             );
             expect(vestingContract.nextVestingId.get()).toEqual(Field(0));
-            expect(commitmentContract.actionState.get()).toEqual(
+            expect(nullifierContract.actionState.get()).toEqual(
                 Reducer.initialActionState
             );
-            expect(commitmentContract.commitmentRoot.get()).toEqual(
-                DefaultRootForCommitmentMap
+            expect(nullifierContract.nullifierRoot.get()).toEqual(
+                DefaultRootForNullifierMap
             );
         });
 
@@ -1319,8 +1315,8 @@ describe('TreasuryManager', () => {
                     vestingTrees.vestingInfoTree.getLevel1Witness(
                         VestingInfoStorage.calculateLevel1Index(vestingId)
                     ),
-                    commitmentTrees.commitmentTree.getLevel1Witness(
-                        CommitmentStorage.calculateLevel1Index({
+                    nullifierTrees.nullifierTree.getLevel1Witness(
+                        NullifierStorage.calculateLevel1Index({
                             nullifier,
                             projectId,
                             vestingId,
@@ -1335,8 +1331,8 @@ describe('TreasuryManager', () => {
                         participationContractPublicKey
                     ),
                     zkAppStorage.getZkAppRef(
-                        Field(ZkAppIndex.COMMITMENT),
-                        commitmentContractPublicKey
+                        Field(ZkAppIndex.NULLIFIER),
+                        nullifierContractPublicKey
                     )
                 );
             });
@@ -1344,7 +1340,7 @@ describe('TreasuryManager', () => {
             await tx.sign([senderKey]).send();
 
             const actions: Action[] = (await Mina.fetchActions(
-                commitmentContractPublicKey
+                nullifierContractPublicKey
             )) as Action[];
             expect(actions.length).toEqual(1);
         });

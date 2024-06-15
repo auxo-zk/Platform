@@ -13,7 +13,7 @@ let filesData: key[] = [];
 const fileNames = [
     'project.json',
     'campaign.json',
-    'commitment.json',
+    'nullifier.json',
     'funding.json',
     'funding_requester.json',
     'vesting.json',

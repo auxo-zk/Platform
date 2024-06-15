@@ -19,6 +19,7 @@ import {
     Proof,
 } from 'o1js';
 import fs from 'fs';
+import axios from 'axios';
 import {
     ProjectAction,
     ProjectContract,
@@ -155,13 +156,11 @@ const ROLLUP_PROJECT = false;
 const FIRST_PROJECT_JOIN = false;
 const SECOND_PROJECT_JOIN = false;
 const ROLLUP_PARTICIPATION = false;
-const FUND_PROJECT = true;
-const ROLLUP_FUNDING = true;
-const COMPLETE_CAMPAIGN = false;
-const ROLLUP_TREASURY_MANAGER = false;
-const CLAIM_FUND_PR1 = false;
-const CLAIM_FUND_PR2 = false;
-const ROLLUP_TREASURY_MANAGER_2 = false;
+const FUND_PROJECT = false;
+const ROLLUP_FUNDING = false;
+
+const COMPLETE_CAMPAIGN = true;
+const ROLLUP_TREASURY_MANAGER = true;
 
 async function main() {
     const doProofs = true;
@@ -185,7 +184,7 @@ async function main() {
                 'response',
                 'project',
                 'campaign',
-                'commitment',
+                'nullifier',
                 'funding',
                 'funding_requester',
                 'vesting',
@@ -243,8 +242,8 @@ async function main() {
         _.accounts.campaign.publicKey
     );
     sharedAddressStorage.updateAddress(
-        Field(ZkAppIndex.COMMITMENT),
-        _.accounts.commitment.publicKey
+        Field(ZkAppIndex.NULLIFIER),
+        _.accounts.nullifier.publicKey
     );
     sharedAddressStorage.updateAddress(
         Field(ZkAppIndex.FUNDING),
@@ -253,14 +252,6 @@ async function main() {
     sharedAddressStorage.updateAddress(
         Field(ZkAppIndex.FUNDING_REQUESTER),
         _.accounts.funding_requester.publicKey
-    );
-    sharedAddressStorage.updateAddress(
-        Field(ZkAppIndex.VESTING),
-        _.accounts.vesting.publicKey
-    );
-    sharedAddressStorage.updateAddress(
-        Field(ZkAppIndex.VESTING_REQUESTER),
-        _.accounts.vesting_requester.publicKey
     );
     sharedAddressStorage.updateAddress(
         Field(ZkAppIndex.PARTICIPATION),
@@ -507,7 +498,7 @@ async function main() {
 
     const fundingRequesterTrees = {
         timestampTree: new TimestampStorage(),
-        commitmentTree: new CommitmentStorage(),
+        nullifierTree: new CommitmentStorage(),
         requesterKeyIndexTree: new RequesterKeyIndexStorage(),
         requesterAccumulationTree: new RequesterAccumulationStorage(),
     };
@@ -551,7 +542,7 @@ async function main() {
     let nextFundingId = Field(0);
 
     let resultVector: UInt64[] = [new UInt64(0), new UInt64(0), new UInt64(0)];
-    start = Date.now() + 1000 * 60 * 10; // 10 minutes
+    start = 0;
     startParticipation = start + CampaignMockData[0].timelinePeriod.preparation;
     startFunding =
         startParticipation + CampaignMockData[0].timelinePeriod.participation;
@@ -781,12 +772,19 @@ async function main() {
             CampaignContract.name,
             'createCampaign',
             async () => {
-                await campaignZkApp.contract.createCampaign(
+                await (
+                    campaignZkApp.contract as CampaignContract
+                ).createCampaign(
                     timeline,
                     IpfsHash.fromString(CampaignMockData[0].ipfsHash),
                     Field(CampaignMockData[0].committeeId),
                     Field(CampaignMockData[0].keyId),
-                    dkgTrees.keyStatusTree.getWitness(Field(0)),
+                    dkgTrees.keyStatusTree.getWitness(
+                        dkgTrees.keyStatusTree.calculateLevel1Index({
+                            committeeId,
+                            keyId,
+                        })
+                    ),
                     zkAppStorageForFundingRequester.getWitness(
                         Field(RequesterAddressBook.TASK_MANAGER)
                     ),
@@ -837,7 +835,9 @@ async function main() {
             CampaignContract.name,
             'rollup',
             async () => {
-                await campaignZkApp.contract.rollup(proof);
+                await (campaignZkApp.contract as CampaignContract).rollup(
+                    proof
+                );
             },
             _.feePayer,
             true,
@@ -867,13 +867,14 @@ async function main() {
     for (let i = 0; i < ProjectMockData[0].members.length; i++) {
         members.push(PublicKey.fromBase58(ProjectMockData[0].members[i]));
     }
+
     if (CREATE_FIRST_PROJECT) {
         await fetchAccounts([_.accounts.project.publicKey]);
         await Utils.proveAndSendTx(
             ProjectContract.name,
             'createProject',
             async () => {
-                await projectZkApp.contract.createProject(
+                await (projectZkApp.contract as ProjectContract).createProject(
                     members,
                     IpfsHash.fromString(ProjectMockData[0].ipfsHash),
                     treasuryPublicKey
@@ -891,13 +892,14 @@ async function main() {
     for (let i = 0; i < ProjectMockData[1].members.length; i++) {
         members.push(PublicKey.fromBase58(ProjectMockData[1].members[i]));
     }
+
     if (CREATE_SECOND_PROJECT) {
         await fetchAccounts([_.accounts.project.publicKey]);
         await Utils.proveAndSendTx(
             ProjectContract.name,
             'createProject',
             async () => {
-                await projectZkApp.contract.createProject(
+                await (projectZkApp.contract as ProjectContract).createProject(
                     members,
                     IpfsHash.fromString(ProjectMockData[1].ipfsHash),
                     treasuryPublicKey
@@ -966,7 +968,7 @@ async function main() {
             ProjectContract.name,
             'rollup',
             async () => {
-                await projectZkApp.contract.rollup(proof);
+                await (projectZkApp.contract as ProjectContract).rollup(proof);
             },
             _.feePayer,
             true,
@@ -988,7 +990,9 @@ async function main() {
             ParticipationContract.name,
             'participateCampaign',
             async () => {
-                await participationZkApp.contract.participateCampaign(
+                await (
+                    participationZkApp.contract as ParticipationContract
+                ).participateCampaign(
                     campaignId,
                     projectId,
                     IpfsHash.fromString(ParticipationMockData[0].ipfsHash),
@@ -1040,7 +1044,9 @@ async function main() {
             ParticipationContract.name,
             'participateCampaign',
             async () => {
-                await participationZkApp.contract.participateCampaign(
+                await (
+                    participationZkApp.contract as ParticipationContract
+                ).participateCampaign(
                     campaignId,
                     projectId,
                     IpfsHash.fromString(ParticipationMockData[1].ipfsHash),
@@ -1148,7 +1154,9 @@ async function main() {
             ParticipationContract.name,
             'rollup',
             async () => {
-                await participationZkApp.contract.rollup(proof);
+                await (
+                    participationZkApp.contract as ParticipationContract
+                ).rollup(proof);
             },
             _.feePayer,
             true,
@@ -1174,51 +1182,11 @@ async function main() {
             }
             totalAmounts.push(totalAmount);
 
-            Provable.log('campaignId: ', campaignId);
-            Provable.log('committeeId: ', committeeId);
-            Provable.log('keyId: ', keyId);
-            Provable.log(
-                'campaignTrees.timelineTree.getLevel1Witness(campaignId),',
-                campaignTrees.timelineTree.getLevel1Witness(campaignId)
-            );
-            Provable.log('projectCounter', projectCounter);
-            Provable.log(
-                'participationTrees.projectCounterTree: ',
-                participationTrees.projectCounterTree.getLevel1Witness(
-                    campaignId
-                )
-            );
-            Provable.log(
-                'fundingRequesterTrees.requesterKeyIndexTree: ',
-                fundingRequesterTrees.requesterKeyIndexTree.getLevel1Witness(
-                    RequesterKeyIndexStorage.calculateLevel1Index(campaignId)
-                )
-            );
-            Provable.log(
-                'keys[Number(committeeId)].key: ',
-                keys[Number(committeeId)].key
-            );
-            Provable.log(
-                'dkgTrees.publicKeyTree: ',
-                dkgTrees.publicKeyTree.getLevel1Witness(
-                    KeyStorage.calculateLevel1Index({
-                        committeeId,
-                        keyId,
-                    })
-                )
-            );
-            Provable.log(
-                'RequesterAddressBook.SUBMISSION: ',
-                zkAppStorageForFundingRequester.getWitness(
-                    Field(RequesterAddressBook.SUBMISSION)
-                )
-            );
-
             await Utils.proveAndSendTx(
                 FundingContract.name,
                 'fund',
                 async () => {
-                    await fundingZkApp.contract.fund(
+                    await (fundingZkApp.contract as FundingContract).fund(
                         campaignId,
                         timeline,
                         campaignTrees.timelineTree.getLevel1Witness(campaignId),
@@ -1237,7 +1205,7 @@ async function main() {
                                 campaignId
                             )
                         ),
-                        keys[Number(committeeId)].key,
+                        PublicKey.fromGroup(keys[Number(committeeId)].key!),
                         dkgTrees.publicKeyTree.getLevel1Witness(
                             KeyStorage.calculateLevel1Index({
                                 committeeId,
@@ -1327,7 +1295,7 @@ async function main() {
             FundingContract.name,
             'rollup',
             async () => {
-                await fundingZkApp.contract.rollup(proof);
+                await (fundingZkApp.contract as FundingContract).rollup(proof);
             },
             _.feePayer,
             true,
@@ -1337,11 +1305,63 @@ async function main() {
     }
 
     if (COMPLETE_CAMPAIGN) {
+        await fetchAccounts([
+            _.accounts.campaign.publicKey,
+            _.accounts.dkg.publicKey,
+            _.accounts.request.publicKey,
+            _.accounts.funding_requester.publicKey,
+            _.accounts.funding.publicKey,
+            _.accounts.participation.publicKey,
+            _.accounts.project.publicKey,
+            _.accounts.treasury_manager.publicKey,
+        ]);
+
+        console.log('Fetch success');
+
+        const [taskIdLeafs, expirationLeafs, resultLeafs] = await Promise.all([
+            (
+                await axios.get(
+                    `https://api-dev.auxo.fund/v0/storages/request/task/leafs`
+                )
+            ).data,
+            (
+                await axios.get(
+                    `https://api-dev.auxo.fund/v0/storages/request/expiration/leafs`
+                )
+            ).data,
+            (
+                await axios.get(
+                    `https://api-dev.auxo.fund/v0/storages/request/result/leafs`
+                )
+            ).data,
+        ]);
+
+        Object.entries(taskIdLeafs).map(([index, data]: [string, any]) => {
+            requestTrees.taskIdTree.updateLeaf(
+                { level1Index: Field.from(index) },
+                Field.from(data.leaf)
+            );
+        });
+        Object.entries(expirationLeafs).map(([index, data]: [string, any]) => {
+            requestTrees.expirationTree.updateLeaf(
+                { level1Index: Field.from(index) },
+                Field.from(data.leaf)
+            );
+        });
+        Object.entries(resultLeafs).map(([index, data]: [string, any]) => {
+            requestTrees.resultTree.updateLeaf(
+                { level1Index: Field.from(index) },
+                Field.from(data.leaf)
+            );
+        });
+
         await Utils.proveAndSendTx(
             TreasuryManagerContract.name,
             'completeCampaign',
             async () => {
-                await treasuryManagerZkApp.contract.completeCampaign(
+                await (
+                    treasuryManagerZkApp.contract as TreasuryManagerContract
+                ).completeCampaign(
                     campaignId,
                     requestId,
                     timeline,
@@ -1349,17 +1369,25 @@ async function main() {
                     treasuryManagerTrees.campaignStateTree.getLevel1Witness(
                         campaignId
                     ),
-                    requestTrees.taskIdTree.getLevel1Witness(Field(0)), // update từ api
-                    new UInt64(0), // expirationTimestamp
-                    requestTrees.expirationTree.getLevel1Witness(Field(0)), // update từ api
-                    requestTrees.resultTree.getLevel1Witness(Field(0)), // update từ api
+                    requestTrees.taskIdTree.getLevel1Witness(
+                        requestTrees.taskIdTree.calculateLevel1Index(Field(0))
+                    ), // update từ api
+                    new UInt64(18000000), // expirationTimestamp
+                    requestTrees.expirationTree.getLevel1Witness(
+                        requestTrees.expirationTree.calculateLevel1Index(
+                            Field(0)
+                        )
+                    ), // update từ api
+                    requestTrees.resultTree.getLevel1Witness(
+                        requestTrees.resultTree.calculateLevel1Index(Field(0))
+                    ), // update từ api
                     sharedAddressStorage.getZkAppRef(
                         ZkAppIndex.CAMPAIGN,
                         _.accounts.campaign.publicKey
                     ),
                     sharedAddressStorage.getZkAppRef(
                         ZkAppIndex.FUNDING_REQUESTER,
-                        _.accounts.requester.publicKey
+                        _.accounts.funding_requester.publicKey
                     ),
                     sharedAddressStorage.getZkAppRef(
                         ZkAppIndex.REQUEST,
@@ -1373,6 +1401,51 @@ async function main() {
             logger
         );
     }
+
+    if (ROLLUP_TREASURY_MANAGER) {
+        await fetchAccounts([_.accounts.treasury_manager.publicKey]);
+
+        const actions: Action[] = (await Mina.fetchActions(
+            _.accounts.treasury_manager.publicKey
+        )) as Action[];
+
+        const treasuryManagerAction = TreasuryManagerAction.fromFields(
+            Utilities.stringArrayToFields(actions[0].actions[0])
+        );
+
+        let proof = await RollupTreasuryManager.firstStep(
+            treasuryManagerTrees.campaignStateTree.root,
+            treasuryManagerTrees.claimedAmountTree.root,
+            (
+                treasuryManagerZkApp.contract as TreasuryManagerContract
+            ).actionState.get()
+        );
+
+        proof = await RollupTreasuryManager.completeCampaignStep(
+            proof,
+            treasuryManagerAction,
+            treasuryManagerTrees.campaignStateTree.getLevel1Witness(campaignId)
+        );
+
+        await Utils.proveAndSendTx(
+            TreasuryManagerContract.name,
+            'rollup',
+            async () => {
+                await (
+                    treasuryManagerZkApp.contract as TreasuryManagerContract
+                ).rollup(proof);
+            },
+            _.feePayer,
+            true,
+            undefined,
+            logger
+        );
+    }
+
+    treasuryManagerTrees.campaignStateTree.updateLeaf(
+        campaignId,
+        Field(CampaignStateEnum.COMPLETED)
+    );
 }
 
 main();

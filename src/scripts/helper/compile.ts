@@ -27,9 +27,9 @@ import {
 } from '@auxo-dev/dkg';
 import { VestingContract } from '../../contracts/Vesting.js';
 import {
-    CommitmentContract,
-    RollupCommitment,
-} from '../../contracts/Commitment.js';
+    NullifierContract,
+    RollupNullifier,
+} from '../../contracts/Nullifier.js';
 
 export { compile };
 
@@ -66,7 +66,7 @@ async function compile(
             await Utils.compile(RollupParticipation, cache, profiler, logger);
             await Utils.compile(RollupFunding, cache, profiler, logger);
             await Utils.compile(RollupTreasuryManager, cache, profiler, logger);
-            await Utils.compile(RollupCommitment, cache, profiler, logger);
+            await Utils.compile(RollupNullifier, cache, profiler, logger);
             await Utils.compile(ProjectContract, cache, profiler, logger);
             await Utils.compile(CampaignContract, cache, profiler, logger);
             await Utils.compile(ParticipationContract, cache, profiler, logger);
@@ -78,7 +78,7 @@ async function compile(
                 logger
             );
             await Utils.compile(VestingContract, cache, profiler, logger);
-            await Utils.compile(CommitmentContract, cache, profiler, logger);
+            await Utils.compile(NullifierContract, cache, profiler, logger);
         }
     } catch (error) {
         console.error(error);

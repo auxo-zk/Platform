@@ -11,10 +11,10 @@ export const INSTANCE_LIMITS = {
     TREASURY_MANAGER_TREE_SIZE: 2 ** 5 * Constants.ENCRYPTION_LIMITS.DIMENSION,
     CLAIMED_INDEX_TREE_SIZE:
         2 ** 5 * Constants.ENCRYPTION_LIMITS.FULL_DIMENSION,
-    COMMITMENT_HASH_TREE_SIZE: 2 ** 8,
+    NULLIFIER_HASH_TREE_SIZE: 2 ** 8,
 };
 
-export const MINIMAL_MINA_UNIT = 100000000;
+export const MINIMAL_MINA_UNIT = Constants.SECRET_UNIT;
 
 export const THRESHOLD = 5000; // 50%
 
@@ -32,9 +32,7 @@ export enum ZkAppIndex {
     FUNDING,
     TREASURY_MANAGER,
     FUNDING_REQUESTER,
-    VESTING,
-    VESTING_REQUESTER,
-    COMMITMENT,
+    NULLIFIER,
     __LENGTH,
 }
 
@@ -101,8 +99,8 @@ export enum ErrorEnum {
     REQUEST_ID_INDEX = 'Incorrect request Id MT index',
     ACCUMULATION_ROOT = 'Incorrect accumulation Id MT root',
     ACCUMULATION_INDEX = 'Incorrect accumulation Id MT index',
-    COMMITMENT_ROOT = 'Incorrect commitment Id MT root',
-    COMMITMENT_INDEX = 'Incorrect commitment Id MT index',
+    NULLIFIER_ROOT = 'Incorrect nullifier Id MT root',
+    NULLIFIER_INDEX = 'Incorrect nullifier Id MT index',
 
     // RequestContract errors
     REQUESTER_ROOT = 'Incorrect requester MT root',

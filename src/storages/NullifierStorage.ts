@@ -2,11 +2,11 @@ import { Bool, Field, MerkleMap, MerkleMapWitness, Poseidon } from 'o1js';
 
 class Level1MM extends MerkleMap {}
 class Level1Witness extends MerkleMapWitness {}
-const EMPTY_COMMITMENT_MAP = () => new MerkleMap();
+const EMPTY_NULLIFIER_MAP = () => new MerkleMap();
 
-const DefaultRootForCommitmentMap = EMPTY_COMMITMENT_MAP().getRoot();
+const DefaultRootForNullifierMap = EMPTY_NULLIFIER_MAP().getRoot();
 
-abstract class CommitmentStorageBase<RawLeaf> {
+abstract class NullifierStorageBase<RawLeaf> {
     private _level1: Level1MM;
     private _leafs: {
         [key: string]: { raw: RawLeaf | undefined; leaf: Field };
@@ -18,7 +18,7 @@ abstract class CommitmentStorageBase<RawLeaf> {
             leaf: RawLeaf | Field;
         }[]
     ) {
-        this._level1 = EMPTY_COMMITMENT_MAP();
+        this._level1 = EMPTY_NULLIFIER_MAP();
         this._leafs = {};
         if (leafs) {
             for (let i = 0; i < leafs.length; i++) {
@@ -79,15 +79,15 @@ abstract class CommitmentStorageBase<RawLeaf> {
     }
 }
 
-type CommitmentLeaf = Bool;
+type NullifierLeaf = Bool;
 
-class CommitmentStorage extends CommitmentStorageBase<CommitmentLeaf> {
-    static calculateLeaf(used: CommitmentLeaf): Field {
+class NullifierStorage extends NullifierStorageBase<NullifierLeaf> {
+    static calculateLeaf(used: NullifierLeaf): Field {
         return used.toField();
     }
 
-    calculateLeaf(used: CommitmentLeaf): Field {
-        return CommitmentStorage.calculateLeaf(used);
+    calculateLeaf(used: NullifierLeaf): Field {
+        return NullifierStorage.calculateLeaf(used);
     }
 
     static calculateLevel1Index({
@@ -111,7 +111,7 @@ class CommitmentStorage extends CommitmentStorageBase<CommitmentLeaf> {
         projectId: Field;
         vestingId: Field;
     }): Field {
-        return CommitmentStorage.calculateLevel1Index({
+        return NullifierStorage.calculateLevel1Index({
             nullifier,
             projectId, // since one nullifier can be used for many
             vestingId,
@@ -120,11 +120,11 @@ class CommitmentStorage extends CommitmentStorageBase<CommitmentLeaf> {
 }
 
 export {
-    EMPTY_COMMITMENT_MAP,
-    DefaultRootForCommitmentMap,
-    CommitmentStorageBase,
-    CommitmentStorage,
-    CommitmentLeaf,
-    Level1MM as CommitmentLevel1MM,
-    Level1Witness as CommitmentLevel1Witness,
+    EMPTY_NULLIFIER_MAP,
+    DefaultRootForNullifierMap,
+    NullifierStorageBase,
+    NullifierStorage,
+    NullifierLeaf,
+    Level1MM as NullifierLevel1MM,
+    Level1Witness as NullifierLevel1Witness,
 };

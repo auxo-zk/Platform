@@ -1,7 +1,8 @@
 import 'dotenv/config.js';
-import { Mina, Provable, PublicKey, fetchAccount } from 'o1js';
+import { Mina, Provable, PublicKey, fetchAccount, Field } from 'o1js';
 import { fetchAccounts } from './index.js';
 import { Utils } from '@auxo-dev/auxo-libs';
+import { ProjectAction } from '../../contracts/Project.js';
 
 async function main() {
     // Network configuration
@@ -11,26 +12,17 @@ async function main() {
     });
     Mina.setActiveInstance(network);
 
-    // const ACCOUNTS = [
-    //     PublicKey.fromBase58(
-    //         'B62qowQQj1sn5oUWN5kZ6MYHAJNkDUo2J4UvGskY9EGEzzz7ZEkCQaM'
-    //     ),
-    // ];
-
-    // const fetchedAccount = (await fetchAccounts(ACCOUNTS))![0];
-    const fetchedAccount = await fetchAccount({
-        publicKey: PublicKey.fromBase58(
-            'B62qqv5fPwCKAu585VqBSB14w1Y8w5DJHYvwpzSeySmegb9nqjssE1q'
-        ),
-    });
-    Provable.log(fetchedAccount.account?.zkapp);
-
-    const data = await Mina.fetchActions(
+    const rawActions = await Utils.fetchActions(
         PublicKey.fromBase58(
-            'B62qqv5fPwCKAu585VqBSB14w1Y8w5DJHYvwpzSeySmegb9nqjssE1q'
+            'B62qrXSf1v8nhbkqTGvZmThwehN3QDZaT5VzJWsX3d52SNgiQwtCv5y'
         )
     );
-    Provable.log(data);
+
+    const actions: ProjectAction[] = rawActions.map((e) => {
+        let action: Field[] = e.actions[0].map((e) => Field(e));
+        return ProjectAction.fromFields(action);
+    });
+    actions.map((e) => Provable.log(e));
 }
 
 main()

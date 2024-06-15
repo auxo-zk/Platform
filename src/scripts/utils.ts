@@ -25,8 +25,7 @@ export class Utilities {
         participationAddress?: PublicKey;
         fundingAddress?: PublicKey;
         treasuryManagerAddress?: PublicKey;
-        vestingAddress?: PublicKey;
-        commitmentAddress?: PublicKey;
+        nullifierAddress?: PublicKey;
     }): ZkAppStorage {
         const zkAppStorage = new ZkAppStorage();
         if (addresses.committeeAddress) {
@@ -101,16 +100,10 @@ export class Utilities {
                 addresses.treasuryManagerAddress
             );
         }
-        if (addresses.commitmentAddress) {
+        if (addresses.nullifierAddress) {
             zkAppStorage.updateAddress(
-                Field(ZkAppIndex.COMMITMENT),
-                addresses.commitmentAddress
-            );
-        }
-        if (addresses.vestingAddress) {
-            zkAppStorage.updateAddress(
-                Field(ZkAppIndex.VESTING),
-                addresses.vestingAddress
+                Field(ZkAppIndex.NULLIFIER),
+                addresses.nullifierAddress
             );
         }
 

@@ -37,7 +37,7 @@ import { DefaultRootForVestingTree } from '../storages/VestingStorage.js';
 import { DefaultRootForCampaignTree } from '../storages/CampaignStorage.js';
 
 import { VestingContract } from './Vesting.js';
-import { CommitmentContract } from './Commitment.js';
+import { NullifierContract } from './Nullifier.js';
 
 export {
     ProjectAction,

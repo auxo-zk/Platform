@@ -312,7 +312,7 @@ class TreasuryManagerContract extends SmartContract {
         timeline: Timeline,
         timelineWitness: TimelineLevel1Witness,
         campaignStateWitness: CampaignStateLevel1Witness,
-        taskIdWitness: Storage.RequestStorage.RequestLevel1Witness,
+        taskWitness: Storage.RequestStorage.RequestLevel1Witness,
         expirationTimestamp: UInt64,
         expirationWitness: Storage.RequestStorage.RequestLevel1Witness,
         resultWitness: Storage.RequestStorage.RequestLevel1Witness,
@@ -359,7 +359,7 @@ class TreasuryManagerContract extends SmartContract {
             requestId,
             requesterContractRef.address,
             UInt32.fromFields(campaignId.toFields()),
-            taskIdWitness
+            taskWitness
         );
         const requestStatus = requestContract.getRequestStatus(
             requestId,
@@ -403,7 +403,7 @@ class TreasuryManagerContract extends SmartContract {
         timeline: Timeline,
         timelineWitness: TimelineLevel1Witness,
         campaignStateWitness: CampaignStateLevel1Witness,
-        taskIdWitness: Storage.RequestStorage.RequestLevel1Witness,
+        taskWitness: Storage.RequestStorage.RequestLevel1Witness,
         expirationTimestamp: UInt64,
         expirationWitness: Storage.RequestStorage.RequestLevel1Witness,
         resultWitness: Storage.RequestStorage.RequestLevel1Witness,
@@ -449,7 +449,7 @@ class TreasuryManagerContract extends SmartContract {
             requestId,
             requesterContractRef.address,
             UInt32.fromFields(campaignId.toFields()),
-            taskIdWitness
+            taskWitness
         );
         const requestStatus = requestContract.getRequestStatus(
             requestId,
@@ -493,7 +493,7 @@ class TreasuryManagerContract extends SmartContract {
         projectIndex: Field,
         projectIndexWitness: ProjectIndexLevel1Witness,
         requestId: Field,
-        taskIdWitness: Storage.RequestStorage.RequestLevel1Witness,
+        taskWitness: Storage.RequestStorage.RequestLevel1Witness,
         resultVectorWitness: Storage.RequestStorage.RequestLevel1Witness,
         resultValueWitness: Storage.RequestStorage.RequestLevel2Witness,
         treasuryAddress: PublicKey,
@@ -551,7 +551,7 @@ class TreasuryManagerContract extends SmartContract {
             requestId,
             requesterContractRef.address,
             UInt32.fromFields(campaignId.toFields()),
-            taskIdWitness
+            taskWitness
         );
         requestContract.verifyResult(
             requestId,
@@ -872,7 +872,7 @@ class TreasuryManagerContractMock extends SmartContract {
         timeline: Timeline,
         timelineWitness: TimelineLevel1Witness,
         campaignStateWitness: CampaignStateLevel1Witness,
-        // taskIdWitness: Storage.RequestStorage.RequestLevel1Witness,
+        // taskWitness: Storage.RequestStorage.RequestLevel1Witness,
         expirationTimestamp: UInt64,
         // expirationWitness: Storage.RequestStorage.RequestLevel1Witness,
         // resultWitness: Storage.RequestStorage.RequestLevel1Witness,
@@ -965,7 +965,7 @@ class TreasuryManagerContractMock extends SmartContract {
         projectIndex: Field,
         projectIndexWitness: ProjectIndexLevel1Witness,
         requestId: Field,
-        // taskIdWitness: Storage.RequestStorage.RequestLevel1Witness,
+        // taskWitness: Storage.RequestStorage.RequestLevel1Witness,
         // resultVectorWitness: Storage.RequestStorage.RequestLevel1Witness,
         // resultValueWitness: Storage.RequestStorage.RequestLevel2Witness,
         treasuryAddress: PublicKey,
@@ -1014,7 +1014,7 @@ class TreasuryManagerContractMock extends SmartContract {
                 projectIndexWitness
             )
             .assertTrue();
-        // const requestContract = new DkgZkApp.Request.RequestContract(
+        // const requestContract = new RequestContract(
         //     requestContractRef.address
         // );
         const dimensionIndex = UInt8.from(projectIndex.sub(1));

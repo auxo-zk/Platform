@@ -187,7 +187,7 @@ async function main() {
                 'response',
                 'project',
                 'campaign',
-                'commitment',
+                'nullifier',
                 'funding',
                 'funding_requester',
                 'vesting',
@@ -207,7 +207,7 @@ async function main() {
     Provable.log('response: ', _.accounts.response.publicKey);
     Provable.log('project: ', _.accounts.project.publicKey);
     Provable.log('campaign: ', _.accounts.campaign.publicKey);
-    Provable.log('commitment: ', _.accounts.commitment.publicKey);
+    Provable.log('nullifier: ', _.accounts.nullifier.publicKey);
     Provable.log('funding: ', _.accounts.funding.publicKey);
     Provable.log('funding_requester: ', _.accounts.funding_requester.publicKey);
     Provable.log('vesting: ', _.accounts.vesting.publicKey);

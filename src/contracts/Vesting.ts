@@ -61,11 +61,11 @@ import { TreasuryAddressLevel1Witness } from '../storages/ProjectStorage.js';
 import { ClaimedAmountLevel1Witness } from '../storages/TreasuryManagerStorage.js';
 
 import { ProjectContract } from './Project.js';
-import { CommitmentContract } from './Commitment.js';
+import { NullifierContract } from './Nullifier.js';
 import { ParticipationContract } from './Participation.js';
 
 import { ProjectIndexLevel1Witness } from '../storages/ParticipationStorage.js';
-import { CommitmentLevel1Witness } from '../storages/CommitmentStorage.js';
+import { NullifierLevel1Witness } from '../storages/NullifierStorage.js';
 import { TreasuryManagerContract } from './TreasuryManager.js';
 
 export { VestingContract, VestingContractMock };
@@ -184,14 +184,14 @@ class VestingContract extends SmartContract {
         keyWitnessForDkg: DkgStorage.DKGStorage.DkgLevel1Witness,
         treasuryAddressWitness: TreasuryAddressLevel1Witness,
         vestingInfoWitness: VestingLevel1Witness,
-        commitmentWitness: CommitmentLevel1Witness,
-        commitmentInFundingWitness: RequesterLevel1Witness,
+        nullifierWitness: NullifierLevel1Witness,
+        nullifierInFundingWitness: RequesterLevel1Witness,
         fundingContractWitness: AddressWitness,
         dkgContractRef: ZkAppRef,
         projectContractRef: ZkAppRef,
         participationContractRef: ZkAppRef,
         requesterContractRef: ZkAppRef,
-        commitmentContractRef: ZkAppRef,
+        nullifierContractRef: ZkAppRef,
         requesterForVestingAddress: PublicKey
     ) {
         // Only accept yes and no
@@ -219,9 +219,9 @@ class VestingContract extends SmartContract {
         );
         verifyZkApp(
             VestingContract.name,
-            commitmentContractRef,
+            nullifierContractRef,
             zkAppRoot,
-            Field(ZkAppIndex.COMMITMENT)
+            Field(ZkAppIndex.NULLIFIER)
         );
 
         const projectContract = new ProjectContract(projectContractRef.address);
@@ -234,14 +234,14 @@ class VestingContract extends SmartContract {
         );
 
         // send commit
-        const commitmentContract = new CommitmentContract(
-            commitmentContractRef.address
+        const nullifierContract = new NullifierContract(
+            nullifierContractRef.address
         );
-        await commitmentContract.commit(
+        await nullifierContract.commit(
             nullifier,
             projectId,
             vestingId,
-            commitmentWitness
+            nullifierWitness
         );
 
         // check project index in participation
@@ -260,7 +260,7 @@ class VestingContract extends SmartContract {
         const dimensionIndex = UInt8.from(projectIndex.sub(1));
 
         // verify if they have invested
-        const commitmentInFunding = DkgLibs.Requester.calculateCommitment(
+        const nullifierInFunding = DkgLibs.Requester.calculateCommitment(
             nullifier,
             UInt32.fromFields(vestingInfo.campaignId.toFields()),
             dimensionIndex,
@@ -271,8 +271,8 @@ class VestingContract extends SmartContract {
         );
         requesterContract.verifyCommitment(
             fundingIndex,
-            commitmentInFunding,
-            commitmentInFundingWitness
+            nullifierInFunding,
+            nullifierInFundingWitness
         );
 
         // vote
@@ -629,14 +629,14 @@ class VestingContractMock extends SmartContract {
         // keyWitnessForDkg: DkgStorage.DKGStorage.DkgLevel1Witness,
         treasuryAddressWitness: TreasuryAddressLevel1Witness,
         vestingInfoWitness: VestingLevel1Witness,
-        commitmentWitness: CommitmentLevel1Witness,
-        // commitmentInFundingWitness: RequesterLevel1Witness,
+        nullifierWitness: NullifierLevel1Witness,
+        // nullifierInFundingWitness: RequesterLevel1Witness,
         // fundingContractWitness: AddressWitness,
         // dkgContractRef: ZkAppRef,
         projectContractRef: ZkAppRef,
         participationContractRef: ZkAppRef,
         // requesterContractRef: ZkAppRef,
-        commitmentContractRef: ZkAppRef
+        nullifierContractRef: ZkAppRef
         // requesterForVestingAddress: PublicKey
     ) {
         // Only accept yes and no
@@ -664,9 +664,9 @@ class VestingContractMock extends SmartContract {
         // );
         verifyZkApp(
             VestingContract.name,
-            commitmentContractRef,
+            nullifierContractRef,
             zkAppRoot,
-            Field(ZkAppIndex.COMMITMENT)
+            Field(ZkAppIndex.NULLIFIER)
         );
 
         const projectContract = new ProjectContract(projectContractRef.address);
@@ -679,14 +679,14 @@ class VestingContractMock extends SmartContract {
         );
 
         // send commit
-        const commitmentContract = new CommitmentContract(
-            commitmentContractRef.address
+        const nullifierContract = new NullifierContract(
+            nullifierContractRef.address
         );
-        await commitmentContract.commit(
+        await nullifierContract.commit(
             nullifier,
             projectId,
             vestingId,
-            commitmentWitness
+            nullifierWitness
         );
 
         // check project index in participation
@@ -705,7 +705,7 @@ class VestingContractMock extends SmartContract {
         // const dimensionIndex = UInt8.from(projectIndex.sub(1));
 
         // verify if invested
-        // const commitmentInFunding = DkgLibs.Requester.calculateCommitment(
+        // const nullifierInFunding = DkgLibs.Requester.calculateNullifier(
         //     nullifier,
         //     UInt32.fromFields(vestingInfo.campaignId.toFields()),
         //     dimensionIndex,
@@ -714,10 +714,10 @@ class VestingContractMock extends SmartContract {
         // const requesterContract = new RequesterContract(
         //     requesterContractRef.address
         // );
-        // requesterContract.verifyCommitment(
+        // requesterContract.verifyNullifier(
         //     fundingIndex,
-        //     commitmentInFunding,
-        //     commitmentInFundingWitness
+        //     nullifierInFunding,
+        //     nullifierInFundingWitness
         // );
 
         // vote
