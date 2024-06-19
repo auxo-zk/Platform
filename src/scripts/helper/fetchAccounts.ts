@@ -1,6 +1,8 @@
 import 'dotenv/config.js';
 import { Mina, Provable, PublicKey, fetchAccount } from 'o1js';
 import { fetchAccounts } from './index.js';
+import { ProjectContract } from '../../contracts/Project.js';
+import { CampaignContract } from '../../contracts/Campaign.js';
 
 async function main() {
     // Network configuration
@@ -12,11 +14,15 @@ async function main() {
 
     const ACCOUNTS = [
         PublicKey.fromBase58(
-            'B62qowQQj1sn5oUWN5kZ6MYHAJNkDUo2J4UvGskY9EGEzzz7ZEkCQaM'
+            'B62qpaYMPKGMpC4UvuscjW5VoX21eQJFWmcGxGW1zVqfMAUC18yx933'
         ),
     ];
 
     Provable.log(await fetchAccounts(ACCOUNTS));
+
+    const someContract = new CampaignContract(ACCOUNTS[0]);
+
+    Provable.log(someContract.zkAppRoot.get());
 }
 
 main()

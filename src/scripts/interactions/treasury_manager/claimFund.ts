@@ -80,7 +80,7 @@ async function main() {
     };
 
     const campaignId = 0;
-    const projectId = 0;
+    const projectId = 1;
 
     const input = (
         await axios.get(
@@ -147,13 +147,13 @@ async function main() {
         treasuryAddress,
     ]);
 
-    Provable.log('treasuryAddress: ', treasuryAddress);
     Provable.log(
         `root onchain: `,
         new ProjectContract(
             _.accounts.project.publicKey
         ).treasuryAddressRoot.get()
     );
+    Provable.log('treasuryAddress: ', treasuryAddress);
     Provable.log('balance before: ', Account(treasuryAddress).balance.get());
 
     // Compile programs

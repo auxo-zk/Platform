@@ -147,7 +147,7 @@ import { Action } from './interfaces/action.interface.js';
 
 import 'dotenv/config';
 
-const DEPLOY = false;
+const DEPLOY = true;
 const CREATE_CAMPAIGN = false;
 const ROLLUP_CAMPAIGN = false;
 const CREATE_FIRST_PROJECT = false;
@@ -159,8 +159,8 @@ const ROLLUP_PARTICIPATION = false;
 const FUND_PROJECT = false;
 const ROLLUP_FUNDING = false;
 
-const COMPLETE_CAMPAIGN = true;
-const ROLLUP_TREASURY_MANAGER = true;
+const COMPLETE_CAMPAIGN = false;
+const ROLLUP_TREASURY_MANAGER = false;
 
 async function main() {
     const doProofs = true;
@@ -194,13 +194,6 @@ async function main() {
             ],
         }
     );
-
-    // compile all contract
-    await compile(undefined, [], undefined, {
-        error: true,
-        info: true,
-        memoryUsage: true,
-    });
 
     //#region "Construct address books"
     const sharedAddressStorage = new AddressStorage();
@@ -278,6 +271,8 @@ async function main() {
             _.accounts.request.publicKey.toBase58()
         );
     //#endregion
+
+    Provable.log('zkApp: ', sharedAddressStorage.root);
 
     //#region "Prepare zkApps"
     let projectZkApp = Utils.getZkApp(
@@ -403,6 +398,13 @@ async function main() {
         { zkAppRoot: sharedAddressStorage.root }
     );
     //#endregion
+
+    // compile all contract
+    await compile(undefined, [], undefined, {
+        error: true,
+        info: true,
+        memoryUsage: true,
+    });
 
     if (DEPLOY) {
         await Utils.deployZkApps(

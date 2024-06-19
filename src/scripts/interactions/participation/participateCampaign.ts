@@ -79,7 +79,7 @@ async function main() {
         _.accounts.campaign.publicKey,
     ]);
 
-    const campaignId = 1;
+    const campaignId = 0;
     const projectId = 0;
 
     const input = (
@@ -94,16 +94,14 @@ async function main() {
 
     const partiContract = new ParticipationContract(partiAddress);
 
-    const ipfsHash = IpfsHash.fromString(ParticipationMockData[0].ipfsHash);
-    const startParticipation = CampaignMockData[0].timelinePeriod.preparation;
-    const startFunding =
-        startParticipation + CampaignMockData[0].timelinePeriod.participation;
-    const startRequesting =
-        startFunding + CampaignMockData[0].timelinePeriod.funding;
+    const ipfsHash = IpfsHash.fromString(
+        'QmRhr9bhHt5AxnAZXSNr2pxVoBHVroX3S8Cp1pkV7VRtF6'
+    );
+
     const timeline = new Timeline({
-        startParticipation: new UInt64(startParticipation),
-        startFunding: new UInt64(startFunding),
-        startRequesting: new UInt64(startRequesting),
+        startParticipation: new UInt64(input.timeline.startParticipation),
+        startFunding: new UInt64(input.timeline.startFunding),
+        startRequesting: new UInt64(input.timeline.startRequesting),
     });
     const timelineWitness = TimelineLevel1Witness.fromJSON(
         input.timelineWitness
@@ -123,6 +121,21 @@ async function main() {
     );
     const campaignContractRef = ZkAppRef.fromJSON(input.campaignContractRef);
     const projectContractRef = ZkAppRef.fromJSON(input.projectContractRef);
+
+    console.log(
+        Field(campaignId),
+        Field(projectId),
+        ipfsHash,
+        timeline,
+        timelineWitness,
+        memberWitnessLevel1,
+        memberWitnessLevel2,
+        projectIndexWitness,
+        projectCounter,
+        projectCounterWitness,
+        campaignContractRef,
+        projectContractRef
+    );
 
     await Utils.proveAndSendTx(
         ParticipationContract.name,

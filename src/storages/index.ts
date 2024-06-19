@@ -12,5 +12,6 @@ export {
     ParticipationStorage,
     FundingStorage,
     TreasuryManagerStorage,
+    NullifierStorage,
     SharedStorage,
 };

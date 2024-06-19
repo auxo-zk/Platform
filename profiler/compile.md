@@ -1992,3 +1992,311 @@ In total, it took 287.49 seconds to run the entire benchmark
 In total, it took 174.69 seconds to run the entire benchmark
 
 
+## Times for compile
+
+| Name | time passed in s |
+|---|---|
+|UpdateTask.compile|18.41|
+|RequesterContract.compile|9.75|
+|UpdateKey.compile|11.49|
+|DkgContract.compile|11.3|
+|ComputeResult.compile|11.21|
+|UpdateRequest.compile|10.29|
+|RequestContract.compile|12.8|
+|RollupProject.compile|12.63|
+|RollupCampaign.compile|6.33|
+|RollupParticipation.compile|8.45|
+|RollupFunding.compile|11.28|
+|RollupTreasuryManager.compile|18.66|
+|RollupNullifier.compile|123.42|
+|ProjectContract.compile|11.19|
+|CampaignContract.compile|6.9|
+|ParticipationContract.compile|13.17|
+|FundingContract.compile|18.27|
+|TreasuryManagerContract.compile|20.42|
+|VestingContract.compile|10.64|
+|NullifierContract.compile|45.98|
+
+In total, it took 392.58 seconds to run the entire benchmark
+
+
+## Times for compile
+
+| Name | time passed in s |
+|---|---|
+|UpdateTask.compile|16.62|
+|RequesterContract.compile|19.33|
+|UpdateKey.compile|10.38|
+|DkgContract.compile|6.54|
+|ComputeResult.compile|5.17|
+|UpdateRequest.compile|8.58|
+|RequestContract.compile|10.69|
+|RollupProject.compile|11.93|
+|RollupCampaign.compile|7.36|
+|RollupParticipation.compile|5.52|
+|RollupFunding.compile|9.56|
+|RollupTreasuryManager.compile|13.32|
+|RollupNullifier.compile|7.82|
+|ProjectContract.compile|7.35|
+|CampaignContract.compile|5.86|
+|ParticipationContract.compile|8.5|
+|FundingContract.compile|14.48|
+|TreasuryManagerContract.compile|19.69|
+|VestingContract.compile|7.32|
+|NullifierContract.compile|6.79|
+
+In total, it took 202.79 seconds to run the entire benchmark
+
+
+## Times for compile
+
+| Name | time passed in s |
+|---|---|
+|UpdateTask.compile|14.18|
+|RequesterContract.compile|7.3|
+|UpdateKey.compile|6.7|
+|DkgContract.compile|5.77|
+|ComputeResult.compile|4.62|
+|UpdateRequest.compile|7.14|
+|RequestContract.compile|8.95|
+|RollupProject.compile|7.48|
+|RollupCampaign.compile|4.94|
+|RollupParticipation.compile|4.16|
+|RollupFunding.compile|7.74|
+|RollupTreasuryManager.compile|9.2|
+|RollupNullifier.compile|7.93|
+|ProjectContract.compile|5.81|
+|CampaignContract.compile|5.02|
+|ParticipationContract.compile|8.7|
+|FundingContract.compile|11.28|
+|TreasuryManagerContract.compile|13.61|
+|VestingContract.compile|6.84|
+|NullifierContract.compile|5.19|
+
+In total, it took 152.57 seconds to run the entire benchmark
+
+
+## Times for compile
+
+| Name | time passed in s |
+|---|---|
+|UpdateTask.compile|17.49|
+|RequesterContract.compile|8.21|
+|UpdateKey.compile|9.33|
+|DkgContract.compile|8.16|
+|ComputeResult.compile|6.13|
+|UpdateRequest.compile|9.54|
+|RequestContract.compile|12.7|
+|RollupProject.compile|9.61|
+|RollupCampaign.compile|6.89|
+|RollupParticipation.compile|5.06|
+|RollupFunding.compile|7.93|
+|RollupTreasuryManager.compile|12.62|
+|RollupNullifier.compile|8.32|
+|ProjectContract.compile|7|
+|CampaignContract.compile|7.82|
+|ParticipationContract.compile|9.12|
+|FundingContract.compile|13.87|
+|TreasuryManagerContract.compile|16.45|
+|VestingContract.compile|8.94|
+|NullifierContract.compile|8.61|
+
+In total, it took 193.81 seconds to run the entire benchmark
+
+
+## Times for compile
+
+| Name | time passed in s |
+|---|---|
+|UpdateTask.compile|14.44|
+|RequesterContract.compile|8.97|
+|UpdateKey.compile|8.72|
+|DkgContract.compile|7.33|
+|ComputeResult.compile|6.73|
+|UpdateRequest.compile|8.41|
+|RequestContract.compile|9.53|
+|RollupProject.compile|7.78|
+|RollupCampaign.compile|5.77|
+|RollupParticipation.compile|4.51|
+|RollupFunding.compile|8.7|
+|RollupTreasuryManager.compile|10.88|
+|RollupNullifier.compile|9.25|
+|ProjectContract.compile|6.48|
+|CampaignContract.compile|5.4|
+|ParticipationContract.compile|9.79|
+|FundingContract.compile|13.62|
+|TreasuryManagerContract.compile|15.38|
+|VestingContract.compile|8.41|
+|NullifierContract.compile|5.71|
+
+In total, it took 175.81 seconds to run the entire benchmark
+
+
+## Times for compile
+
+| Name | time passed in s |
+|---|---|
+|UpdateTask.compile|14.22|
+|RequesterContract.compile|9.09|
+|UpdateKey.compile|9.6|
+|DkgContract.compile|8.52|
+|ComputeResult.compile|5.85|
+|UpdateRequest.compile|9.95|
+|RequestContract.compile|12.4|
+|RollupProject.compile|8.9|
+|RollupCampaign.compile|5.46|
+|RollupParticipation.compile|5.37|
+|RollupFunding.compile|11.88|
+|RollupTreasuryManager.compile|11.85|
+|RollupNullifier.compile|10.5|
+|ProjectContract.compile|8.11|
+|CampaignContract.compile|6.07|
+|ParticipationContract.compile|12.07|
+|FundingContract.compile|17.39|
+|TreasuryManagerContract.compile|18.95|
+|VestingContract.compile|10.33|
+|NullifierContract.compile|6.33|
+
+In total, it took 202.83 seconds to run the entire benchmark
+
+
+## Times for compile
+
+| Name | time passed in s |
+|---|---|
+|UpdateTask.compile|15.83|
+|RequesterContract.compile|8.23|
+|UpdateKey.compile|9.6|
+|DkgContract.compile|9.7|
+|ComputeResult.compile|8.17|
+|UpdateRequest.compile|8.68|
+|RequestContract.compile|11.54|
+|RollupProject.compile|9.96|
+|RollupCampaign.compile|5.23|
+|RollupParticipation.compile|5.09|
+|RollupFunding.compile|8.85|
+|RollupTreasuryManager.compile|14.17|
+|RollupNullifier.compile|10.21|
+|ProjectContract.compile|10.62|
+|CampaignContract.compile|9.15|
+|ParticipationContract.compile|10.37|
+|FundingContract.compile|16.44|
+|TreasuryManagerContract.compile|17.67|
+|VestingContract.compile|10.86|
+|NullifierContract.compile|9.96|
+
+In total, it took 210.33 seconds to run the entire benchmark
+
+
+## Times for compile
+
+| Name | time passed in s |
+|---|---|
+|UpdateTask.compile|12.1|
+|RequesterContract.compile|6.42|
+|UpdateKey.compile|7.22|
+|DkgContract.compile|5.78|
+|ComputeResult.compile|5.22|
+|UpdateRequest.compile|7.65|
+|RequestContract.compile|9.8|
+|RollupProject.compile|9.15|
+|RollupCampaign.compile|6.76|
+|RollupParticipation.compile|5.84|
+|RollupFunding.compile|10.54|
+|RollupTreasuryManager.compile|19.31|
+|RollupNullifier.compile|11.29|
+|ProjectContract.compile|11.52|
+|CampaignContract.compile|6.24|
+|ParticipationContract.compile|12.34|
+|FundingContract.compile|16.45|
+|TreasuryManagerContract.compile|17.03|
+|VestingContract.compile|9.46|
+|NullifierContract.compile|9.65|
+
+In total, it took 199.77 seconds to run the entire benchmark
+
+
+## Times for compile
+
+| Name | time passed in s |
+|---|---|
+|UpdateTask.compile|14.95|
+|RequesterContract.compile|8.06|
+|UpdateKey.compile|8.35|
+|DkgContract.compile|7.61|
+|ComputeResult.compile|5.71|
+|UpdateRequest.compile|8.3|
+|RequestContract.compile|11.03|
+|RollupProject.compile|11.18|
+|RollupCampaign.compile|5|
+|RollupParticipation.compile|5.2|
+|RollupFunding.compile|10.31|
+|RollupTreasuryManager.compile|11.6|
+|RollupNullifier.compile|8.14|
+|ProjectContract.compile|9.71|
+|CampaignContract.compile|6|
+|ParticipationContract.compile|11.28|
+|FundingContract.compile|15.4|
+|TreasuryManagerContract.compile|17.37|
+|VestingContract.compile|9.99|
+|NullifierContract.compile|6.64|
+
+In total, it took 191.81 seconds to run the entire benchmark
+
+
+## Times for compile
+
+| Name | time passed in s |
+|---|---|
+|UpdateTask.compile|14.55|
+|RequesterContract.compile|8.01|
+|UpdateKey.compile|15.29|
+|DkgContract.compile|12.36|
+|ComputeResult.compile|8.15|
+|UpdateRequest.compile|11.27|
+|RequestContract.compile|16.36|
+|RollupProject.compile|13.45|
+|RollupCampaign.compile|5.62|
+|RollupParticipation.compile|9.47|
+|RollupFunding.compile|11.85|
+|RollupTreasuryManager.compile|17.55|
+|RollupNullifier.compile|11.43|
+|ProjectContract.compile|16.07|
+|CampaignContract.compile|10.53|
+|ParticipationContract.compile|22.63|
+|FundingContract.compile|23.61|
+|TreasuryManagerContract.compile|23.89|
+|VestingContract.compile|12.31|
+|NullifierContract.compile|12.89|
+
+In total, it took 277.29 seconds to run the entire benchmark
+
+
+## Times for compile
+
+| Name | time passed in s |
+|---|---|
+|UpdateTask.compile|16.25|
+|RequesterContract.compile|11.24|
+|UpdateKey.compile|12.95|
+|DkgContract.compile|11.17|
+|ComputeResult.compile|15.27|
+|UpdateRequest.compile|21.61|
+|RequestContract.compile|33|
+|RollupProject.compile|15.64|
+|RollupCampaign.compile|7.78|
+|RollupParticipation.compile|7.26|
+|RollupFunding.compile|13.23|
+|RollupTreasuryManager.compile|14.8|
+|RollupNullifier.compile|14.51|
+|ProjectContract.compile|11.79|
+|CampaignContract.compile|8.38|
+|ParticipationContract.compile|15.39|
+|FundingContract.compile|16.08|
+|TreasuryManagerContract.compile|26.43|
+|VestingContract.compile|12.09|
+|NullifierContract.compile|18.49|
+
+In total, it took 303.37 seconds to run the entire benchmark
+
+
