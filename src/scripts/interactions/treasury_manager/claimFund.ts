@@ -116,15 +116,6 @@ async function main() {
     const treasuryAddressWitness = TreasuryAddressLevel1Witness.fromJSON(
         input.treasuryAddressWitness!
     );
-
-    Provable.log('index: ', treasuryAddressWitness.calculateIndex());
-    Provable.log(
-        'root calculate: ',
-        treasuryAddressWitness.calculateRoot(
-            TreasuryAddressStorage.calculateLeaf(treasuryAddress)
-        )
-    );
-
     const claimedAmountWitness = ClaimedAmountLevel1Witness.fromJSON(
         input.claimedAmountWitness!
     );
