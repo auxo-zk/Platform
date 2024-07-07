@@ -1,4 +1,11 @@
-import { Bool, Field, MerkleMap, MerkleMapWitness, Poseidon } from 'o1js';
+import {
+    Bool,
+    PublicKey,
+    Field,
+    MerkleMap,
+    MerkleMapWitness,
+    Poseidon,
+} from 'o1js';
 
 class Level1MM extends MerkleMap {}
 class Level1Witness extends MerkleMapWitness {}
@@ -94,27 +101,37 @@ class NullifierStorage extends NullifierStorageBase<NullifierLeaf> {
         nullifier,
         projectId, // since one nullifier can be used for many
         vestingId,
+        senderAddress,
     }: {
         nullifier: Field;
         projectId: Field;
         vestingId: Field;
+        senderAddress: PublicKey;
     }): Field {
-        return Poseidon.hash([nullifier, projectId, vestingId]);
+        return Poseidon.hash([
+            nullifier,
+            projectId,
+            vestingId,
+            ...senderAddress.toFields(),
+        ]);
     }
 
     calculateLevel1Index({
         nullifier,
         projectId, // since one nullifier can be used for many
         vestingId,
+        senderAddress,
     }: {
         nullifier: Field;
         projectId: Field;
         vestingId: Field;
+        senderAddress: PublicKey;
     }): Field {
         return NullifierStorage.calculateLevel1Index({
             nullifier,
             projectId, // since one nullifier can be used for many
             vestingId,
+            senderAddress,
         });
     }
 }

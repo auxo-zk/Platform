@@ -12,6 +12,7 @@ export const INSTANCE_LIMITS = {
     CLAIMED_INDEX_TREE_SIZE:
         2 ** 5 * Constants.ENCRYPTION_LIMITS.FULL_DIMENSION,
     NULLIFIER_HASH_TREE_SIZE: 2 ** 8,
+    REVENUE_TREE_SIZE: 2 ** (5 * 2), // each project has 2 time to return revenue
 };
 
 export const MINIMAL_MINA_UNIT = Constants.SECRET_UNIT;

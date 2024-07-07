@@ -101,6 +101,7 @@ async function main() {
         nullifier,
         projectId,
         vestingId,
+        senderAddress: _.accounts.nullifier.publicKey,
     });
 
     let tx = await Utils.proveAndSendTx(

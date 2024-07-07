@@ -141,6 +141,7 @@ class NullifierContract extends SmartContract {
             nullifier,
             projectId,
             vestingId,
+            senderAddress: this.sender.self.address, // @todo check if this is needed to check
         });
 
         // nullifier is not yet used

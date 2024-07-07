@@ -10,19 +10,18 @@ import {
 import { CampaignStorage } from './CampaignStorage.js';
 import { INSTANCE_LIMITS } from '../Constants.js';
 
-// @todo config the number of maximum vesting times of a project for all campaign
-const LEVEL_1_VESTING_TREE_HEIGHT =
-    Math.ceil(Math.log2(INSTANCE_LIMITS.CAMPAIGN_TREE_SIZE)) + 1;
+const LEVEL_1_REVENUE_TREE_HEIGHT =
+    Math.ceil(Math.log2(INSTANCE_LIMITS.REVENUE_TREE_SIZE)) + 1;
 
 class Level1MT extends MerkleTree {}
-class Level1Witness extends MerkleWitness(LEVEL_1_VESTING_TREE_HEIGHT) {}
+class Level1Witness extends MerkleWitness(LEVEL_1_REVENUE_TREE_HEIGHT) {}
 
-const EMPTY_LEVEL_1_VESTING_TREE = () =>
-    new Level1MT(LEVEL_1_VESTING_TREE_HEIGHT);
+const EMPTY_LEVEL_1_REVENUE_TREE = () =>
+    new Level1MT(LEVEL_1_REVENUE_TREE_HEIGHT);
 
-const DefaultRootForVestingTree = EMPTY_LEVEL_1_VESTING_TREE().getRoot();
+const DefaultRootForRevenueTree = EMPTY_LEVEL_1_REVENUE_TREE().getRoot();
 
-abstract class VestingStorage<RawLeaf> {
+abstract class RevenueStorage<RawLeaf> {
     private _level1: Level1MT;
     private _leafs: {
         [key: string]: { raw: RawLeaf | undefined; leaf: Field };
@@ -34,7 +33,7 @@ abstract class VestingStorage<RawLeaf> {
             leaf: RawLeaf | Field;
         }[]
     ) {
-        this._level1 = EMPTY_LEVEL_1_VESTING_TREE();
+        this._level1 = EMPTY_LEVEL_1_REVENUE_TREE();
         this._leafs = {};
         if (leafs) {
             for (let i = 0; i < leafs.length; i++) {
@@ -97,65 +96,43 @@ abstract class VestingStorage<RawLeaf> {
     }
 }
 
-type VestedLeaf = UInt64;
-class VestedAmountStorage extends CampaignStorage<VestedLeaf> {
-    static calculateLeaf(amount: VestedLeaf): Field {
-        return Field.fromFields(amount.toFields());
-    }
-
-    calculateLeaf(amount: VestedLeaf): Field {
-        return VestedAmountStorage.calculateLeaf(amount);
-    }
-
-    static calculateLevel1Index(campaignId: Field): Field {
-        return campaignId;
-    }
-
-    calculateLevel1Index(campaignId: Field): Field {
-        return VestedAmountStorage.calculateLevel1Index(campaignId);
-    }
-}
-
-class VestingInfo extends Struct({
+class RevenueInfo extends Struct({
     campaignId: Field,
+    projectId: Field,
     amount: UInt64, // in MINIMAL_MINA_UNIT
-    deadline: UInt64,
-    claimed: Bool,
 }) {
-    static fromFields(fields: Field[]): VestingInfo {
-        return super.fromFields(fields) as VestingInfo;
+    static fromFields(fields: Field[]): RevenueInfo {
+        return super.fromFields(fields) as RevenueInfo;
     }
 }
 
-type VestingInfoLeaf = VestingInfo;
-class VestingInfoStorage extends VestingStorage<VestingInfoLeaf> {
-    static calculateLeaf(vestingInfo: VestingInfoLeaf): Field {
-        return Poseidon.hash(VestingInfo.toFields(vestingInfo));
+type RevenueInfoLeaf = RevenueInfo;
+class RevenueInfoStorage extends RevenueStorage<RevenueInfoLeaf> {
+    static calculateLeaf(revenueInfo: RevenueInfoLeaf): Field {
+        return Poseidon.hash(RevenueInfo.toFields(revenueInfo));
     }
 
-    calculateLeaf(vestingInfo: VestingInfoLeaf): Field {
-        return VestingInfoStorage.calculateLeaf(vestingInfo);
+    calculateLeaf(revenueInfo: RevenueInfoLeaf): Field {
+        return RevenueInfoStorage.calculateLeaf(revenueInfo);
     }
 
-    static calculateLevel1Index(vestingId: Field): Field {
-        return vestingId;
+    static calculateLevel1Index(revenueId: Field): Field {
+        return revenueId;
     }
 
-    calculateLevel1Index(vestingId: Field): Field {
-        return VestingInfoStorage.calculateLevel1Index(vestingId);
+    calculateLevel1Index(revenueId: Field): Field {
+        return RevenueInfoStorage.calculateLevel1Index(revenueId);
     }
 }
 
 export {
-    LEVEL_1_VESTING_TREE_HEIGHT,
-    EMPTY_LEVEL_1_VESTING_TREE,
-    DefaultRootForVestingTree,
-    VestingStorage,
-    VestedLeaf,
-    VestedAmountStorage,
-    VestingInfo,
-    VestingInfoLeaf,
-    VestingInfoStorage,
-    Level1MT as VestingLevel1MT,
-    Level1Witness as VestingLevel1Witness,
+    LEVEL_1_REVENUE_TREE_HEIGHT,
+    EMPTY_LEVEL_1_REVENUE_TREE,
+    DefaultRootForRevenueTree,
+    RevenueStorage,
+    RevenueInfo,
+    RevenueInfoLeaf,
+    RevenueInfoStorage,
+    Level1MT as RevenueLevel1MT,
+    Level1Witness as RevenueLevel1Witness,
 };

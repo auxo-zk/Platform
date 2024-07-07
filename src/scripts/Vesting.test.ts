@@ -1320,6 +1320,7 @@ describe('TreasuryManager', () => {
                             nullifier,
                             projectId,
                             vestingId,
+                            senderAddress: vestingContract.address,
                         })
                     ),
                     zkAppStorage.getZkAppRef(

@@ -398,7 +398,7 @@ class VestingContract extends SmartContract {
             treasuryAddressWitness
         );
 
-        // verify  result
+        // verify result
         const requestContract = new DkgZkApp.Request.RequestContract(
             requestContractRef.address
         );
@@ -432,7 +432,7 @@ class VestingContract extends SmartContract {
 
         const dimensionIndex = UInt8.from(projectIndex.sub(1));
 
-        // verify  campaignClaimedAmount
+        // verify campaignClaimedAmount
         const treasuryManagerAddress = new TreasuryManagerContract(
             treasuryManagerContractRef.address
         );
