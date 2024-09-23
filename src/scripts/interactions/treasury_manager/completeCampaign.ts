@@ -10,6 +10,8 @@ import {
     UInt64,
 } from 'o1js';
 
+import axios from 'axios';
+
 import { compile } from '../../helper/compile.js';
 
 import {
@@ -22,24 +24,48 @@ import {
     TreasuryManagerContract,
 } from '../../../contracts/TreasuryManager.js';
 
-import { Timeline } from '../../../storages/CampaignStorage.js';
+import {
+    Timeline,
+    TimelineLevel1Witness,
+} from '../../../storages/CampaignStorage.js';
 import { CampaignMockData } from '../../mock/CampaignMockData.js';
 import { MemberArray } from '../../../storages/ProjectStorage.js';
 import { Network } from '../../helper/config.js';
 import { IpfsHash, Utils } from '@auxo-dev/auxo-libs';
 import { prepare } from '../../helper/prepare.js';
-import { CampaignStateStorage } from '../../../storages/TreasuryManagerStorage.js';
+import {
+    CampaignStateLevel1Witness,
+    CampaignStateStorage,
+} from '../../../storages/TreasuryManagerStorage.js';
 import { TimelineStorage } from '../../../storages/CampaignStorage.js';
 import { Storage } from '@auxo-dev/dkg';
 import { ZkAppIndex } from '../../../Constants.js';
 import { AddressStorage } from '@auxo-dev/dkg';
+import { ZkAppRef } from '@auxo-dev/dkg';
 
 async function main() {
     let _ = await prepare(
         './caches',
         { type: Network.Lightnet, doProofs: true },
         {
-            aliases: ['treasury_manager'],
+            aliases: [
+                'rollup',
+                'committee',
+                'dkg',
+                'round1',
+                'round2',
+                'request',
+                'response',
+                'project',
+                'campaign',
+                'nullifier',
+                'funding',
+                'funding_requester',
+                'vesting',
+                'vesting_requester',
+                'participation',
+                'treasury_manager',
+            ],
         }
     );
 
@@ -49,130 +75,76 @@ async function main() {
         memoryUsage: true,
     };
 
-    // Compile programs
-    await compile(
-        _.cache,
-        [RollupTreasuryManager, TreasuryManagerContract],
-        undefined,
-        logger
-    );
+    const campaignId = 7;
+
+    const input = (
+        await axios.get(
+            `https://api-dev.auxo.fund/v0/method-inputs/treasury-manager-contract/complete-campaign?campaignId=${campaignId}`
+        )
+    ).data;
 
     const treasuryManagerAddress = _.accounts.treasury_manager.publicKey;
 
-    console.log('Project address: ', treasuryManagerAddress);
-
-    const trreasuryManagerContract = new TreasuryManagerContract(
+    const treasuryManagerContract = new TreasuryManagerContract(
         treasuryManagerAddress
     );
 
-    const campaignId = Field(0);
-    const requestId = Field(0);
-    const start = 0;
-    const startParticipation =
-        start + CampaignMockData[0].timelinePeriod.preparation;
-    const startFunding =
-        startParticipation + CampaignMockData[0].timelinePeriod.participation;
-    const startRequesting =
-        startFunding + CampaignMockData[0].timelinePeriod.funding;
+    const requestId = input.requestId!;
+
     const timeline = new Timeline({
-        startParticipation: new UInt64(startParticipation),
-        startFunding: new UInt64(startFunding),
-        startRequesting: new UInt64(startRequesting),
+        startParticipation: new UInt64(input.timeline.startParticipation),
+        startFunding: new UInt64(input.timeline.startFunding),
+        startRequesting: new UInt64(input.timeline.startRequesting),
     });
 
-    //#region "Construct address books"
-    const sharedAddressStorage = new AddressStorage();
+    const timelineWitness = TimelineLevel1Witness.fromJSON(
+        input.timelineWitness!
+    );
 
-    sharedAddressStorage.updateAddress(
-        Field(ZkAppIndex.ROLLUP),
-        _.accounts.rollup.publicKey
+    const campaignStateWitness = CampaignStateLevel1Witness.fromJSON(
+        input.campaignStateWitness!
     );
-    sharedAddressStorage.updateAddress(
-        Field(ZkAppIndex.COMMITTEE),
-        _.accounts.committee.publicKey
+
+    const taskWitness = Storage.RequestStorage.RequestLevel1Witness.fromJSON(
+        input.taskWitness!
     );
-    sharedAddressStorage.updateAddress(
-        Field(ZkAppIndex.DKG),
-        _.accounts.dkg.publicKey
+    const expirationTimestamp = UInt64.from(input.expirationTimestamp!);
+    const expirationWitness =
+        Storage.RequestStorage.RequestLevel1Witness.fromJSON(
+            input.expirationWitness!
+        );
+    const resultWitness = Storage.RequestStorage.RequestLevel1Witness.fromJSON(
+        input.resultWitness!
     );
-    sharedAddressStorage.updateAddress(
-        Field(ZkAppIndex.ROUND1),
-        _.accounts.round1.publicKey
-    );
-    sharedAddressStorage.updateAddress(
-        Field(ZkAppIndex.ROUND2),
-        _.accounts.round2.publicKey
-    );
-    sharedAddressStorage.updateAddress(
-        Field(ZkAppIndex.REQUEST),
-        _.accounts.request.publicKey
-    );
-    sharedAddressStorage.updateAddress(
-        Field(ZkAppIndex.RESPONSE),
-        _.accounts.response.publicKey
-    );
-    sharedAddressStorage.updateAddress(
-        Field(ZkAppIndex.PROJECT),
-        _.accounts.project.publicKey
-    );
-    sharedAddressStorage.updateAddress(
-        Field(ZkAppIndex.CAMPAIGN),
-        _.accounts.campaign.publicKey
-    );
-    sharedAddressStorage.updateAddress(
-        Field(ZkAppIndex.NULLIFIER),
-        _.accounts.nullifier.publicKey
-    );
-    sharedAddressStorage.updateAddress(
-        Field(ZkAppIndex.FUNDING),
-        _.accounts.funding.publicKey
-    );
-    sharedAddressStorage.updateAddress(
-        Field(ZkAppIndex.FUNDING_REQUESTER),
-        _.accounts.funding_requester.publicKey
-    );
-    sharedAddressStorage.updateAddress(
-        Field(ZkAppIndex.PARTICIPATION),
-        _.accounts.participation.publicKey
-    );
-    sharedAddressStorage.updateAddress(
-        Field(ZkAppIndex.TREASURY_MANAGER),
+
+    const campaignContractRef = ZkAppRef.fromJSON(input.campaignContractRef!);
+    const requesterContractRef = ZkAppRef.fromJSON(input.requesterContractRef!);
+    const requestContractRef = ZkAppRef.fromJSON(input.requestContractRef!);
+
+    // Compile programs
+    await compile(_.cache, [], undefined, logger);
+
+    const trreasuryManagerContract = new TreasuryManagerContract(
         _.accounts.treasury_manager.publicKey
     );
-
-    const campaignStateTree = new CampaignStateStorage();
-    const timelineTree = new TimelineStorage();
-    const taskIdTree = new Storage.RequestStorage.TaskStorage(); // api
-    const expirationTimestamp = new UInt64(0); // expirationTimestamp api
-    const expirationTree = new Storage.RequestStorage.ExpirationStorage(); // api
-    const resultTree = new Storage.RequestStorage.ResultStorage(); // api
 
     await Utils.proveAndSendTx(
         TreasuryManagerContract.name,
         'completeCampaign',
         async () => {
             await trreasuryManagerContract.completeCampaign(
-                campaignId,
-                requestId,
+                Field(campaignId),
+                Field(requestId),
                 timeline,
-                timelineTree.getLevel1Witness(campaignId),
-                campaignStateTree.getLevel1Witness(campaignId),
-                taskIdTree.getLevel1Witness(Field(0)), // update từ api
-                new UInt64(0), // expirationTimestamp
-                expirationTree.getLevel1Witness(Field(0)), // update từ api
-                resultTree.getLevel1Witness(Field(0)), // update từ api
-                sharedAddressStorage.getZkAppRef(
-                    ZkAppIndex.CAMPAIGN,
-                    _.accounts.campaign.publicKey
-                ),
-                sharedAddressStorage.getZkAppRef(
-                    ZkAppIndex.FUNDING_REQUESTER,
-                    _.accounts.requester.publicKey
-                ),
-                sharedAddressStorage.getZkAppRef(
-                    ZkAppIndex.REQUEST,
-                    _.accounts.request.publicKey
-                )
+                timelineWitness,
+                campaignStateWitness,
+                taskWitness,
+                expirationTimestamp,
+                expirationWitness,
+                resultWitness,
+                campaignContractRef,
+                requesterContractRef,
+                requestContractRef
             );
         },
         _.feePayer,

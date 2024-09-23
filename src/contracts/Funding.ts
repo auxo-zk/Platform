@@ -338,20 +338,23 @@ class FundingContract extends SmartContract {
             const dimensionIndex = Field.fromBits(
                 dimensionIndexesBits.slice(i * 8, (i + 1) * 8)
             );
-            existedIndexFlag.get(dimensionIndex).assertFalse();
+
             Provable.if(
                 amount.equals(new UInt64(0)),
                 Field(0),
                 dimensionIndex
             ).assertLessThan(projectCounter);
-            existedIndexFlag.set(
-                dimensionIndex,
-                Provable.if(
-                    amount.equals(new UInt64(0)),
-                    Bool(false),
-                    Bool(true)
-                )
+
+            const isFund = Provable.if(
+                amount.equals(new UInt64(0)),
+                Bool(false),
+                Bool(true)
             );
+
+            const isExisted = existedIndexFlag.get(dimensionIndex);
+            isFund.and(isExisted).assertFalse();
+
+            existedIndexFlag.set(dimensionIndex, isFund);
             totalAmount = totalAmount.add(amount);
             secretVector.set(index, CustomScalar.fromUInt64(amount));
         }
@@ -632,20 +635,23 @@ class FundingContractMock extends SmartContract {
             const dimensionIndex = Field.fromBits(
                 dimensionIndexesBits.slice(i * 8, (i + 1) * 8)
             );
-            existedIndexFlag.get(dimensionIndex).assertFalse();
+
             Provable.if(
                 amount.equals(new UInt64(0)),
                 Field(0),
                 dimensionIndex
             ).assertLessThan(projectCounter);
-            existedIndexFlag.set(
-                dimensionIndex,
-                Provable.if(
-                    amount.equals(new UInt64(0)),
-                    Bool(false),
-                    Bool(true)
-                )
+
+            const isFund = Provable.if(
+                amount.equals(new UInt64(0)),
+                Bool(false),
+                Bool(true)
             );
+
+            const isExisted = existedIndexFlag.get(dimensionIndex);
+            isFund.and(isExisted).assertFalse();
+
+            existedIndexFlag.set(dimensionIndex, isFund);
             totalAmount = totalAmount.add(amount);
             secretVector.set(index, CustomScalar.fromUInt64(amount));
         }

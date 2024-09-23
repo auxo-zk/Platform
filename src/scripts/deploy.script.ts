@@ -144,6 +144,7 @@ import { AddressStorage } from '@auxo-dev/dkg';
 import { compile } from './helper/compile.js';
 import { fetchAccounts } from './helper/index.js';
 import { Action } from './interfaces/action.interface.js';
+import { NullifierContract } from '../contracts/Nullifier.js';
 
 import 'dotenv/config';
 
@@ -266,8 +267,8 @@ async function main() {
     const zkAppStorageForVestingRequester =
         Utilities.getZkAppStorageForRequester(
             _.accounts.vesting.publicKey.toBase58(),
-            _.accounts.campaign.publicKey.toBase58(),
             _.accounts.vesting.publicKey.toBase58(),
+            _.accounts.dkg.publicKey.toBase58(),
             _.accounts.request.publicKey.toBase58()
         );
     //#endregion
@@ -337,6 +338,12 @@ async function main() {
         name: VestingContract.name,
         initArgs: { zkAppRoot: sharedAddressStorage.root },
     };
+
+    let nullifierZkApp = Utils.getZkApp(
+        _.accounts.nullifier,
+        new NullifierContract(_.accounts.nullifier.publicKey),
+        NullifierContract.name
+    );
 
     // not this yet
     let vestingRequesterZkApp = Utils.getZkApp(
@@ -415,6 +422,7 @@ async function main() {
                 fundingZkApp,
                 treasuryManagerZkApp,
                 fundingRequesterZkApp,
+                nullifierZkApp,
             ],
             _.feePayer,
             true,

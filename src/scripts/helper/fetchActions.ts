@@ -3,6 +3,7 @@ import { Mina, Provable, PublicKey, fetchAccount, Field } from 'o1js';
 import { fetchAccounts } from './index.js';
 import { Utils } from '@auxo-dev/auxo-libs';
 import { ProjectAction } from '../../contracts/Project.js';
+import { NullifierAction } from '../../contracts/Nullifier.js';
 
 async function main() {
     // Network configuration
@@ -14,15 +15,17 @@ async function main() {
 
     const rawActions = await Utils.fetchActions(
         PublicKey.fromBase58(
-            'B62qrXSf1v8nhbkqTGvZmThwehN3QDZaT5VzJWsX3d52SNgiQwtCv5y'
+            'B62qoCN9873TFC3m1br7nKV8khJxXdsj87ZKaqFTSonJVjqxKEUyHSG'
         )
     );
 
-    const actions: ProjectAction[] = rawActions.map((e) => {
+    const actions: NullifierAction[] = rawActions.map((e) => {
         let action: Field[] = e.actions[0].map((e) => Field(e));
-        return ProjectAction.fromFields(action);
+        return NullifierAction.fromFields(action);
     });
     actions.map((e) => Provable.log(e));
+
+    Provable.log('actions: ', actions);
 }
 
 main()
